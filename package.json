@@ -1,0 +1,12 @@
+{
+  "name": "vetlaudo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "VetLaudo - elaboração de laudos veterinários (ultrassonografia e radiografia)",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "serve": "npx --yes http-server -p 8080 -c-1",
+    "test:e2e": "node tests/e2e/smoke.mjs"
+  }
+}

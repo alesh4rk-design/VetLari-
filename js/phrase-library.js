@@ -1,0 +1,152 @@
+// Biblioteca de frases do usuário: CRUD, busca, favoritos, importação/exportação JSON e seletor de inserção.
+// Nenhuma frase é fornecida de fábrica: o conteúdo clínico é criado ou aprovado pela veterinária.
+import { uid, esc, fmtDateBR, download, toast, todayISO } from './utils.js';
+import { dbAll, dbPut, dbDel } from './local-storage.js';
+import { validatePhrase, validatePhraseImport } from './validation.js';
+import { openModal, confirmDialog, alertList } from './ui.js';
+
+const MOD_LABEL = { all: 'Todas', usg: 'Ultrassonografia', rx: 'Radiografia' };
+
+export const listPhrases = async () => (await dbAll('phrases')).sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
+
+export function filterPhrases(all, { q = '', category = '', modality = '', favOnly = false, structure = '' } = {}) {
+  const needle = q.trim().toLowerCase();
+  return all.filter((p) => {
+    if (favOnly && !p.favorite) return false;
+    if (category && p.category !== category) return false;
+    if (modality && p.modality !== 'all' && p.modality !== modality) return false;
+    // Com estrutura informada, mostra as frases dessa estrutura e as gerais (sem estrutura definida).
+    if (structure && p.structure && p.structure.toLowerCase() !== structure.toLowerCase()) return false;
+    if (!needle) return true;
+    return [p.title, p.category, p.structure, p.text, p.keywords].some((f) => String(f || '').toLowerCase().includes(needle));
+  });
+}
+
+/** Insere texto na posição do cursor sem apagar o conteúdo existente. */
+export function insertAtCursor(el, text) {
+  const start = el.selectionStart ?? el.value.length, end = el.selectionEnd ?? start;
+  const before = el.value.slice(0, start), after = el.value.slice(end);
+  const sep = before && !/[\s]$/.test(before) ? ' ' : '';
+  el.value = before + sep + text + after;
+  const pos = (before + sep + text).length;
+  el.setSelectionRange(pos, pos);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.focus();
+}
+
+function phraseForm(p) {
+  const m = openModal(`<h2>${p.id ? 'Editar frase' : 'Nova frase'}</h2><form id="pf" novalidate>
+    <div class="field"><label for="pf-title">Nome curto *</label><input id="pf-title" name="title" value="${esc(p.title)}" maxlength="120" autofocus></div>
+    <div class="grid g2"><div class="field"><label for="pf-cat">Categoria</label><input id="pf-cat" name="category" value="${esc(p.category)}" maxlength="80"></div>
+    <div class="field"><label for="pf-mod">Modalidade</label><select id="pf-mod" name="modality">${Object.entries(MOD_LABEL).map(([k, v]) => `<option value="${k}" ${p.modality === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
+    <div class="field"><label for="pf-str">Estrutura anatômica relacionada</label><input id="pf-str" name="structure" value="${esc(p.structure)}" maxlength="80" placeholder="Ex.: Fígado"></div>
+    <div class="field"><label for="pf-text">Texto completo *</label><textarea id="pf-text" name="text" rows="6" maxlength="5000">${esc(p.text)}</textarea></div>
+    <div class="field"><label for="pf-kw">Palavras-chave (separadas por vírgula)</label><input id="pf-kw" name="keywords" value="${esc(p.keywords)}"></div>
+    <label class="check"><input type="checkbox" name="favorite" ${p.favorite ? 'checked' : ''}> Favorita</label>
+    <div id="pf-err"></div>
+    <div class="row end"><button type="button" class="btn" data-x="cancel">Cancelar</button><button type="submit" class="btn primary">Salvar</button></div></form>`, { label: 'Frase' });
+  return new Promise((resolve) => {
+    const form = m.el.querySelector('#pf');
+    m.el.querySelector('[data-x=cancel]').onclick = () => m.close(null);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const next = { ...p, title: fd.get('title').trim(), category: fd.get('category').trim(), modality: fd.get('modality'),
+        structure: fd.get('structure').trim(), text: fd.get('text').trim(), keywords: fd.get('keywords').trim(),
+        favorite: fd.get('favorite') === 'on', updatedAt: todayISO() };
+      const errs = validatePhrase(next);
+      if (errs.length) { m.el.querySelector('#pf-err').innerHTML = alertList('Corrija:', errs, 'error'); return; }
+      try { await dbPut('phrases', next); m.close(next); toast('Frase salva.', 'success'); }
+      catch { m.el.querySelector('#pf-err').innerHTML = alertList('Erro', ['Não foi possível salvar a frase.'], 'error'); }
+    });
+    m.closed.then(resolve);
+  });
+}
+const blankPhrase = (over = {}) => ({ id: uid(), title: '', category: '', modality: 'all', structure: '', text: '', keywords: '', favorite: false, ...over });
+
+/** Seletor usado no editor: devolve o texto escolhido (ou null). */
+export async function pickPhrase({ modality, structure = '' }) {
+  const all = await listPhrases();
+  const m = openModal(`<h2>Inserir frase</h2>
+    <div class="field"><label for="pk-q">Pesquisar</label><input id="pk-q" type="search" autofocus></div>
+    ${structure ? `<label class="check"><input type="checkbox" id="pk-str" checked> Ocultar frases de outras estruturas (manter "${esc(structure)}" e gerais)</label>` : ''}
+    <div id="pk-list"></div>
+    <div class="row end"><button class="btn" data-x="close">Fechar</button></div>`, { label: 'Inserir frase' });
+  const render = () => {
+    const strict = structure && m.el.querySelector('#pk-str').checked;
+    const res = filterPhrases(all, { q: m.el.querySelector('#pk-q').value, modality, structure: strict ? structure : '' })
+      .sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
+    m.el.querySelector('#pk-list').innerHTML = res.length ? res.map((p) => `<div class="phrase"><strong>${p.favorite ? '★ ' : ''}${esc(p.title)}</strong>
+      <span class="muted small"> ${esc(p.category)}</span><div class="txt">${esc(p.text)}</div>
+      <button class="btn sm primary" data-use="${p.id}">Inserir</button></div>`).join('')
+      : `<div class="empty">${all.length ? 'Nenhuma frase encontrada.' : 'Sua biblioteca está vazia. Crie frases em "Biblioteca de frases".'}</div>`;
+  };
+  render();
+  m.el.addEventListener('input', render);
+  m.el.addEventListener('click', (e) => {
+    if (e.target.closest('[data-x=close]')) return m.close(null);
+    const b = e.target.closest('[data-use]');
+    if (b) m.close(all.find((p) => p.id === b.dataset.use).text);
+  });
+  return m.closed;
+}
+
+export async function renderPhraseLibrary(view) {
+  let all = await listPhrases();
+  const f = { q: '', category: '', modality: '', favOnly: false };
+  view.innerHTML = `<div class="page-head"><div><h1>Biblioteca de frases</h1><p class="muted">Frases criadas por você, para inserir nos laudos com um toque.</p></div>
+    <div class="row"><button class="btn primary" data-act="new">Nova frase</button><button class="btn" data-act="export">Exportar JSON</button>
+    <button class="btn" data-act="import">Importar JSON</button><input type="file" id="imp" accept="application/json,.json" style="display:none"></div></div>
+    <div class="card"><div class="grid g3"><div class="field"><label for="lq">Pesquisar</label><input id="lq" type="search"></div>
+    <div class="field"><label for="lc">Categoria</label><select id="lc"></select></div>
+    <div class="field"><label for="lm">Modalidade</label><select id="lm"><option value="">Todas</option><option value="usg">Ultrassonografia</option><option value="rx">Radiografia</option></select></div></div>
+    <label class="check"><input type="checkbox" id="lf"> Somente favoritas</label></div><div id="plist"></div>`;
+  const draw = () => {
+    const cats = [...new Set(all.map((p) => p.category).filter(Boolean))].sort();
+    const sel = view.querySelector('#lc');
+    sel.innerHTML = `<option value="">Todas</option>${cats.map((c) => `<option ${c === f.category ? 'selected' : ''}>${esc(c)}</option>`).join('')}`;
+    const res = filterPhrases(all, f);
+    view.querySelector('#plist').innerHTML = res.length ? res.map((p) => `<div class="phrase card"><div class="row between"><div><strong>${p.favorite ? '★ ' : ''}${esc(p.title)}</strong>
+      <span class="badge mod">${MOD_LABEL[p.modality] || 'Todas'}</span> <span class="muted small">${esc(p.category)}${p.structure ? ' · ' + esc(p.structure) : ''} · editada em ${fmtDateBR(p.updatedAt)}</span></div>
+      <div class="row"><button class="btn sm" data-act="fav" data-id="${p.id}" aria-pressed="${!!p.favorite}">${p.favorite ? 'Desfavoritar' : 'Favoritar'}</button>
+      <button class="btn sm" data-act="edit" data-id="${p.id}">Editar</button><button class="btn sm danger" data-act="del" data-id="${p.id}">Excluir</button></div></div>
+      <div class="txt">${esc(p.text)}</div></div>`).join('')
+      : `<div class="card empty">${all.length ? 'Nenhuma frase encontrada.' : 'Ainda não há frases. Clique em "Nova frase" ou importe um arquivo JSON.'}</div>`;
+  };
+  draw();
+  view.addEventListener('input', (e) => {
+    if (e.target.id === 'lq') f.q = e.target.value;
+    else if (e.target.id === 'lc') f.category = e.target.value;
+    else if (e.target.id === 'lm') f.modality = e.target.value;
+    else if (e.target.id === 'lf') f.favOnly = e.target.checked;
+    else return;
+    const keep = e.target.id === 'lc' ? null : e.target;
+    draw();
+    if (keep) keep.focus();
+  });
+  view.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const p = all.find((x) => x.id === b.dataset.id);
+    if (b.dataset.act === 'new') { if (await phraseForm(blankPhrase())) { all = await listPhrases(); draw(); } }
+    if (b.dataset.act === 'edit') { if (await phraseForm({ ...p })) { all = await listPhrases(); draw(); } }
+    if (b.dataset.act === 'fav') { await dbPut('phrases', { ...p, favorite: !p.favorite, updatedAt: todayISO() }); all = await listPhrases(); draw(); }
+    if (b.dataset.act === 'del' && await confirmDialog(`Excluir a frase "${p.title}"?`, { ok: 'Excluir', danger: true })) {
+      await dbDel('phrases', p.id); all = await listPhrases(); draw(); toast('Frase excluída.');
+    }
+    if (b.dataset.act === 'export') {
+      download(new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' }), `VetLaudo_frases_${todayISO()}.json`);
+    }
+    if (b.dataset.act === 'import') view.querySelector('#imp').click();
+  });
+  view.querySelector('#imp').addEventListener('change', async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    try {
+      const res = validatePhraseImport(JSON.parse(await file.text()));
+      if (!res.ok) throw new Error(res.reason);
+      for (const p of res.phrases) await dbPut('phrases', blankPhrase({ ...p, id: p.id || uid(), updatedAt: p.updatedAt || todayISO() }));
+      all = await listPhrases(); draw();
+      toast(`${res.phrases.length} frase(s) importada(s)${res.skipped ? `, ${res.skipped} ignorada(s) por estarem incompletas` : ''}.`, 'success');
+    } catch (err) { toast(err instanceof SyntaxError ? 'Arquivo JSON inválido.' : err.message, 'error'); }
+  });
+}
