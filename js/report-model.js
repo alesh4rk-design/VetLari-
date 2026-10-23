@@ -16,7 +16,8 @@ export function buildReport(exam, settings = {}) {
   const isRx = exam.type === 'rx';
   const tpl = exam.layout || {};
 
-  const age = filled(p.age) ? p.age : ageFromBirth(p.birthDate, exam.date);
+  // Com data de nascimento, a idade é sempre calculada na data do exame (nunca fica desatualizada).
+  const age = ageFromBirth(p.birthDate, exam.date) || (filled(p.age) ? p.age : '');
   const weight = filled(p.weight) ? `${String(p.weight).replace('.', ',')} kg` : '';
   const patientRows = [
     ['Animal', p.name], ['Espécie', p.species], ['Raça', p.breed], ['Sexo', p.sex],

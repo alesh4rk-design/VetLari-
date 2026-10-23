@@ -2,6 +2,7 @@
 // realmente comparáveis (mesma estrutura, mesma medida, mesma unidade, valores simples). Nunca
 // declara crescimento, redução ou evolução: apresenta números e a razão quando não comparáveis.
 import { isNumericValue } from './utils.js';
+import { speciesKey } from './animals.js';
 
 const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const num = (v) => Number(String(v).trim().replace(',', '.'));
@@ -39,7 +40,7 @@ export function compareMeasures(earlier, later) {
   }
   const notes = [];
   if (earlier.type !== later.type) notes.push('Os exames são de modalidades diferentes.');
-  const sp = (e) => norm(e.patient && e.patient.species);
+  const sp = (e) => speciesKey(e.patient && e.patient.species);
   if (sp(earlier) && sp(later) && sp(earlier) !== sp(later)) notes.push('Espécies diferentes informadas nos dois exames.');
   const cl = (e, k) => norm(e.clinical && e.clinical[k]);
   for (const [k, label] of [['equipment', 'equipamento'], ['operator', 'operador']]) {

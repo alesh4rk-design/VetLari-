@@ -2,11 +2,13 @@
 import { esc, debounce, download, reportFileName, toast, fmtDateTimeBR, fmtDateBR, MODALITY, uid } from './utils.js';
 import { getPath, setPath, alertList, confirmDialog } from './ui.js';
 import { SEXES } from './validation.js';
+import { SPECIES, breedsFor, optionsHtml } from './animals.js';
+import { ageFromBirth } from './utils.js';
 import { navigate, setLeaveGuard } from './router.js';
 import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
 import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, FINAL_CHECKLIST, sectionHasContent } from './quality.js';
 import { can } from './profiles.js';
-import { openModal } from './ui.js';
+import { openModal, pickOption } from './ui.js';
 import { listPatients, getPatient, upsertPatient } from './patients.js';
 import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor } from './phrase-library.js';
@@ -93,6 +95,10 @@ export async function renderEditor(view, id, settings, profile) {
 
   const field = (label, bind, { type = 'text', extra = '' } = {}) => `<div class="field"><label for="f-${bind}">${label}</label>
     <input id="f-${bind}" type="${type}" data-bind="${bind}" value="${esc(getPath(exam, bind))}" ${locked ? 'disabled' : ''} ${extra}></div>`;
+  /** Campo com sugestões e digitação livre + botão "Lista" com todas as opções. */
+  const comboField = (label, bind, listId, kind) => `<div class="field"><label for="f-${bind}">${label}</label>
+    <div class="row" style="flex-wrap:nowrap"><input id="f-${bind}" data-bind="${bind}" value="${esc(getPath(exam, bind))}" list="${listId}" autocomplete="off" placeholder="Escolha ou digite" ${locked ? 'disabled' : ''} style="flex:1;min-width:0">
+    ${locked ? '' : `<button type="button" class="btn sm" data-act="pick-list" data-kind="${kind}" data-target="f-${bind}">Lista</button>`}</div></div>`;
   const area = (label, bind, rows = 4, structure = '') => `<div class="field"><label for="f-${bind}">${label}</label>
     <textarea id="f-${bind}" data-bind="${bind}" rows="${rows}" ${locked ? 'disabled' : ''}>${esc(getPath(exam, bind))}</textarea>
     ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="f-${bind}" data-structure="${esc(structure)}">Inserir frase</button>
@@ -183,13 +189,31 @@ export async function renderEditor(view, id, settings, profile) {
       ${locked ? '' : '<button type="button" class="btn danger sm" data-act="sec-del">Excluir esta estrutura</button>'}</div></section>`;
   };
 
+  /** Idade: calculada sozinha a partir da data de nascimento (na data do exame); manual só sem data de nascimento. */
+  const autoAge = () => ageFromBirth(exam.patient.birthDate, exam.date);
+  const ageField = () => {
+    const auto = autoAge();
+    return `<div class="field"><label for="f-age">Idade</label>
+      <input id="age-auto" readonly value="${esc(auto)}" aria-describedby="age-hint" ${auto ? '' : 'hidden'}>
+      <input id="f-age" data-bind="patient.age" value="${esc(exam.patient.age)}" placeholder="Ex.: 3 anos" ${locked ? 'disabled' : ''} ${auto ? 'hidden' : ''}>
+      <div class="hint" id="age-hint">${auto ? 'Calculada automaticamente a partir da data de nascimento, na data do exame.' : 'Informe a data de nascimento para calcular sozinha, ou digite a idade.'}</div></div>`;
+  };
+  const updateAge = () => {
+    const auto = autoAge(), a = view.querySelector('#age-auto'), m = view.querySelector('#f-age'), h = view.querySelector('#age-hint');
+    if (!a || !m) return;
+    a.value = auto; a.hidden = !auto; m.hidden = !!auto;
+    if (h) h.textContent = auto ? 'Calculada automaticamente a partir da data de nascimento, na data do exame.' : 'Informe a data de nascimento para calcular sozinha, ou digite a idade.';
+  };
+
   const steps = {
     0: () => `<div class="card"><h2>Paciente</h2>
       ${locked ? '' : `<div class="field"><label for="pick">Paciente cadastrado</label><select id="pick" data-act="pick"><option value="">Selecione para preencher automaticamente</option>
         ${patients.map((p) => `<option value="${p.id}" ${p.id === exam.patientId ? 'selected' : ''}>${esc(p.name)}${p.tutor ? ' — ' + esc(p.tutor) : ''}</option>`).join('')}</select></div>`}
-      <div class="grid g2">${field('Nome do animal *', 'patient.name', { extra: 'required maxlength="200"' })}${field('Espécie', 'patient.species')}${field('Raça', 'patient.breed')}
+      <div class="grid g2">${field('Nome do animal *', 'patient.name', { extra: 'required maxlength="200"' })}
+      ${comboField('Espécie', 'patient.species', 'species-list', 'species')}${comboField('Raça', 'patient.breed', 'breeds-list', 'breed')}
+      <datalist id="species-list">${optionsHtml(SPECIES)}</datalist><datalist id="breeds-list">${optionsHtml(breedsFor(exam.patient.species))}</datalist>
       <div class="field"><label for="f-sex">Sexo</label><select id="f-sex" data-bind="patient.sex" ${locked ? 'disabled' : ''}>${SEXES.map((s) => `<option value="${s}" ${exam.patient.sex === s ? 'selected' : ''}>${s || 'Selecione'}</option>`).join('')}</select></div>
-      ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${field('Idade (se não souber a data)', 'patient.age')}${field('Peso (kg)', 'patient.weight', { extra: 'inputmode="decimal"' })}
+      ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${ageField()}${field('Peso (kg)', 'patient.weight', { extra: 'inputmode="decimal"' })}
       ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}
       ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame *', 'date', { type: 'date' })}</div>
       ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
@@ -414,6 +438,12 @@ export async function renderEditor(view, id, settings, profile) {
         ({ text } = fillPhrase(raw, measures, extras));
       }
       insertAtCursor(target, text, { newline: ['f-impression', 'f-differentials'].includes(b.dataset.target) });
+    } else if (act === 'pick-list') {
+      const input = view.querySelector('#' + CSS.escape(b.dataset.target));
+      const options = b.dataset.kind === 'species' ? SPECIES : breedsFor(exam.patient.species);
+      if (!options.length) return toast('Não há sugestões de raça para esta espécie: digite a raça no campo.', 'info');
+      const chosen = await pickOption({ title: b.dataset.kind === 'species' ? 'Espécie' : 'Raça', options });
+      if (chosen && input) { input.value = chosen; input.dispatchEvent(new Event('input', { bubbles: true })); }
     } else if (act === 'dictate') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
       const text = await openDictation({ label: b.dataset.label });
@@ -434,6 +464,8 @@ export async function renderEditor(view, id, settings, profile) {
     if (locked) return;
     if (t.dataset.bind) {
       setPath(exam, t.dataset.bind, t.dataset.num ? Number(t.value) : t.value);
+      if (t.dataset.bind === 'patient.birthDate' || t.dataset.bind === 'date') updateAge();
+      if (t.dataset.bind === 'patient.species') { const bl = view.querySelector('#breeds-list'); if (bl) bl.innerHTML = optionsHtml(breedsFor(t.value)); }
       touch();
     } else if (t.dataset.bx !== undefined) {
       const s = current(); s.build.extras[t.dataset.bx] = t.value; syncBuild(s); touch();

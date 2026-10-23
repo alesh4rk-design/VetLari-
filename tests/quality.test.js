@@ -155,3 +155,12 @@ test('exclusão: auxiliar exclui rascunho mas não laudo finalizado; veterinári
   assert.equal(canDelete({ status: 'final' }, aux), false);
   assert.equal(canDelete({ status: 'final' }, vet), true); assert.equal(canDelete({ status: 'draft' }, null), false);
 });
+
+test('laudo: idade vem da data de nascimento (ignora idade digitada antiga) e usa a digitada só sem data', () => {
+  const comData = buildReport(sampleExam({ date: '2026-10-10', patient: { name: 'T', birthDate: '2024-08-10', age: '9 anos (antiga)' } }), sampleSettings);
+  assert.ok(comData.patientRows.some(([k, v]) => k === 'Idade' && v === '2 anos e 2 meses'));
+  const semData = buildReport(sampleExam({ patient: { name: 'T', age: '3 anos' } }), sampleSettings);
+  assert.ok(semData.patientRows.some(([k, v]) => k === 'Idade' && v === '3 anos'));
+  const nada = buildReport(sampleExam({ patient: { name: 'T' } }), sampleSettings);
+  assert.ok(!nada.patientRows.some(([k]) => k === 'Idade'));
+});

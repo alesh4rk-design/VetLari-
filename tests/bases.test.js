@@ -104,3 +104,26 @@ test('laudo: medida calculada é identificada como tal', () => {
   const r = buildReport(e, sampleSettings);
   assert.match(JSON.stringify(r.blocks), /Volume: 10,00 cm³ \(calculado: Volume \(teste\)\)/);
 });
+
+import { speciesKey, breedsFor, SPECIES } from '../js/animals.js';
+import { ageFromBirth } from '../js/utils.js';
+test('espécies: sinônimos viram a mesma espécie; referência de "Canino" vale para "Cão" e nunca para "Gato"', () => {
+  for (const s of ['Cão', 'cao', 'Canino', 'cachorro', 'CANINA']) assert.equal(speciesKey(s), 'cao');
+  for (const s of ['Gato', 'felino', 'Gata']) assert.equal(speciesKey(s), 'gato');
+  assert.equal(speciesKey('Capivara'), 'capivara'); assert.equal(speciesKey(''), '');
+  const refs = [ref({ species: 'Canino' })];
+  assert.equal(matchReferences(refs, { species: 'Cão', structure: 'Fígado', label: 'Comprimento' }).length, 1);
+  assert.equal(matchReferences(refs, { species: 'Gato', structure: 'Fígado', label: 'Comprimento' }).length, 0);
+  assert.equal(matchReferences(refs, { species: 'Capivara', structure: 'Fígado', label: 'Comprimento' }).length, 0);
+});
+test('raças: sugestões por espécie (com sinônimos) e vazio para espécie desconhecida', () => {
+  assert.ok(breedsFor('Cão').includes('Shih Tzu') && breedsFor('canino').includes('SRD (sem raça definida)'));
+  assert.ok(breedsFor('Gato').includes('Persa') && breedsFor('Ave').includes('Calopsita') && breedsFor('Roedor').includes('Chinchila'));
+  assert.deepEqual(breedsFor('Capivara'), []); assert.ok(SPECIES.includes('Cão') && SPECIES.includes('Gato'));
+});
+test('idade: calculada da data de nascimento na data do exame', () => {
+  assert.equal(ageFromBirth('2024-08-10', '2026-10-10'), '2 anos e 2 meses');
+  assert.equal(ageFromBirth('2026-02-01', '2026-10-10'), '8 meses');
+  assert.equal(ageFromBirth('2025-10-10', '2026-10-10'), '1 ano');
+  assert.equal(ageFromBirth('2026-10-20', '2026-10-10'), ''); assert.equal(ageFromBirth('', '2026-10-10'), '');
+});

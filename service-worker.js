@@ -1,7 +1,7 @@
 // Service worker do VetLaudo: permite abrir o sistema sem internet depois da primeira visita.
 // Estratégia: rede primeiro (com limite de 4 s) e cache como reserva, para que atualizações cheguem
 // sem precisar limpar nada. Os dados clínicos NÃO passam por aqui: ficam no IndexedDB do aparelho.
-const CACHE = 'vetlaudo-v4';
+const CACHE = 'vetlaudo-v5';
 const PRECACHE = [
   './',
   'index.html',
@@ -14,6 +14,7 @@ const PRECACHE = [
   'assets/icons/icon-512.png',
   'assets/icons/icon-maskable-512.png',
   'assets/icons/apple-touch-icon.png',
+  "js/animals.js",
   "js/annotations.js",
   "js/app.js",
   "js/builder-logic.js",
