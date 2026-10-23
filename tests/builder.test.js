@@ -272,3 +272,18 @@ test('laudos de outubro/2026 (lote 3): próstata, adrenal e testículo com achad
   assert.ok(ts.blocks[0].groups[0].options.some((o) => o.excl && o.text.includes('orquiectomia')));
   assert.ok(USG_IMPRESSIONS.some((i) => i[0].startsWith('Sugestivo trombo em veia cava caudal')));
 });
+
+test('catálogo: nenhum grupo tem opções repetidas e o modelo cervical usa os construtores', async () => {
+  for (const [nome, def] of Object.entries(USG_BUILDERS)) for (const b of def.blocks) for (const g of b.groups) {
+    const t = g.options.map((o) => o.text);
+    assert.equal(new Set(t).size, t.length, `${nome} / ${g.label}`);
+  }
+  const { defaultTemplates } = await import('../js/templates.js');
+  const tpl = defaultTemplates().find((t) => t.id === 'tpl-usg-cervical');
+  assert.equal(tpl.docTitle, 'Relatório Ultrassonográfico Cervical');
+  assert.deepEqual(tpl.sections.map((s) => s.title).slice(0, 4), ['Glândulas tireoides', 'Glândulas salivares submandibulares', 'Linfonodos mandibulares e retrofaríngeos', 'Esôfago, traqueia e laringe']);
+  assert.ok(tpl.sections.slice(0, 4).every((s) => s.builder));
+  const d = USG_BUILDERS['Glândulas tireoides'];
+  const txt = composeDescription(d, { '0.0.0': [0], '0.0.1': [0] }, [], { 'Volume total': '0,740' });
+  assert.ok(txt.startsWith('em topografia habitual, com formato anatômico') && txt.includes('volume total de 0,740 cm3.'));
+});
