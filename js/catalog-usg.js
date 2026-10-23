@@ -33,7 +33,7 @@ export const USG_BUILDERS = {
       g('Ecotextura', 'one', [N(o('ecotextura homogênea')), o('ecotextura grosseira')]),
       g('Achados adicionais', 'sentences', [o('Presença de fino halo ecogênico em medular interna (sinal de medular)', 'halo em medular interna'),
         o('Presença de discretos pontos hiperecogênicos em região de recessos pélvicos', 'pontos hiperecogênicos'), o('Presença de área ecogênica em medular interna', 'área ecogênica')]),
-      g('Pelve', 'sentence', [N(o('Pelve normodilatada'))]),
+      g('Pelve', 'sentence', [N(o('Pelve normodilatada')), o('Pelve discretamente dilatada', 'discretamente dilatada'), o('Pelve moderadamente dilatada', 'moderadamente dilatada'), o('Pelve acentuadamente dilatada', 'acentuadamente dilatada')]),
     ] },
     { groups: [g('Ureteres', 'sentence', [N(o('**Ureteres** sem alterações sonográficas visíveis em topografia', 'Ureteres sem alterações'))])] },
   ] },
