@@ -10,7 +10,7 @@ export function normalizeExam(e) {
   e.clinical ??= { indication: '', history: '', question: '', medications: '', operator: '', equipment: '', location: '', limitations: '' };
   e.differentials ??= '';
   e.addendum ??= '';
-  for (const s of e.sections || []) { s.status ??= ''; s.measuresList ??= []; }
+  for (const s of e.sections || []) { s.status ??= ''; s.measuresList ??= []; s.sex ??= ''; }
   return e;
 }
 
@@ -33,13 +33,17 @@ export function newExam(type, template, patient) {
     patient: { name: p.name || '', species: p.species || '', breed: p.breed || '', sex: p.sex || '', birthDate: p.birthDate || '', age: p.age || '', weight: p.weight || '', tutor: p.tutor || '', identifier: p.identifier || '' },
     clinic: '', requestingVet: '', rx: { region: '', projections: '', quality: '' },
     clinical: { indication: '', history: '', question: '', medications: '', operator: '', equipment: '', location: '', limitations: '' },
-    sections: template.sections.map((s) => blankSection(s.title)),
+    sections: template.sections.map((s) => blankSection(s.title, s)),
     impression: '', differentials: '', notes: '', addendum: '', images: [],
     history: [{ ts: Date.now(), action: 'Rascunho criado', version: 1 }],
   };
 }
 
-export const blankSection = (title) => ({ id: uid(), title, status: '', description: '', measuresList: [], measures: '', notes: '' });
+/** Cria a estrutura do laudo; as medidas do modelo viram linhas "slot" (nome e unidade prontos, só falta o valor). */
+export const blankSection = (title, tpl = {}) => ({
+  id: uid(), title, sex: tpl.sex || '', status: '', description: '', measures: '', notes: '',
+  measuresList: (tpl.measures || []).filter((m) => m.label).map((m) => ({ id: uid(), label: m.label, value: '', unit: m.unit || '', slot: true })),
+});
 
 /** Registro de auditoria local: quem fez o quê e quando (não é à prova de adulteração). */
 export function logAction(exam, action, profile, detail = '') {
@@ -87,7 +91,7 @@ export async function createRevision(original, kind, justification, profile) {
 /** Nova versão apenas com a estrutura (modelo) de um laudo anterior, sem achados nem paciente. */
 export function structureFrom(prev, template) {
   const fresh = newExam(prev.type, template || { id: prev.templateId, ...prev.layout, imagesPerRow: prev.imagesPerRow, sections: prev.sections }, null);
-  fresh.sections = prev.sections.map((s) => blankSection(s.title));
+  fresh.sections = prev.sections.map((s) => blankSection(s.title, { sex: s.sex, measures: (s.measuresList || []).filter((m) => m.label && !m.calculated).map((m) => ({ label: m.label, unit: m.unit })) }));
   return fresh;
 }
 

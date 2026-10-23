@@ -7,6 +7,6 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "serve": "npx --yes http-server -p 8080 -c-1",
-    "test:e2e": "node tests/e2e/smoke.mjs && node tests/e2e/features.mjs && node tests/e2e/bases.mjs && node tests/e2e/phrases.mjs"
+    "test:e2e": "node tests/e2e/smoke.mjs && node tests/e2e/features.mjs && node tests/e2e/bases.mjs && node tests/e2e/phrases.mjs && node tests/e2e/ui.mjs"
   }
 }

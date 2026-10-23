@@ -47,6 +47,7 @@ await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name');
 check('paciente preenchido a partir do cadastro', (await page.inputValue('#f-patient\\.name')) === 'Thor Fictício');
 await page.click('[data-step="1"]');
+await page.click('.organ:has-text("Fígado")');
 await page.fill('#d-' + await page.getAttribute('[data-sec] textarea', 'id').then((i) => i.slice(2)), 'Descrição inicial.');
 await page.click('[data-sec] [data-act="phrase"] >> nth=0');
 await page.click('.modal [data-use]');
@@ -54,7 +55,7 @@ const val = await page.inputValue('[data-sec] textarea >> nth=0');
 check('frase inserida sem apagar texto existente', val.startsWith('Descrição inicial.') && val.includes('Texto fictício de teste inserido.'), JSON.stringify(val));
 
 // Status da estrutura e medidas com unidade
-await page.selectOption('[data-sec] select[data-sf="status"] >> nth=0', 'alterado');
+await page.click('[data-act="set-status"][data-val="alterado"]');
 await page.click('[data-sec] [data-act="m-add"] >> nth=0');
 await page.fill('[data-mf="label"]', 'Comprimento'); await page.fill('[data-mf="value"]', '5,2');
 await page.click('[data-step="4"]');

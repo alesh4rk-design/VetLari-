@@ -25,7 +25,7 @@ Sistema web gratuito para elaboração de **laudos veterinários de ultrassonogr
 
 ### O que já faz
 - **Pacientes**, **modelos** de ultrassonografia (abdominal completa, direcionada/focal, urinário, hepatobiliar, gastrointestinal, reprodutivo, superficial, musculoesquelético) e de radiografia. São *modelos iniciais editáveis*, não protocolos validados.
-- **Estrutura por estrutura**: status (normal, alterado, indeterminado, não visualizado, não avaliado ou não informado), descrição, medidas com valor e unidade, observações. **Nada é presumido normal**: estrutura sem informação não aparece no laudo.
+- **Estrutura por estrutura**, em **lista de órgãos** (um órgão por vez, sem a página pular): status em botões (normal, alterado, indeterminado, não visualizado, não avaliado; sem marcar = não informado), descrição, **medidas prontas do modelo** (nome e unidade já preenchidos, só digita o valor), outras medidas e observações. Estruturas de machos ou fêmeas aparecem conforme o sexo do paciente. **Nada é presumido normal**: estrutura sem informação não aparece no laudo.
 - **Laudo**: indicação, histórico, pergunta clínica, operador, equipamento, técnica e limitações, achados, impressão, diagnósticos diferenciais, recomendações.
 - **Estados**: rascunho, preliminar, finalizado; **retificação** e **adendo** criam nova versão com justificativa, preservando a original. Arquivos de rascunho/preliminar saem marcados.
 - **Revisão automática por regras** (sem IA): medida sem unidade ou não numérica, estrutura "não avaliada" com texto, "normal" sem descrição, identificação profissional ausente etc. Alertas críticos exigem correção ou justificativa; o sistema nunca altera o texto clínico sozinho.

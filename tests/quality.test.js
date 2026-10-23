@@ -118,3 +118,32 @@ test('adendo e retificação aparecem no laudo com a justificativa', () => {
   const txt = JSON.stringify(r.blocks);
   assert.match(txt, /Adendo à versão 1/); assert.match(txt, /Nova informação/); assert.match(txt, /Texto do adendo fictício/);
 });
+
+import { defaultTemplates } from '../js/templates.js';
+import { blankSection } from '../js/exams.js';
+import { sectionHasContent } from '../js/quality.js';
+
+test('modelo: medidas pré-definidas viram linhas prontas e vazias, que não contam como conteúdo nem geram alertas', () => {
+  const tpl = defaultTemplates().find((t) => t.id === 'tpl-usg-abdominal');
+  const adr = tpl.sections.find((s) => s.title === 'Adrenais');
+  assert.ok(adr.measures.length === 6 && adr.measures.every((m) => m.unit === 'cm'));
+  const s = blankSection(adr.title, adr);
+  assert.ok(s.measuresList.every((m) => m.slot && m.value === '' && m.unit === 'cm'));
+  assert.equal(sectionHasContent(s), false);
+  const e = sampleExam({ sections: [{ ...s, status: '' }] });
+  const r = reviewExam(e, { name: 'D', crmv: '1' });
+  assert.ok(!r.info.some((i) => /medida sem valor/.test(i)) && !r.critical.some((c) => /medida/.test(c)));
+  assert.equal(buildReport(e, sampleSettings).blocks.filter((b) => b.kind === 'section').length, 0);
+});
+test('modelo: estruturas específicas de sexo e ordem dos órgãos', () => {
+  const tpl = defaultTemplates().find((t) => t.id === 'tpl-usg-abdominal');
+  const sex = Object.fromEntries(tpl.sections.map((s) => [s.title, s.sex]));
+  assert.equal(sex['Próstata'], 'male'); assert.equal(sex['Ovários'], 'female'); assert.equal(sex['Fígado'], '');
+  assert.deepEqual(tpl.sections.slice(0, 3).map((s) => s.title), ['Vesícula urinária', 'Rins', 'Fígado']);
+});
+test('medida preenchida a partir do modelo aparece no laudo com nome e unidade', () => {
+  const s = blankSection('Estômago', { measures: [{ label: 'Espessura da parede', unit: 'cm' }] });
+  s.measuresList[0].value = '0,31';
+  const r = buildReport(sampleExam({ sections: [{ ...s, status: 'normal' }] }), sampleSettings);
+  assert.match(JSON.stringify(r.blocks), /Espessura da parede: 0,31 cm/);
+});

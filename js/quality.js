@@ -19,7 +19,7 @@ const filled = (v) => String(v ?? '').trim().length > 0;
 export { isNumericValue };
 
 export function sectionHasContent(s) {
-  return filled(s.description) || filled(s.notes) || filled(s.measures) || (s.measuresList || []).some((m) => filled(m.value) || filled(m.label));
+  return filled(s.description) || filled(s.notes) || filled(s.measures) || (s.measuresList || []).some((m) => filled(m.value));
 }
 
 /** Retorna { critical: [...], info: [...] }. Alertas críticos exigem correção ou justificativa para finalizar. */
@@ -36,12 +36,12 @@ export function reviewExam(exam, profile = {}, refs = []) {
       const label = m.label ? `${name} — ${m.label}` : name;
       if (filled(m.value) && !filled(m.unit)) critical.push(`${label}: medida "${m.value}" sem unidade.`);
       else if (filled(m.value) && !isNumericValue(m.value)) critical.push(`${label}: o valor "${m.value}" não é numérico (use, por exemplo, 5,2 ou 3,2 x 2,1).`);
-      else if (!filled(m.value) && (filled(m.unit) || filled(m.label))) info.push(`${label}: medida sem valor.`);
+      else if (!m.slot && !filled(m.value) && (filled(m.unit) || filled(m.label))) info.push(`${label}: medida sem valor.`);
     }
     if ((status === 'nao_avaliado' || status === 'nao_visualizado') && sectionHasContent(s)) {
       critical.push(`${name}: marcada como "${STRUCTURE_STATUS[status]}", mas contém descrição ou medidas. Revise o status ou o texto.`);
     }
-    if (status === 'normal' && (s.measuresList || []).length === 0 && !filled(s.description) && !filled(s.measures)) {
+    if (status === 'normal' && !sectionHasContent(s)) {
       info.push(`${name}: marcada como "Normal" sem descrição registrada. Confirme que foi avaliada.`);
     }
     if (status === 'alterado' && !filled(s.description)) info.push(`${name}: marcada como "Alterado" sem descrição do achado.`);

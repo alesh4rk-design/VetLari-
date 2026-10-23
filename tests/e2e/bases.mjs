@@ -47,6 +47,7 @@ await page.goto(base + '#/novo'); await page.click('button:has-text("Começar la
 await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Paciente Bases'); await page.fill('#f-patient\\.species', 'Canino');
 await page.click('[data-step="1"]');
+await page.click('.organ:has-text("Fígado")');
 await page.click('[data-sec] [data-act="m-add"] >> nth=0');
 await page.fill('[data-mf="label"]', 'Comprimento'); await page.fill('[data-mf="value"]', '7'); await page.fill('[data-mf="unit"]', 'cm');
 await page.click('[data-sec] [data-act="m-refs"] >> nth=0');

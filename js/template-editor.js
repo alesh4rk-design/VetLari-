@@ -37,10 +37,18 @@ export async function renderTemplateForm(view, id) {
       <div class="field"><label for="t-intro">Texto introdutório padrão (opcional)</label><textarea id="t-intro" data-t="intro" rows="2">${esc(t.intro)}</textarea></div>
       <label class="check"><input type="checkbox" data-t="signature" ${t.signature ? 'checked' : ''}> Incluir identificação e linha de assinatura</label>
       <h2 style="margin-top:12px">Estruturas</h2>
-      ${t.sections.map((s, i) => `<div class="sec-head" data-s="${s.id}"><input data-st aria-label="Nome da estrutura ${i + 1}" value="${esc(s.title)}">
+      <p class="muted small">Para cada estrutura, defina as <strong>medidas</strong> que costuma registrar (nome e unidade). No laudo elas já aparecem prontas: só falta digitar o valor.</p>
+      ${t.sections.map((s, i) => `<div class="sec" data-s="${s.id}"><div class="sec-head"><input data-st aria-label="Nome da estrutura ${i + 1}" value="${esc(s.title)}">
+        <select data-sx aria-label="Aplica-se a" style="max-width:150px"><option value="" ${!s.sex ? 'selected' : ''}>Todos os sexos</option><option value="male" ${s.sex === 'male' ? 'selected' : ''}>Só machos</option><option value="female" ${s.sex === 'female' ? 'selected' : ''}>Só fêmeas</option></select>
         <button type="button" class="iconbtn" data-act="up" aria-label="Subir" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button type="button" class="iconbtn" data-act="down" aria-label="Descer" ${i === t.sections.length - 1 ? 'disabled' : ''}>▼</button>
-        <button type="button" class="iconbtn danger" data-act="rm" aria-label="Excluir">✕</button></div>`).join('')}
+        <button type="button" class="iconbtn danger" data-act="rm" aria-label="Excluir">✕</button></div>
+        ${(s.measures || []).map((m, j) => `<div class="mrow" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 40px;gap:8px;margin-bottom:6px">
+          <input data-ml="${j}" aria-label="Nome da medida" placeholder="Nome da medida (ex.: Espessura da parede)" value="${esc(m.label)}">
+          <input data-mu="${j}" aria-label="Unidade" placeholder="Unidade" list="tunits" value="${esc(m.unit)}">
+          <button type="button" class="iconbtn danger" data-act="mdel" data-mi="${j}" aria-label="Excluir medida">✕</button></div>`).join('')}
+        <button type="button" class="btn sm" data-act="madd">Adicionar medida a esta estrutura</button></div>`).join('')}
+      <datalist id="tunits"><option value="mm"><option value="cm"><option value="m"><option value="ml"><option value="cm³"><option value="cm/s"><option value="m/s"><option value="mmHg"><option value="g"><option value="kg"></datalist>
       <div class="row" style="margin:8px 0 16px"><input id="ns" placeholder="Nova estrutura" aria-label="Nova estrutura" style="flex:1;min-width:200px"><button type="button" class="btn" data-act="add">Adicionar</button></div>
       <div id="terr"></div><div class="row"><button class="btn primary" type="submit">Salvar modelo</button><a class="btn" href="#/modelos">Voltar</a></div></form>`;
   };
@@ -48,7 +56,11 @@ export async function renderTemplateForm(view, id) {
   view.oninput = (e) => {
     const el = e.target;
     if (el.dataset.t) t[el.dataset.t] = el.type === 'checkbox' ? el.checked : el.dataset.num ? Number(el.value) : el.value;
-    if (el.dataset.st !== undefined) t.sections.find((s) => s.id === el.closest('[data-s]').dataset.s).title = el.value;
+    const sec = el.closest('[data-s]') && t.sections.find((x) => x.id === el.closest('[data-s]').dataset.s);
+    if (el.dataset.st !== undefined) sec.title = el.value;
+    if (el.dataset.sx !== undefined) sec.sex = el.value;
+    if (el.dataset.ml !== undefined) sec.measures[Number(el.dataset.ml)].label = el.value;
+    if (el.dataset.mu !== undefined) sec.measures[Number(el.dataset.mu)].unit = el.value;
   };
   view.onclick = (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
@@ -56,7 +68,9 @@ export async function renderTemplateForm(view, id) {
     if (b.dataset.act === 'up') moveItem(t.sections, sid, -1);
     if (b.dataset.act === 'down') moveItem(t.sections, sid, 1);
     if (b.dataset.act === 'rm') t.sections = t.sections.filter((s) => s.id !== sid);
-    if (b.dataset.act === 'add') { const v = view.querySelector('#ns').value.trim(); if (!v) return; t.sections.push({ id: uid(), title: v }); }
+    if (b.dataset.act === 'madd') { const sc = t.sections.find((s) => s.id === sid); (sc.measures ||= []).push({ label: '', unit: 'cm' }); }
+    if (b.dataset.act === 'mdel') { const sc = t.sections.find((s) => s.id === sid); sc.measures.splice(Number(b.dataset.mi), 1); }
+    if (b.dataset.act === 'add') { const v = view.querySelector('#ns').value.trim(); if (!v) return; t.sections.push({ id: uid(), title: v, sex: '', measures: [] }); }
     draw();
   };
   view.addEventListener('submit', async (e) => {
@@ -65,6 +79,7 @@ export async function renderTemplateForm(view, id) {
     if (!t.name.trim()) errs.push('Informe o nome do modelo.');
     if (!t.sections.length) errs.push('Inclua ao menos uma estrutura.');
     if (t.sections.some((s) => !s.title.trim())) errs.push('Há estruturas sem nome.');
+    if (t.sections.some((s) => (s.measures || []).some((m) => !m.label.trim() || !m.unit.trim()))) errs.push('Toda medida precisa de nome e unidade.');
     if (errs.length) { view.querySelector('#terr').innerHTML = alertList('Corrija:', errs, 'error'); return; }
     await saveTemplate(t); toast('Modelo salvo.', 'success'); navigate('/modelos');
   });
