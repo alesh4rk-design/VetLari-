@@ -1,6 +1,8 @@
 // Gerenciador de imagens: importação, compressão, rotação, legendas, ordem e disposição.
 import { uid, esc, formatBytes, toast } from './utils.js';
 import { validateImageFile } from './validation.js';
+import { openImageViewer } from './image-viewer.js';
+import { confirmDialog } from './ui.js';
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -56,6 +58,8 @@ export async function importFile(file, settings) {
 export async function rotateImage(im, degrees, settings) {
   const img = await loadImage(im.src);
   Object.assign(im, encode(img, ((degrees % 360) + 360) % 360, { maxPx: 4000, quality: opts(settings).quality }));
+  // As coordenadas das anotações deixam de valer após girar: elas são removidas junto da cópia anotada.
+  im.annotations = []; delete im.annotatedSrc;
 }
 
 export function moveItem(list, id, delta) {
@@ -77,8 +81,10 @@ export function imagesStepHtml(exam, locked, regionLabel) {
   const total = imgs.reduce((s, i) => s + (i.bytes || 0), 0);
   const cards = imgs.map((im, idx) => `
     <div class="imgcard" draggable="${locked ? 'false' : 'true'}" data-img="${im.id}">
-      <img src="${esc(im.src)}" alt="Imagem ${idx + 1}">
-      <div class="small muted">#${idx + 1} · ${im.w}×${im.h} · ${formatBytes(im.bytes || 0)}</div>
+      <img src="${esc(im.annotatedSrc || im.src)}" alt="Imagem ${idx + 1}">
+      <div class="small muted">#${idx + 1} · ${im.w}×${im.h} · ${formatBytes(im.bytes || 0)}${im.annotatedSrc ? ' · <strong>com anotações</strong>' : ''}</div>
+      <label class="check" style="min-height:32px"><input type="checkbox" data-imgf="include" data-id="${im.id}" ${im.include !== false ? 'checked' : ''} ${locked ? 'disabled' : ''}> Incluir no laudo</label>
+      <button class="btn sm" data-act="img-view" data-id="${im.id}">${locked ? 'Ver imagem' : 'Ver / anotar'}</button>
       <div><label for="cap-${im.id}">Legenda</label><input id="cap-${im.id}" data-imgf="caption" data-id="${im.id}" value="${esc(im.caption)}" ${locked ? 'disabled' : ''}></div>
       <div><label for="reg-${im.id}">${esc(regionLabel)}</label><input id="reg-${im.id}" data-imgf="region" data-id="${im.id}" value="${esc(im.region)}" ${locked ? 'disabled' : ''}></div>
       <div><label for="sc-${im.id}">Tamanho no documento</label>
@@ -95,12 +101,13 @@ export function imagesStepHtml(exam, locked, regionLabel) {
     </div>`).join('');
   const n = Math.min(3, Math.max(1, Number(exam.imagesPerRow) || 2));
   const mini = imgs.length ? `<h3>Disposição no documento</h3><div class="grid" style="grid-template-columns:repeat(${n},1fr)">${
-    imgs.map((im, i) => `<div style="text-align:center"><img src="${esc(im.src)}" alt="" style="width:${Math.round(im.scale * 100)}%;max-height:140px;object-fit:contain;background:#000"><div class="small muted">${i + 1}</div></div>`).join('')}</div>` : '';
+    imgs.filter((im) => im.include !== false).map((im, i) => `<div style="text-align:center"><img src="${esc(im.annotatedSrc || im.src)}" alt="" style="width:${Math.round(im.scale * 100)}%;max-height:140px;object-fit:contain;background:#000"><div class="small muted">${i + 1}</div></div>`).join('')}</div>` : '';
   return `
+    ${locked ? '<span data-locked hidden></span>' : ''}
     ${locked ? '' : `<div class="dropzone" id="dropzone"><p><strong>Adicione imagens</strong> (JPEG, PNG ou WebP). Selecione várias de uma vez ou arraste para cá.</p>
       <input type="file" id="img-file" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
       <button class="btn primary" data-act="img-pick">Escolher imagens</button></div>`}
-    <div class="row between"><div><strong>${imgs.length}</strong> ${imgs.length === 1 ? 'imagem' : 'imagens'} · ${formatBytes(total)}</div>
+    <div class="row between"><div><strong>${imgs.length}</strong> ${imgs.length === 1 ? 'imagem' : 'imagens'} (${imgs.filter((i) => i.include !== false).length} no laudo) · ${formatBytes(total)}</div>
       <div style="min-width:220px"><label for="perrow">Imagens por linha no documento</label>
         <select id="perrow" data-bind="imagesPerRow" data-num="1" ${locked ? 'disabled' : ''}>${[1, 2, 3].map((v) => `<option value="${v}" ${n === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
     <div class="imgs" id="imgs" style="margin:12px 0">${cards || '<div class="empty">Nenhuma imagem adicionada.</div>'}</div>
@@ -134,8 +141,10 @@ export function bindImages(root, exam, settings, onChange) {
     if (act === 'img-up' && moveItem(exam.images, id, -1)) onChange(true);
     if (act === 'img-down' && moveItem(exam.images, id, 1)) onChange(true);
     if (act === 'img-del') { exam.images = exam.images.filter((i) => i.id !== id); onChange(true); }
+    if (act === 'img-view') { await openImageViewer(exam, id, { locked: !!root.querySelector('[data-locked]') }); onChange(true); return; }
     if (act === 'img-rotl' || act === 'img-rotr') {
       const im = exam.images.find((i) => i.id === id);
+      if ((im.annotations || []).length && !await confirmDialog('Girar a imagem remove as anotações dela (as marcações perdem a posição). Continuar?', { ok: 'Girar e remover anotações' })) return;
       try { await rotateImage(im, act === 'img-rotr' ? 90 : 270, settings); onChange(true); }
       catch (err) { toast(err.message, 'error'); }
     }
@@ -144,7 +153,10 @@ export function bindImages(root, exam, settings, onChange) {
     const f = e.target.dataset && e.target.dataset.imgf;
     if (!f) return;
     const im = exam.images.find((i) => i.id === e.target.dataset.id);
-    if (im) { im[f] = f === 'scale' ? Number(e.target.value) : e.target.value; onChange(f === 'scale'); }
+    if (im) {
+      im[f] = f === 'scale' ? Number(e.target.value) : f === 'include' ? e.target.checked : e.target.value;
+      onChange(f === 'scale' || f === 'include');
+    }
   });
   // Arrastar e soltar para reordenar
   let dragId = null;

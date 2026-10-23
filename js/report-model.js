@@ -3,6 +3,7 @@
 // Função pura: campos vazios são omitidos, nada é preenchido automaticamente.
 import { MODALITY, fmtDateBR, fmtDateTimeBR, ageFromBirth } from './utils.js';
 import { STRUCTURE_STATUS } from './quality.js';
+import { documentSource } from './annotations.js';
 
 const STATUS_NOTE = { draft: 'RASCUNHO — documento não finalizado', preliminary: 'LAUDO PRELIMINAR — sujeito a revisão' };
 const REVISION = { correction: 'Retificação', addendum: 'Adendo' };
@@ -64,8 +65,9 @@ export function buildReport(exam, settings = {}) {
   if (filled(exam.differentials)) blocks.push({ kind: 'h', text: 'Diagnósticos diferenciais' }, { kind: 'p', text: exam.differentials.trim() });
   if (filled(exam.notes)) blocks.push({ kind: 'h', text: tpl.notesTitle || 'Observações' }, { kind: 'p', text: exam.notes.trim() });
 
-  const images = (exam.images || []).map((im) => ({
-    dataUrl: im.src, w: im.w, h: im.h, scale: im.scale || 1,
+  // Somente imagens marcadas para o laudo; usa a cópia anotada quando existir (o original é preservado).
+  const images = (exam.images || []).filter((im) => im.include !== false).map((im) => ({
+    dataUrl: documentSource(im), w: im.w, h: im.h, scale: im.scale || 1,
     caption: [im.region, im.caption].filter(filled).map((x) => x.trim()).join(' — '),
   }));
 

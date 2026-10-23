@@ -81,6 +81,7 @@ async function boot() {
   settings = await loadSettings();
   if (!settings.professional.name) { settings.professional.name = profile.name; await saveSettings(settings); }
   applyTheme(settings.theme);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { /* sem offline: segue normalmente */ });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   document.addEventListener('route', (e) => drawNav(e.detail.path));
   route('/', safe((v) => renderDashboard(v)));

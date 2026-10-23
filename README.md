@@ -16,7 +16,8 @@ Sistema web gratuito para elaboração de **laudos veterinários de ultrassonogr
 |------|----------|----------|
 | 1 | Interface responsiva, pacientes, editor de laudos, frases, imagens, Word/PDF, rascunhos locais, histórico, backup | **Pronta e testada** |
 | 2 | Perfis por aparelho, modelo clínico (status por estrutura, medidas com unidade), estados do laudo, checklist de finalização, retificação/adendo, auditoria local, comparação de medidas, modelos iniciais de ultrassonografia | **Pronta e testada** |
-| 3 | Ditado por voz, visualizador/anotação de imagens, DICOM básico no navegador, PWA instalável | Pendente |
+| 3 | Ditado por voz (com revisão), visualizador de imagens com zoom e anotações, escolha das imagens do laudo, PWA instalável/offline | **Pronta e testada** (voz real e celular ainda não testados) |
+| 3b | DICOM básico no navegador | Pendente (estudo de viabilidade) |
 | 4 | Ecocardiograma (módulo próprio), base de referências científicas aprovada pela veterinária | Pendente (depende da veterinária) |
 | 5 | IA opcional de redação (desligada por padrão) | Pendente (decisão de custo/privacidade) |
 | 6 | Validação clínica e de segurança com profissionais | Pendente |
@@ -32,8 +33,13 @@ Sistema web gratuito para elaboração de **laudos veterinários de ultrassonogr
 - Imagens (JPEG/PNG/WebP) com legenda, ordem, giro, tamanho; **Word editável e PDF** com o mesmo conteúdo; backup, retenção e exclusão de dados.
 - A "finalização" é uma **confirmação eletrônica simples** (nome, data e hora), **sem certificado digital ICP-Brasil**. O documento informa isso.
 
+- **Ditado por voz**: botão "Ditar" em cada campo. A transcrição aparece numa caixa editável e só é inserida (na posição do cursor, sem apagar nada) quando a profissional confirma. Depende do navegador; o áudio pode ser enviado ao serviço do fabricante (o sistema avisa). Sem suporte, a caixa serve para digitação manual.
+- **Visualizador de imagens**: zoom, deslocamento, navegação e anotações (seta, círculo, texto). A imagem original é preservada; o laudo usa a cópia anotada. Girar uma imagem remove suas anotações (com confirmação). Não há medida automática por pixels.
+- **Imagens do laudo**: cada imagem pode ser incluída ou não no documento.
+- **Instalável e offline (PWA)**: depois da primeira visita o sistema abre sem internet; no celular pode ser adicionado à tela inicial.
+
 ### Ainda NÃO implementado
-Login e nuvem, ditado por voz, IA, análise de imagens, DICOM/PACS, anotações nas imagens, ecocardiograma, base de referências, assinatura com certificado digital, PWA.
+Login e nuvem, IA, análise de imagens, DICOM/PACS, ecocardiograma, base de referências, assinatura com certificado digital, pinça/zoom com dois dedos no visualizador (use os botões +/−).
 
 ## Como executar
 Precisa apenas de um servidor de arquivos estáticos (módulos ES não funcionam abrindo o arquivo direto com `file://`):
@@ -45,7 +51,7 @@ npm run serve        # http://localhost:8080
 ## Testes
 ```bash
 npm test             # validação, qualidade, comparação, perfis, geração de Word e PDF (Node)
-npm run test:e2e     # fluxo completo no navegador (requer Playwright/Chromium)
+npm run test:e2e     # fluxos completos no navegador (requer Playwright/Chromium)
 ```
 O teste e2e usa os arquivos `tests/fixture-*.{jpg,png}` (imagens fictícias).
 

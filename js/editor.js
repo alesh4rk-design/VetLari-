@@ -10,6 +10,7 @@ import { openModal } from './ui.js';
 import { listPatients, getPatient, upsertPatient } from './patients.js';
 import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor } from './phrase-library.js';
+import { openDictation } from './voice.js';
 import { imagesStepHtml, bindImages, moveItem } from './image-manager.js';
 import { buildReport } from './report-model.js';
 import { reportToHtml } from './preview.js';
@@ -88,7 +89,8 @@ export async function renderEditor(view, id, settings, profile) {
     <input id="f-${bind}" type="${type}" data-bind="${bind}" value="${esc(getPath(exam, bind))}" ${locked ? 'disabled' : ''} ${extra}></div>`;
   const area = (label, bind, rows = 4, structure = '') => `<div class="field"><label for="f-${bind}">${label}</label>
     <textarea id="f-${bind}" data-bind="${bind}" rows="${rows}" ${locked ? 'disabled' : ''}>${esc(getPath(exam, bind))}</textarea>
-    ${locked ? '' : `<button type="button" class="btn sm ghost" data-act="phrase" data-target="f-${bind}" data-structure="${esc(structure)}">Inserir frase</button>`}</div>`;
+    ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="f-${bind}" data-structure="${esc(structure)}">Inserir frase</button>
+    <button type="button" class="btn sm ghost" data-act="dictate" data-target="f-${bind}" data-label="${esc(label)}">Ditar</button></div>`}</div>`;
 
   const statusSelect = (s) => `<select data-sf="status" aria-label="Status da avaliação de ${esc(s.title)}" ${locked ? 'disabled' : ''}>${
     Object.entries(STRUCTURE_STATUS).map(([k, v]) => `<option value="${k}" ${(s.status || '') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
@@ -125,7 +127,8 @@ export async function renderEditor(view, id, settings, profile) {
         <button class="iconbtn danger" data-act="sec-del" aria-label="Excluir estrutura">✕</button></div>`}</div>
         <div class="field"><label>Status da avaliação</label>${statusSelect(s)}</div>
         <div class="field"><label>Descrição</label><textarea data-sf="description" id="d-${s.id}" rows="3" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
-        ${locked ? '' : `<button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>`}</div>
+        ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>
+        <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button></div>`}</div>
         ${measureRows(s)}
         <div class="grid g2"><div class="field"><label>Outras medidas (texto livre, opcional)</label><input data-sf="measures" value="${esc(s.measures)}" ${locked ? 'disabled' : ''}></div>
         <div class="field"><label>Observações (opcional)</label><input data-sf="notes" value="${esc(s.notes)}" ${locked ? 'disabled' : ''}></div></div></section>`).join('')}
@@ -272,6 +275,10 @@ export async function renderEditor(view, id, settings, profile) {
     else if (act === 'phrase') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
       const text = await pickPhrase({ modality: exam.type, structure: b.dataset.structure });
+      if (text && target) insertAtCursor(target, text);
+    } else if (act === 'dictate') {
+      const target = view.querySelector('#' + CSS.escape(b.dataset.target));
+      const text = await openDictation({ label: b.dataset.label });
       if (text && target) insertAtCursor(target, text);
     } else if (act === 'docx' || act === 'pdf') await doExport(act);
     else if (act === 'prelim' || act === 'undraft') {
