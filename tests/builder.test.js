@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { composeDescription, toggleOption, pendingFields, expandBlocks, parseOptionLine, optionToLine, joinList, validateBuilder } from '../js/builder-logic.js';
+import { composeDescription as composeRaw, toggleOption, pendingFields, expandBlocks, parseOptionLine, optionToLine, joinList, validateBuilder } from '../js/builder-logic.js';
 import { fillPhrase } from '../js/phrase-logic.js';
 import { USG_BUILDERS, USG_IMPRESSIONS } from '../js/catalog-usg.js';
 
+import { stripRich } from '../js/richtext.js';
+/** Os testes de frases comparam o texto sem os marcadores de negrito/itálico; um teste à parte confere os marcadores. */
+const composeDescription = (...a) => stripRich(composeRaw(...a));
 const M = (label, value, unit = 'cm') => ({ label, value, unit });
 /** Marca, por nome do grupo, o índice da opção. */
 function pick(def, choices) {
@@ -173,4 +176,17 @@ test('impressões: versões e novas frases dos laudos', () => {
   assert.ok(texts.includes('Testículo direito ectópico.') && texts.includes('Exame sem alterações relevantes dignas de nota.'));
   assert.ok(USG_IMPRESSIONS.some((i) => i[2] === 2) && USG_IMPRESSIONS.every((i) => (i[2] || 1) <= 2));
   assert.equal(new Set(texts).size, texts.length);
+});
+
+test('destaques: lados e subtítulos saem em negrito e a observação fixa em itálico', () => {
+  const rins = USG_BUILDERS.Rins;
+  let sel = {};
+  for (const [n, i] of [['Dimensões', 0], ['Pelve', 0]]) sel = toggleOption(rins, sel, expandBlocks(rins).find((b) => b.label === 'Rim esquerdo').groups.find((g) => g.label === n).key, i);
+  sel = toggleOption(rins, sel, expandBlocks(rins).find((b) => b.groups[0].label === 'Ureteres').groups[0].key, 0);
+  assert.match(composeRaw(rins, sel, [M('Rim esquerdo – comprimento', '4,13')]), /^\*\*Rim esquerdo\*\* com dimensões preservadas \(4,13 cm\)\./);
+  assert.ok(composeRaw(rins, sel, []).includes('**Ureteres** sem alterações sonográficas visíveis em topografia.'));
+  const est = USG_BUILDERS['Estômago'];
+  const k = expandBlocks(est).flatMap((b) => b.groups).find((g) => g.label === 'Observação').key;
+  const txt = composeRaw(est, toggleOption(est, {}, k, 0));
+  assert.ok(txt.startsWith('__Obs: Alimento e gás') && txt.endsWith('(jejum e uso de antifisético).__'), txt);
 });

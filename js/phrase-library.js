@@ -5,7 +5,7 @@ import { dbAll, dbPut, dbDel, getSetting, setSetting } from './local-storage.js'
 import { USG_IMPRESSIONS } from './catalog-usg.js';
 import { validatePhrase, validatePhraseImport } from './validation.js';
 import { openModal, confirmDialog, alertList } from './ui.js';
-import { fillPhrase, placeholders } from './phrase-logic.js';
+import { fillPhrase, placeholders, genericizeText } from './phrase-logic.js';
 
 const MOD_LABEL = { all: 'Todas', usg: 'Ultrassonografia', rx: 'Radiografia' };
 
@@ -172,4 +172,34 @@ export async function seedImpressions() {
     await dbPut('phrases', { id: uid(), title, text, category: 'Impressão diagnóstica', modality: 'usg', structure, keywords: '', favorite: false, updatedAt: todayISO(), source: 'laudos da veterinária' });
   }
   await setSetting('impressions-seed-version', latest);
+}
+
+/**
+ * "Guardar esta frase": a veterinária decide guardar o texto de um laudo na biblioteca (aparece em "Inserir frase"
+ * para a mesma estrutura nos próximos laudos). Nada é guardado sozinho. Valores de medidas viram campos {Medida}.
+ */
+export async function saveToLibraryDialog({ text, structure, modality, measures }) {
+  const g = genericizeText(text, measures);
+  const defTitle = (g.text.replace(/\*\*|__/g, '').split(/[.:]\s/)[0] || structure).slice(0, 60);
+  const m = openModal(`<h2>Guardar esta frase</h2>
+    <p class="muted small">Ela ficará na Biblioteca de frases e aparecerá em "Inserir frase" nos próximos laudos de <strong>${esc(structure)}</strong>. Evite nomes de pacientes ou tutores.</p>
+    <form id="sf" novalidate>
+    <div class="field"><label for="sv-title">Nome curto *</label><input id="sv-title" value="${esc(defTitle)}" maxlength="120" autofocus></div>
+    <div class="field"><label for="sv-text">Texto *</label><textarea id="sv-text" rows="6">${esc(g.text)}</textarea>
+      <div class="hint">${g.replaced.length ? `Troquei os valores digitados por campos: ${g.replaced.map((x) => `{${esc(x)}}`).join(', ')}. Assim, no próximo laudo a frase se preenche com as novas medidas.` : 'Use {Nome da medida} onde entra uma medida, para a frase se preencher sozinha.'}</div></div>
+    <div id="sv-err"></div><div class="row end"><button type="button" class="btn" data-x="cancel">Cancelar</button><button type="submit" class="btn primary">Guardar na biblioteca</button></div></form>`, { label: 'Guardar frase' });
+  return new Promise((resolve) => {
+    m.el.querySelector('[data-x=cancel]').onclick = () => m.close(null);
+    m.el.querySelector('#sf').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const phrase = { id: uid(), title: m.el.querySelector('#sv-title').value.trim(), category: 'Minhas frases', modality, structure, text: m.el.querySelector('#sv-text').value.trim(),
+        keywords: '', favorite: false, updatedAt: todayISO(), source: 'minha' };
+      const errs = validatePhrase(phrase);
+      if (errs.length) { m.el.querySelector('#sv-err').innerHTML = alertList('Corrija:', errs, 'error'); return; }
+      if ((await listPhrases()).some((x) => x.text === phrase.text && x.structure === structure)) { m.el.querySelector('#sv-err').innerHTML = alertList('Atenção', ['Essa frase já está na biblioteca para esta estrutura.'], 'warn'); return; }
+      try { await dbPut('phrases', phrase); m.close(phrase); toast('Frase guardada na biblioteca.', 'success'); }
+      catch { m.el.querySelector('#sv-err').innerHTML = alertList('Erro', ['Não foi possível guardar a frase.'], 'error'); }
+    });
+    m.closed.then(resolve);
+  });
 }

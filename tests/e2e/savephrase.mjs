@@ -1,0 +1,54 @@
+// E2E: "Guardar esta frase" — a frase escrita num laudo vira opção nos próximos laudos (só quando ela decide).
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const base = process.argv[2] || 'http://localhost:8080/';
+const results = [];
+const check = (name, ok, extra = '') => { results.push([name, ok]); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name} ${extra}`); };
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+const phrases = () => page.evaluate(() => new Promise((res) => { const r = indexedDB.open('vetlaudo'); r.onsuccess = () => { const q = r.result.transaction('phrases').objectStore('phrases').getAll(); q.onsuccess = () => res(q.result); }; }));
+const newExam = async (nome) => { await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', nome); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); };
+
+await newExam('Paciente Um');
+check('sem texto, não há o que guardar', true);
+await page.click('[data-act="save-phrase"]');
+check('descrição vazia: avisa e não abre a janela', (await page.locator('.modal').count()) === 0 && (await page.textContent('#toasts')).includes('Escreva a descrição'));
+await page.click('[data-act="m-add"]');
+await page.fill('[data-mf="label"]', 'Comprimento'); await page.fill('[data-mf="value"]', '4,13'); await page.fill('[data-mf="unit"]', 'cm');
+await page.fill('[data-sf="description"]', 'em topografia habitual, com dimensões preservadas, medindo 4,13 cm, e textura diferente do padrão.');
+const antes = (await phrases()).length;
+await page.click('[data-act="save-phrase"]');
+const t = await page.inputValue('#sv-text');
+check('a janela já troca o valor digitado pelo campo de medida', t === 'em topografia habitual, com dimensões preservadas, medindo {Comprimento}, e textura diferente do padrão.', t);
+await page.click('.modal [data-x="cancel"]');
+check('cancelar não guarda nada (nada é guardado sozinho)', (await phrases()).length === antes);
+await page.click('[data-act="save-phrase"]');
+await page.fill('#sv-title', 'Fígado com textura diferente');
+await page.click('#sf button[type=submit]');
+await page.waitForFunction(() => document.querySelector('#toasts')?.textContent.includes('Frase guardada'));
+const depois = await phrases();
+const nova = depois.find((p) => p.title === 'Fígado com textura diferente');
+check('frase guardada na biblioteca para a estrutura e a modalidade', !!nova && nova.structure === 'Fígado' && nova.modality === 'usg' && nova.category === 'Minhas frases', JSON.stringify(nova && { s: nova.structure, c: nova.category }));
+check('não guarda dados do paciente', !JSON.stringify(nova).includes('Paciente Um'));
+await page.click('[data-act="save-phrase"]'); await page.click('#sf button[type=submit]');
+await page.waitForFunction(() => document.querySelector('#sv-err')?.textContent.includes('já está'), null, { timeout: 5000 }).catch(() => {});
+const errTxt = await page.textContent('#sv-err'); check('guardar duas vezes a mesma frase é evitado', errTxt.includes('já está na biblioteca'), JSON.stringify(errTxt));
+await page.click('.modal [data-x="cancel"]');
+
+// Próximo laudo: a frase aparece e se preenche com as medidas novas
+await newExam('Paciente Dois');
+await page.click('[data-act="m-add"]');
+await page.fill('[data-mf="label"]', 'Comprimento'); await page.fill('[data-mf="value"]', '5,5'); await page.fill('[data-mf="unit"]', 'cm');
+await page.click('[data-sec] [data-act="phrase"]');
+check('no próximo laudo a frase aparece já preenchida com a nova medida', (await page.textContent('.phrase:has-text("Fígado com textura diferente")')).includes('medindo 5,5 cm'));
+await page.click('.phrase:has-text("Fígado com textura diferente") [data-use]');
+check('inserida no campo com a medida do novo exame', (await page.inputValue('[data-sf="description"]')) === 'em topografia habitual, com dimensões preservadas, medindo 5,5 cm, e textura diferente do padrão.');
+await page.goto(base + '#/frases'); await page.waitForSelector('text=Biblioteca de frases');
+check('aparece na Biblioteca de frases, onde pode ser editada ou excluída', await page.isVisible('text=Fígado com textura diferente'));
+check('sem erros de console', errors.length === 0, errors.join(' | '));
+await browser.close();
+const failed = results.filter(([, ok]) => !ok).length;
+console.log(`\n${results.length - failed}/${results.length} passaram`);
+process.exit(failed ? 1 : 0);

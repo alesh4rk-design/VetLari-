@@ -1,37 +1,48 @@
-// Geração de Word (.docx) editável no navegador com a biblioteca docx.
+// Geração de Word (.docx) editável no navegador, no formato dos laudos da veterinária: logotipos no topo,
+// faixas cinza, identificação em 3 colunas, texto justificado com destaques, conclusão em lista e imagens em grade.
 import { dataUrlToBytes } from './utils.js';
+import { parseRich, sectionRich, stripRich } from './richtext.js';
 
 const PX_PER_MM = 96 / 25.4;
-const CONTENT_MM = 170; // A4 com margens de 20 mm
+const CONTENT_MM = 180; // A4 com margens de 15 mm
+const GRAY = '606060', BOX = 'F0F0F0';
 
 export async function buildDocx(report, lib) {
   const d = lib || globalThis.docx;
   if (!d) throw new Error('Biblioteca docx não carregada.');
-  const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, WidthType, BorderStyle,
-    Header, Footer, AlignmentType, PageNumber, TabStopType } = d;
+  const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, WidthType, BorderStyle, Header, Footer,
+    AlignmentType, PageNumber, TabStopType, ShadingType } = d;
   const font = report.font === 'serif' ? 'Times New Roman' : 'Arial';
   const size = report.fontSize * 2; // meios-pontos
   const run = (text, o = {}) => new TextRun({ text, font, size, ...o });
   const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
   const noBorders = { top: none, bottom: none, left: none, right: none, insideHorizontal: none, insideVertical: none };
   const thin = { style: BorderStyle.SINGLE, size: 4, color: 'BBBBBB' };
+  const richRuns = (text, o = {}) => parseRich(text).map((r) => run(r.text, { ...o, bold: r.bold || o.bold, italics: r.italic || o.italics }));
+  const shade = (fill) => ({ type: ShadingType.CLEAR, fill, color: 'auto' });
 
-  // Cabeçalho
-  const headerChildren = [];
-  if (report.logo) {
-    try {
-      const bytes = dataUrlToBytes(report.logo);
-      const dim = await imageSize(report.logo);
-      const h = 55, w = Math.min(150, Math.round(h * dim.w / dim.h));
-      headerChildren.push(new Paragraph({ children: [new ImageRun({ data: bytes, transformation: { width: w, height: h } })] }));
-    } catch { /* logotipo inválido: segue sem ele */ }
+  async function logoRun(url, heightMm) {
+    const dim = await imageSize(url);
+    const h = Math.round(heightMm * PX_PER_MM), w = Math.min(Math.round(60 * PX_PER_MM), Math.round(h * dim.w / dim.h));
+    return new ImageRun({ data: dataUrlToBytes(url), transformation: { width: w, height: h } });
   }
-  for (const line of report.headerLines) headerChildren.push(new Paragraph({ children: [run(line, { size: 18, color: '444444' })] }));
-  const header = new Header({ children: headerChildren.length ? headerChildren : [new Paragraph('')] });
+  async function logosTable(heightMm) {
+    const cell = async (url, right) => {
+      let kids = [new Paragraph('')];
+      if (url) { try { kids = [new Paragraph({ alignment: right ? AlignmentType.RIGHT : AlignmentType.LEFT, children: [await logoRun(url, heightMm)] })]; } catch { /* logotipo inválido */ } }
+      return new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: noBorders, children: kids });
+    };
+    return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: noBorders, rows: [new TableRow({ children: [await cell(report.logo, false), await cell(report.logo2, true)] })] });
+  }
+
+  // Cabeçalho: logotipos só na primeira página; nas seguintes, uma linha de identificação.
+  const hasLogos = !!(report.logo || report.logo2);
+  const firstHeader = new Header({ children: hasLogos ? [await logosTable(16)] : report.headerLines.length ? report.headerLines.map((l) => new Paragraph({ children: [run(l, { size: 18, color: '444444' })] })) : [new Paragraph('')] });
+  const nextHeader = new Header({ children: [new Paragraph({ children: [run(`${report.idShort} — ${report.dateText} — ${report.title}`, { size: 15, color: '777777' })] })] });
 
   const footer = new Footer({
     children: [new Paragraph({
-      tabStops: [{ type: TabStopType.RIGHT, position: 9638 }],
+      tabStops: [{ type: TabStopType.RIGHT, position: 10206 }],
       border: { top: thin },
       children: [
         run(report.footerText || '', { size: 16, color: '666666' }),
@@ -40,48 +51,45 @@ export async function buildDocx(report, lib) {
     })],
   });
 
+  const banner = (text) => new Paragraph({ keepNext: true, shading: shade(GRAY), spacing: { before: 160, after: 120 }, indent: { left: 60, right: 60 },
+    children: [run(` ${text}`, { bold: true, color: 'FFFFFF', size: size + 2 })] });
   const body = [];
-  body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 200 },
-    children: [run(report.title.toUpperCase(), { bold: true, size: size + 6 })] }));
-  if (report.statusNote) body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [run(report.statusNote, { bold: true, color: 'B43C00' })] }));
 
+  // Identificação em 3 colunas
   if (report.patientRows.length) {
+    body.push(banner('Identificação'));
     const rows = [];
-    for (let i = 0; i < report.patientRows.length; i += 2) {
-      const pair = report.patientRows.slice(i, i + 2);
-      while (pair.length < 2) pair.push(['', '']);
+    for (let i = 0; i < report.patientRows.length; i += 3) {
+      const trio = report.patientRows.slice(i, i + 3);
+      while (trio.length < 3) trio.push(['', '']);
       rows.push(new TableRow({
         cantSplit: true,
-        children: pair.map(([k, v]) => new TableCell({
-          width: { size: 50, type: WidthType.PERCENTAGE },
-          borders: { top: none, left: none, right: none, bottom: thin },
-          margins: { top: 40, bottom: 40, left: 60, right: 60 },
-          children: [new Paragraph({ children: k ? [run(`${k}: `, { bold: true, size: size - 2 }), run(v, { size: size - 2 })] : [run('')] })],
+        children: trio.map(([k, v]) => new TableCell({
+          width: { size: 100 / 3, type: WidthType.PERCENTAGE }, borders: noBorders, shading: shade(BOX),
+          margins: { top: 50, bottom: 50, left: 100, right: 60 },
+          children: [new Paragraph({ children: k ? [run(`${k}: `, { bold: true, size: size - 1 }), run(v, { size: size - 1 })] : [run('')] })],
         })),
       }));
     }
     body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: noBorders, rows }));
-    body.push(new Paragraph({ spacing: { after: 160 }, children: [] }));
   }
 
+  body.push(banner(report.title));
+  if (report.statusNote) body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [run(report.statusNote, { bold: true, color: 'B43C00' })] }));
+
+  const justified = (text, o = {}) => new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 140 }, ...o, children: richRuns(text) });
   for (const b of report.blocks) {
-    if (b.kind === 'h') body.push(new Paragraph({ keepNext: true, spacing: { before: 200, after: 80 }, children: [run(b.text, { bold: true, size: size + 2 })] }));
-    else if (b.kind === 'p') body.push(...lines(b.text, { spacing: { after: 120 } }));
-    else if (b.kind === 'list') for (const it of b.items) body.push(new Paragraph({ indent: { left: 360, hanging: 240 }, spacing: { after: 40 }, children: [run('•  '), run(it, { bold: true })] }));
-    else if (b.kind === 'note') body.push(new Paragraph({ spacing: { before: 120, after: 120 }, children: [run(b.text, { italics: true, size: size - 4, color: '555555' })] }));
-    else if (b.kind === 'kv') body.push(new Paragraph({ spacing: { after: 60 }, children: [run(`${b.label}: `, { bold: true }), run(b.text)] }));
-    else if (b.kind === 'section') {
-      body.push(new Paragraph({ keepNext: true, spacing: { before: 160, after: 40 }, children: [run(b.title, { bold: true })] }));
-      for (const it of b.items) {
-        if (it.label) body.push(new Paragraph({ spacing: { after: 60 }, children: [run(`${it.label}: `, { bold: true }), run(it.text)] }));
-        else body.push(...lines(it.text, { spacing: { after: 60 } }));
-      }
-    }
+    if (b.kind === 'h') body.push(banner(b.text));
+    else if (b.kind === 'p') body.push(...String(b.text).split(/\r?\n/).map((ln) => justified(ln)));
+    else if (b.kind === 'kv') body.push(justified(`**${b.label}**: ${b.text}`));
+    else if (b.kind === 'section') body.push(justified(sectionRich(b), { keepLines: true }));
+    else if (b.kind === 'list') for (const it of b.items) body.push(new Paragraph({ indent: { left: 360, hanging: 240 }, spacing: { after: 40 }, children: [run('•  '), run(stripRich(it), { bold: true })] }));
+    else if (b.kind === 'note') body.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { before: 160, after: 140 }, children: [run(stripRich(b.text), { italics: true, size: size - 3, color: '555555' })] }));
   }
 
   const imgs = report.images.items;
   if (imgs.length) {
-    body.push(new Paragraph({ keepNext: true, spacing: { before: 240, after: 120 }, children: [run('Imagens', { bold: true, size: size + 2 })] }));
+    body.push(banner('Imagens'));
     const n = report.images.perRow;
     const cellMm = (CONTENT_MM - 2 * (n - 1)) / n - 2;
     const rows = [];
@@ -95,11 +103,9 @@ export async function buildDocx(report, lib) {
         const maxH = 200;
         if (hMm > maxH) { hMm = maxH; wMm = hMm * im.w / im.h; }
         const kids = [new Paragraph({ alignment: AlignmentType.CENTER, keepNext: !!im.caption, keepLines: true,
-          children: [new ImageRun({ data: dataUrlToBytes(im.dataUrl),
-            transformation: { width: Math.round(wMm * PX_PER_MM), height: Math.round(hMm * PX_PER_MM) } })] })];
-        if (im.caption) kids.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 80 },
-          children: [run(im.caption, { italics: true, size: size - 4, color: '444444' })] }));
-        cells.push(new TableCell({ width: { size: 100 / n, type: WidthType.PERCENTAGE }, borders: noBorders, children: kids }));
+          children: [new ImageRun({ data: dataUrlToBytes(im.dataUrl), transformation: { width: Math.round(wMm * PX_PER_MM), height: Math.round(hMm * PX_PER_MM) } })] })];
+        if (im.caption) kids.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [run(stripRich(im.caption), { italics: true, size: size - 4, color: '444444' })] }));
+        cells.push(new TableCell({ width: { size: 100 / n, type: WidthType.PERCENTAGE }, borders: noBorders, margins: { left: 30, right: 30 }, children: kids }));
       }
       rows.push(new TableRow({ cantSplit: true, children: cells }));
     }
@@ -107,26 +113,27 @@ export async function buildDocx(report, lib) {
   }
 
   if (report.signature) {
-    body.push(new Paragraph({ spacing: { before: 700 }, alignment: AlignmentType.CENTER, keepNext: true,
-      children: [run('______________________________________')] }));
-    const l = [report.signature.name, report.signature.crmv, report.signature.stamp].filter(Boolean);
-    if (!l.length) l.push('Assinatura do médico-veterinário');
-    l.forEach((t, k) => body.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: k < l.length - 1, children: [run(t)] })));
+    const sg = report.signature, final = !!sg.stamp;
+    if (hasLogos) body.push(new Paragraph({ spacing: { before: 200 }, children: [] }), await logosTable(11));
+    const lines = final
+      ? [[run('Assinado eletronicamente por: ', { bold: true }), run(sg.name || '(nome não informado)')], sg.crmv && [run(sg.crmv, { bold: true })], [run(`Código identificador: ${sg.code}`)], [run(sg.stamp, { size: size - 4, color: '555555' })]]
+      : [[run('Documento não finalizado: sem assinatura eletrônica.', { bold: true })], sg.name && [run(`Responsável: ${sg.name}${sg.crmv ? ' — ' + sg.crmv : ''}`)], [run(`Código identificador: ${sg.code}`)]];
+    body.push(new Paragraph({ spacing: { before: 200 }, children: [] }));
+    body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: noBorders, rows: [new TableRow({ cantSplit: true, children: [new TableCell({
+      borders: noBorders, shading: shade(BOX), margins: { top: 100, bottom: 100, left: 160, right: 160 },
+      children: lines.filter(Boolean).map((children) => new Paragraph({ keepNext: true, spacing: { after: 20 }, children })),
+    })] })] }));
   }
 
   const doc = new Document({
     creator: 'VetLaudo', title: report.title,
     styles: { default: { document: { run: { font, size } } } },
     sections: [{
-      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134, header: 567, footer: 567 } } },
-      headers: { default: header }, footers: { default: footer }, children: body,
+      properties: { titlePage: true, page: { size: { width: 11906, height: 16838 }, margin: { top: 850, bottom: 850, left: 850, right: 850, header: 450, footer: 450 } } },
+      headers: { first: firstHeader, default: nextHeader }, footers: { first: footer, default: footer }, children: body,
     }],
   });
   return Packer.toBlob ? Packer.toBlob(doc) : Packer.toBuffer(doc);
-
-  function lines(text, opts) {
-    return String(text).split(/\r?\n/).map((ln) => new Paragraph({ ...opts, children: [run(ln)] }));
-  }
 }
 
 function imageSize(dataUrl) {

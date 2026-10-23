@@ -30,6 +30,8 @@ function readLogo(file) {
 
 export function renderSettings(view, settings, onChange) {
   const pr = settings.professional;
+  const logoField = (key, label) => `<div class="field"><label for="s-${key}">${label}</label><input id="s-${key}" type="file" accept="image/png,image/jpeg">
+      ${settings[key] ? `<div style="margin-top:8px"><img src="${esc(settings[key])}" alt="${esc(label)}" style="max-height:60px;background:#fff;padding:4px;border-radius:6px"> <button type="button" class="btn sm" data-rmlogo="${key}">Remover</button></div>` : ''}<div class="hint">PNG ou JPEG, até 2 MB.</div></div>`;
   const inp = (id, label, v, extra = '') => `<div class="field"><label for="${id}">${label}</label><input id="${id}" value="${esc(v)}" ${extra}></div>`;
   view.innerHTML = `<div class="page-head"><h1>Configurações</h1></div>
   <form class="card" id="sf"><h2>Identificação profissional</h2><div class="grid g2">
@@ -38,8 +40,7 @@ export function renderSettings(view, settings, onChange) {
     <h2>Documento</h2><div class="grid g2">${inp('s-head', 'Texto adicional do cabeçalho', settings.headerText)}${inp('s-foot', 'Texto do rodapé', settings.footerText)}
     <div class="field"><label for="s-font">Tipografia</label><select id="s-font"><option value="sans" ${settings.font === 'sans' ? 'selected' : ''}>Sem serifa (Arial)</option><option value="serif" ${settings.font === 'serif' ? 'selected' : ''}>Com serifa (Times)</option></select></div>
     <div class="field"><label for="s-size">Tamanho da fonte (pt)</label><select id="s-size">${[10, 11, 12].map((n) => `<option ${Number(settings.fontSize) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
-    <div class="field"><label for="s-logo">Logotipo (PNG ou JPEG, até 2 MB)</label><input id="s-logo" type="file" accept="image/png,image/jpeg">
-      ${settings.logo ? `<div style="margin-top:8px"><img src="${esc(settings.logo)}" alt="Logotipo atual" style="max-height:60px;background:#fff;padding:4px;border-radius:6px"> <button type="button" class="btn sm" id="rmlogo">Remover</button></div>` : ''}</div>
+    <div class="grid g2">${logoField('logo', 'Logotipo 1 — serviço (aparece à esquerda no topo)')}${logoField('logo2', 'Logotipo 2 — clínica (aparece à direita no topo)')}</div>
     <div class="field"><label for="s-after">Texto fixo após a conclusão</label><textarea id="s-after" rows="3">${esc(settings.afterConclusion || '')}</textarea></div>
     <label class="check"><input type="checkbox" id="s-list" ${settings.impressionAsList !== false ? 'checked' : ''}> Conclusão em lista de itens (um por linha)</label>
     <h2>Imagens</h2><div class="grid g2"><label class="check"><input type="checkbox" id="s-comp" ${settings.compress ? 'checked' : ''}> Comprimir imagens ao importar</label>
@@ -51,7 +52,7 @@ export function renderSettings(view, settings, onChange) {
   <div class="card"><h2>Backup e dados deste dispositivo</h2>
     <p class="muted small">Os dados ficam apenas neste navegador. Faça backups regulares: limpar os dados do navegador apaga tudo. O arquivo de backup contém dados clínicos e pessoais — guarde-o com cuidado.</p>
     <div class="row"><button class="btn" id="bk">Exportar backup</button><button class="btn" id="rs">Restaurar backup</button><input type="file" id="rsf" accept="application/json,.json" style="display:none"></div></div>
-  <div class="card"><h2>Sobre</h2><p class="small">VetLaudo versão <strong>${esc(APP_VERSION)}</strong>. Se uma novidade não aparecer, feche o sistema e abra de novo (no computador: Ctrl+Shift+R). <strong>Não limpe os dados do site</strong>: isso apaga os laudos deste aparelho.</p></div>
+  <div class="card"><h2>Sobre</h2><p class="small">VetLaudo versão <strong>${esc(APP_VERSION)}</strong>. Se uma novidade não aparecer, abra a página de atualização: <a href="atualizar.html"><strong>Atualizar o VetLaudo</strong></a> (limpa só a cópia antiga do aplicativo; seus laudos não são apagados). <strong>Não limpe os dados do site</strong> pelo navegador: isso apaga os laudos deste aparelho.</p></div>
   <div class="card"><h2>Armazenamento neste aparelho</h2><p class="muted small" id="storinfo">Verificando…</p></div>
   <div class="card"><h2>Retenção e exclusão</h2><div class="grid g2"><div class="field"><label for="ret">Excluir laudos finalizados com mais de (dias)</label><input id="ret" type="number" min="1" placeholder="Ex.: 365"></div></div>
     <div class="row"><button class="btn danger" id="apply-ret">Aplicar política agora</button><button class="btn danger" id="wipe">Apagar todos os dados deste dispositivo</button></div></div>`;
@@ -74,13 +75,14 @@ export function renderSettings(view, settings, onChange) {
     try { await saveSettings(next); applyTheme(next.theme); onChange(next); toast('Configurações salvas.', 'success'); }
     catch { toast('Não foi possível salvar as configurações.', 'error'); }
   });
-  view.querySelector('#s-logo').addEventListener('change', async (e) => {
-    const f = e.target.files[0]; if (!f) return;
-    try { const next = { ...settings, logo: await readLogo(f) }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); toast('Logotipo salvo.', 'success'); }
-    catch (err) { toast(err.message, 'error'); }
-  });
-  const rm = view.querySelector('#rmlogo');
-  if (rm) rm.onclick = async () => { const next = { ...settings, logo: '' }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); };
+  for (const key of ['logo', 'logo2']) {
+    view.querySelector(`#s-${key}`).addEventListener('change', async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      try { const next = { ...settings, [key]: await readLogo(f) }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); toast('Logotipo salvo.', 'success'); }
+      catch (err) { toast(err.message, 'error'); }
+    });
+  }
+  view.querySelectorAll('[data-rmlogo]').forEach((btn) => { btn.onclick = async () => { const next = { ...settings, [btn.dataset.rmlogo]: '' }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); }; });
   view.querySelector('#bk').onclick = async () => {
     try { download(new Blob([JSON.stringify(await exportBackup())], { type: 'application/json' }), `VetLaudo_backup_${todayISO()}.json`); toast('Backup gerado.', 'success'); }
     catch (err) { toast(`Falha ao gerar backup: ${err.message}`, 'error'); }

@@ -53,7 +53,7 @@ export async function renderTemplateForm(view, id) {
       <div class="field"><label for="t-doc">Título do documento</label><input id="t-doc" data-t="docTitle" value="${esc(t.docTitle)}"></div>
       <div class="field"><label for="t-con">Título do campo de conclusão</label><input id="t-con" data-t="conclusionTitle" value="${esc(t.conclusionTitle)}"></div>
       <div class="field"><label for="t-not">Título das observações</label><input id="t-not" data-t="notesTitle" value="${esc(t.notesTitle)}"></div>
-      <div class="field"><label for="t-row">Imagens por linha</label><select id="t-row" data-t="imagesPerRow" data-num="1">${[1, 2, 3].map((n) => `<option ${t.imagesPerRow === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
+      <div class="field"><label for="t-row">Imagens por linha</label><select id="t-row" data-t="imagesPerRow" data-num="1">${[1, 2, 3, 4].map((n) => `<option ${t.imagesPerRow === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
       <div class="field"><label for="t-intro">Texto introdutório padrão (opcional)</label><textarea id="t-intro" data-t="intro" rows="2">${esc(t.intro)}</textarea></div>
       <label class="check"><input type="checkbox" data-t="signature" ${t.signature ? 'checked' : ''}> Incluir identificação e linha de assinatura</label>
       <h2 style="margin-top:12px">Estruturas</h2>

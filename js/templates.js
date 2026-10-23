@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS = {
   headerText: '',
   footerText: '',
   logo: '',
+  logo2: '',
   font: 'sans',            // sans | serif
   fontSize: 11,
   theme: 'dark',
@@ -30,9 +31,9 @@ const M = (label, unit = 'cm') => ({ label, unit });
 
 const usg = (id, name, sections, extra = {}) => ({
   id, builtin: true, modality: 'usg', name: `${name} (modelo inicial)`,
-  docTitle: 'Laudo de Ultrassonografia Veterinária', intro: '',
-  conclusionTitle: 'Impressão diagnóstica', notesTitle: 'Observações e recomendações',
-  signature: true, imagesPerRow: 2, sections: sections.map(sec), ...extra, version: 4,
+  docTitle: 'Relatório Ultrassonográfico', intro: '',
+  conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações e recomendações',
+  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 5,
 });
 
 /**
@@ -58,19 +59,19 @@ export function defaultTemplates() {
       { title: 'Útero', sex: 'female', measures: [M('Corpo uterino'), M('Corno uterino esquerdo'), M('Corno uterino direito')] },
       { title: 'Ovários', sex: 'female', measures: [M('Ovário esquerdo'), M('Ovário direito')] },
       { title: 'Tecido mamário', sex: 'female' }, 'Linfonodos', 'Líquido livre peritoneal', 'Outros achados',
-    ]),
-    usg('tpl-usg-direcionada', 'Ultrassonografia abdominal direcionada / exame focal', ['Região ou estrutura de interesse', 'Estruturas adjacentes avaliadas', 'Líquido livre (se pesquisado)', 'Outras observações']),
-    usg('tpl-usg-urinario', 'Avaliação do trato urinário', ['Rim direito', 'Rim esquerdo', 'Ureteres', 'Bexiga urinária', 'Uretra (se avaliada)']),
-    usg('tpl-usg-hepatobiliar', 'Avaliação hepatobiliar', ['Fígado', 'Vesícula biliar', 'Vias biliares', 'Vasos hepáticos e portais avaliados']),
-    usg('tpl-usg-gastro', 'Avaliação gastrointestinal', ['Estômago', 'Duodeno', 'Jejuno', 'Íleo', 'Cólon', 'Linfonodos regionais']),
-    usg('tpl-usg-reprodutivo', 'Avaliação reprodutiva e gestacional', ['Útero', 'Ovários', 'Próstata', 'Testículos', 'Conteúdo gestacional (se aplicável)']),
-    usg('tpl-usg-superficial', 'Estruturas superficiais e tecidos moles', ['Região examinada', 'Lesão ou estrutura de interesse', 'Linfonodos regionais']),
-    usg('tpl-usg-musculo', 'Avaliação musculoesquelética', ['Estrutura avaliada (músculo, tendão ou articulação)', 'Estruturas adjacentes']),
+    ], { docTitle: 'Relatório Ultrassonográfico Abdominal' }),
+    usg('tpl-usg-direcionada', 'Ultrassonografia abdominal direcionada / exame focal', ['Região ou estrutura de interesse', 'Estruturas adjacentes avaliadas', 'Líquido livre (se pesquisado)', 'Outras observações'], { docTitle: 'Relatório Ultrassonográfico Abdominal Direcionado' }),
+    usg('tpl-usg-urinario', 'Avaliação do trato urinário', ['Rim direito', 'Rim esquerdo', 'Ureteres', 'Bexiga urinária', 'Uretra (se avaliada)'], { docTitle: 'Relatório Ultrassonográfico do Trato Urinário' }),
+    usg('tpl-usg-hepatobiliar', 'Avaliação hepatobiliar', ['Fígado', 'Vesícula biliar', 'Vias biliares', 'Vasos hepáticos e portais avaliados'], { docTitle: 'Relatório Ultrassonográfico Hepatobiliar' }),
+    usg('tpl-usg-gastro', 'Avaliação gastrointestinal', ['Estômago', 'Duodeno', 'Jejuno', 'Íleo', 'Cólon', 'Linfonodos regionais'], { docTitle: 'Relatório Ultrassonográfico Gastrointestinal' }),
+    usg('tpl-usg-reprodutivo', 'Avaliação reprodutiva e gestacional', ['Útero', 'Ovários', 'Próstata', 'Testículos', 'Conteúdo gestacional (se aplicável)'], { docTitle: 'Relatório Ultrassonográfico Reprodutivo' }),
+    usg('tpl-usg-superficial', 'Estruturas superficiais e tecidos moles', ['Região examinada', 'Lesão ou estrutura de interesse', 'Linfonodos regionais'], { docTitle: 'Relatório Ultrassonográfico de Estruturas Superficiais' }),
+    usg('tpl-usg-musculo', 'Avaliação musculoesquelética', ['Estrutura avaliada (músculo, tendão ou articulação)', 'Estruturas adjacentes'], { docTitle: 'Relatório Ultrassonográfico Musculoesquelético' }),
     {
       id: 'tpl-rx-geral', builtin: true, modality: 'rx', name: 'Radiografia (modelo inicial editável)',
-      docTitle: 'Laudo de Radiografia Veterinária', intro: '',
-      conclusionTitle: 'Impressão diagnóstica', notesTitle: 'Observações complementares',
-      signature: true, imagesPerRow: 2, version: 4,
+      docTitle: 'Relatório Radiográfico', intro: '',
+      conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações complementares',
+      signature: true, imagesPerRow: 3, version: 5,
       sections: ['Estruturas ósseas', 'Articulações', 'Tecidos moles', 'Outras estruturas avaliadas'].map(sec),
     },
   ];

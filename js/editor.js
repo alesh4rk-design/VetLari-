@@ -11,7 +11,7 @@ import { can } from './profiles.js';
 import { openModal, pickOption } from './ui.js';
 import { listPatients, getPatient, upsertPatient } from './patients.js';
 import { listTemplates, getTemplate } from './templates.js';
-import { pickPhrase, insertAtCursor } from './phrase-library.js';
+import { pickPhrase, insertAtCursor, saveToLibraryDialog } from './phrase-library.js';
 import { openDictation } from './voice.js';
 import { fillPhrase } from './phrase-logic.js';
 import { composeDescription, toggleOption, pendingFields, expandBlocks } from './builder-logic.js';
@@ -179,9 +179,10 @@ export async function renderEditor(view, id, settings, profile) {
       <div class="sec-head"><input data-sf="title" aria-label="Nome da estrutura" value="${esc(s.title)}" ${locked ? 'disabled' : ''} style="font-size:1.15rem"></div>
       <div class="field"><label>Status da avaliação</label>${statusButtons(s)}</div>
       ${builderBlock(s)}
-      <div class="field"><label>Descrição</label><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
+      <div class="field"><label>Descrição <span class="muted small">(use **negrito** e __itálico__ se quiser destacar)</span></label><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
       ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>
-      <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button></div>`}</div>
+      <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button>
+      <button type="button" class="btn sm ghost" data-act="save-phrase">Guardar esta frase</button></div>`}</div>
       ${measureBlock(s)}
       <div class="field"><label>Outras medidas (texto livre, opcional)</label><input data-sf="measures" value="${esc(s.measures)}" ${locked ? 'disabled' : ''}></div>
       <div class="field"><label>Observações (opcional)</label><input data-sf="notes" value="${esc(s.notes)}" ${locked ? 'disabled' : ''}></div>
@@ -215,7 +216,7 @@ export async function renderEditor(view, id, settings, profile) {
       <div class="field"><label for="f-sex">Sexo</label><select id="f-sex" data-bind="patient.sex" ${locked ? 'disabled' : ''}>${SEXES.map((s) => `<option value="${s}" ${exam.patient.sex === s ? 'selected' : ''}>${s || 'Selecione'}</option>`).join('')}</select></div>
       ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${ageField()}${field('Peso (kg)', 'patient.weight', { extra: 'inputmode="decimal"' })}
       ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}
-      ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame *', 'date', { type: 'date' })}</div>
+      ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame *', 'date', { type: 'date' })}${field('Hora do exame', 'time', { type: 'time' })}</div>
       ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
       <div class="card"><h2>Exame</h2><p class="muted small">Preencha o que for conhecido. Itens deixados em branco aparecem como pendência informativa, nunca como "normal".</p>
       ${area('Indicação clínica', 'clinical.indication', 2)}${area('Pergunta clínica a responder', 'clinical.question', 2)}
@@ -438,6 +439,10 @@ export async function renderEditor(view, id, settings, profile) {
         ({ text } = fillPhrase(raw, measures, extras));
       }
       insertAtCursor(target, text, { newline: ['f-impression', 'f-differentials'].includes(b.dataset.target) });
+    } else if (act === 'save-phrase') {
+      const s = current();
+      if (!s.description.trim()) return toast('Escreva a descrição antes de guardar a frase.', 'error');
+      await saveToLibraryDialog({ text: s.description, structure: s.title || 'Estrutura', modality: exam.type, measures: s.measuresList });
     } else if (act === 'pick-list') {
       const input = view.querySelector('#' + CSS.escape(b.dataset.target));
       const options = b.dataset.kind === 'species' ? SPECIES : breedsFor(exam.patient.species);

@@ -66,7 +66,7 @@ await page.fill('[data-mf="unit"]', 'cm');
 await page.click('[data-step="4"]');
 await page.waitForSelector('.paper');
 const prev = await page.textContent('.paper');
-check('prévia mostra status e medida com unidade', prev.includes('Fígado — Alterado') && prev.includes('Comprimento: 5,2 cm'), JSON.stringify(prev.replace(/\s+/g, ' ').slice(0, 600)));
+check('prévia mostra status e medida com unidade', prev.includes('Fígado: ') && prev.includes('Medidas: Comprimento: 5,2 cm'), JSON.stringify(prev.replace(/\s+/g, ' ').slice(0, 600)));
 check('prévia de rascunho vem marcada', prev.includes('RASCUNHO'));
 check('estruturas não preenchidas não aparecem como normais', !/Baço/.test(prev) && !/normal/i.test(prev));
 
