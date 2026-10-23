@@ -16,7 +16,7 @@ const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on(
 const tmp = mkdtempSync(join(tmpdir(), 'opt-'));
 
 await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
-check('data e hora vêm preenchidas por conveniência', (await page.inputValue('#f-date')) !== '' && (await page.inputValue('#f-time')) !== '');
+check('data e hora começam vazias', (await page.inputValue('#f-date')) === '' && (await page.inputValue('#f-time')) === '');
 check('os rótulos indicam que são opcionais (sem asterisco)', (await page.textContent('label[for="f-date"]')).includes('opcional') && (await page.textContent('label[for="f-time"]')).includes('opcional'));
 await page.fill('#f-patient\\.name', 'Paciente Sem Data');
 await page.fill('#f-date', ''); await page.fill('#f-time', '');

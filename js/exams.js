@@ -1,11 +1,10 @@
 // Dados de exames/laudos (criação, versões, finalização) e navegador com filtros/pesquisa.
-import { uid, esc, todayISO, fmtDateBR, fmtDateTimeBR, MODALITY } from './utils.js';
+import { uid, esc, fmtDateBR, fmtDateTimeBR, MODALITY } from './utils.js';
 import { dbAll, dbGet, dbPut, dbDel, getSetting, setSetting } from './local-storage.js';
 import { openModal, confirmDialog } from './ui.js';
 import { can } from './profiles.js';
 import { toast } from './utils.js';
 
-const nowTime = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 export const STATUS_LABEL = { draft: 'Rascunho', preliminary: 'Preliminar', final: 'Finalizado' };
 
 /** Completa campos introduzidos depois da Fase 1 em laudos antigos, sem alterar o conteúdo clínico. */
@@ -67,7 +66,7 @@ export function newExam(type, template, patient) {
   return {
     id: uid(), type, status: 'draft', version: 1, originId: null, templateId: template.id, createdAt: Date.now(), updatedAt: Date.now(),
     layout: { docTitle: template.docTitle, conclusionTitle: template.conclusionTitle, notesTitle: template.notesTitle, signature: template.signature !== false },
-    imagesPerRow: template.imagesPerRow || 2, intro: template.intro || '', date: todayISO(), time: nowTime(),
+    imagesPerRow: template.imagesPerRow || 2, intro: template.intro || '', date: '', time: '',
     patientId: p.id || null,
     patient: { name: p.name || '', species: p.species || '', breed: p.breed || '', sex: p.sex || '', birthDate: p.birthDate || '', age: p.age || '', weight: p.weight || '', tutor: p.tutor || '', identifier: p.identifier || '' },
     clinic: '', requestingVet: '', rx: { region: '', projections: '', quality: '' },
