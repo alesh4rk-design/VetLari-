@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Atualizar o VetLaudo</title>
+  <style>
+    body { margin: 0; background: #0f1720; color: #e6edf3; font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; display: grid; place-items: center; min-height: 100vh; padding: 24px; box-sizing: border-box; }
+    main { max-width: 480px; }
+    h1 { font-size: 1.4rem; margin: 0 0 12px; } p { margin: 0 0 12px; }
+    .ok { color: #4cc38a; } .box { background: #17212c; border: 1px solid #2a3a4a; border-radius: 12px; padding: 16px; }
+    a.btn { display: inline-block; background: #2ec4b6; color: #04201d; font-weight: 700; padding: 12px 20px; border-radius: 10px; text-decoration: none; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Atualizando o VetLaudo…</h1>
+    <div class="box">
+      <p id="status">Limpando a cópia antiga do aplicativo.</p>
+      <p><strong>Seus laudos, pacientes e imagens NÃO são apagados.</strong> Eles ficam guardados neste aparelho e continuam lá.</p>
+      <p id="done" hidden class="ok"></p>
+      <a id="go" class="btn" href="./" hidden>Abrir o VetLaudo</a>
+    </div>
+  </main>
+  <script>
+    // Remove apenas o modo offline antigo (service workers) e o cache de arquivos. NÃO mexe no IndexedDB,
+    // onde ficam os dados clínicos. Depois abre o sistema já com os arquivos novos.
+    (async function () {
+      const status = document.getElementById('status'), done = document.getElementById('done'), go = document.getElementById('go');
+      let removed = 0, cleared = 0;
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) { if (await r.unregister()) removed++; }
+        }
+        if (window.caches) {
+          const keys = await caches.keys();
+          for (const k of keys) { if (await caches.delete(k)) cleared++; }
+        }
+        status.textContent = 'Pronto.';
+        done.textContent = `Cópia antiga removida (${removed} serviço(s) e ${cleared} cache(s)). Abrindo o sistema atualizado…`;
+        done.hidden = false; go.hidden = false;
+        document.body.dataset.state = 'done';
+        setTimeout(() => location.replace('./?atualizado=' + Date.now()), 1800);
+      } catch (e) {
+        status.textContent = 'Não foi possível limpar automaticamente. Feche o aplicativo, abra de novo e tente esta página mais uma vez.';
+        go.hidden = false;
+        document.body.dataset.state = 'error';
+      }
+    })();
+  </script>
+</body>
+</html>
