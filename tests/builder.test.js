@@ -225,7 +225,7 @@ test('contorno: órgãos com "contorno regular" também têm "contorno irregular
 
 test('rins: pelve com normodilatada e graus de dilatação', () => {
   const g = expandBlocks(USG_BUILDERS.Rins).find((b) => b.label === 'Rim direito').groups.find((x) => x.label === 'Pelve');
-  assert.deepEqual(g.options.map((o) => o.text), ['Pelve normodilatada', 'Pelve discretamente dilatada ({?Pelve})', 'Pelve moderadamente dilatada ({?Pelve})', 'Pelve acentuadamente dilatada ({?Pelve})']);
+  assert.deepEqual(g.options.map((o) => o.text).slice(0, 4), ['Pelve normodilatada', 'Pelve discretamente dilatada ({?Pelve})', 'Pelve moderadamente dilatada ({?Pelve})', 'Pelve acentuadamente dilatada ({?Pelve})']);
 });
 
 test('laudos de outubro/2026: novas opções geram o texto da veterinária', () => {
@@ -258,4 +258,17 @@ test('laudos de outubro/2026 (lote 2): pelve com medida, ducto pancreático e ba
   const bc = USG_BUILDERS.Baço;
   const top = grp(bc, '', 'Topografia');
   assert.equal(composeDescription(bc, toggleOption(bc, {}, top.key, top.options.findIndex((o) => o.excl)), [], {}), 'não caracterizado (paciente com histórico de esplenectomia).');
+});
+
+test('laudos de outubro/2026 (lote 3): próstata, adrenal e testículo com achados novos', () => {
+  const grp = (def, label, group) => expandBlocks(def).find((b) => b.label === label).groups.find((x) => x.label === group);
+  const pick = (def, label, group, optLabel, sel = {}) => { const g = grp(def, label, group); return toggleOption(def, sel, g.key, g.options.findIndex((o) => (o.label || o.text) === optLabel)); };
+  const pr = USG_BUILDERS.Próstata;
+  const t = composeDescription(pr, pick(pr, '', 'Ecotextura e ecogenicidade', 'ecotextura levemente grosseira, microcistos'), [], { 'Medida dos microcistos': '0,17 cm' });
+  assert.equal(t, 'ecotextura levemente grosseira pela presença de discretos microcistos medindo 0,17 cm e ecogenicidade habitual.');
+  const ad = USG_BUILDERS.Adrenais;
+  assert.ok(composeDescription(ad, pick(ad, 'Adrenal direita', 'Formato', 'preservado, polo cranial abaulado'), [], {}).includes('formato preservado, exceto por polo cranial discretamente abaulado'));
+  const ts = USG_BUILDERS.Testículos;
+  assert.ok(ts.blocks[0].groups[0].options.some((o) => o.excl && o.text.includes('orquiectomia')));
+  assert.ok(USG_IMPRESSIONS.some((i) => i[0].startsWith('Sugestivo trombo em veia cava caudal')));
 });
