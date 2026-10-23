@@ -1,6 +1,7 @@
 // Modelos de laudo e configurações padrão. Os modelos iniciais são pontos de partida editáveis,
 // não protocolos clínicos: a profissional define as estruturas adequadas à sua rotina.
 import { uid } from './utils.js';
+import { USG_BUILDERS, AFTER_CONCLUSION_NOTE } from './catalog-usg.js';
 import { dbAll, dbPut, dbDel, dbGet, getSetting, setSetting } from './local-storage.js';
 
 export const DEFAULT_SETTINGS = {
@@ -15,15 +16,23 @@ export const DEFAULT_SETTINGS = {
   compress: true,
   jpegQuality: 0.85,
   maxImagePx: 1600,
+  afterConclusion: AFTER_CONCLUSION_NOTE, // texto fixo após a conclusão (editável em Configurações)
+  impressionAsList: true,                 // conclusão em lista de itens
 };
 
-const sec = (title) => ({ id: uid(), title });
+/** Estrutura do modelo: título, sexo a que se aplica ('' = todos) e medidas pré-definidas (nome + unidade). */
+const sec = (x) => {
+  const s = typeof x === 'string' ? { id: uid(), title: x, sex: '', measures: [] } : { id: uid(), sex: '', measures: [], ...x };
+  if (!s.builder && USG_BUILDERS[s.title] && s.useCatalog !== false) s.builder = JSON.parse(JSON.stringify(USG_BUILDERS[s.title]));
+  return s;
+};
+const M = (label, unit = 'cm') => ({ label, unit });
 
 const usg = (id, name, sections, extra = {}) => ({
   id, builtin: true, modality: 'usg', name: `${name} (modelo inicial)`,
   docTitle: 'Laudo de Ultrassonografia Veterinária', intro: '',
   conclusionTitle: 'Impressão diagnóstica', notesTitle: 'Observações e recomendações',
-  signature: true, imagesPerRow: 2, sections: sections.map(sec), ...extra,
+  signature: true, imagesPerRow: 2, sections: sections.map(sec), ...extra, version: 4,
 });
 
 /**
@@ -32,8 +41,24 @@ const usg = (id, name, sections, extra = {}) => ({
  */
 export function defaultTemplates() {
   return [
-    usg('tpl-usg-abdominal', 'Ultrassonografia abdominal completa', ['Fígado', 'Vesícula biliar e vias biliares', 'Baço', 'Estômago', 'Intestinos',
-      'Pâncreas', 'Rins', 'Adrenais', 'Bexiga urinária', 'Trato reprodutivo', 'Linfonodos', 'Cavidade peritoneal', 'Vasos avaliados', 'Outras estruturas relevantes']),
+    usg('tpl-usg-abdominal', 'Ultrassonografia abdominal completa', [
+      { title: 'Vesícula urinária', measures: [M('Espessura da parede')] },
+      { title: 'Rins', measures: [M('Rim esquerdo – comprimento'), M('Rim direito – comprimento')] },
+      'Fígado',
+      { title: 'Vesícula biliar', measures: [M('Volume', 'ml')] },
+      'Baço',
+      { title: 'Estômago', measures: [M('Espessura da parede')] },
+      { title: 'Alças intestinais', measures: [M('Duodeno – espessura da parede'), M('Jejuno – espessura da parede'), M('Cólon ascendente – espessura da parede'),
+        M('Cólon transverso – espessura da parede'), M('Cólon descendente – espessura da parede')] },
+      { title: 'Pâncreas', measures: [M('Lobo pancreático direito')] },
+      { title: 'Adrenais', measures: [M('Adrenal esquerda – altura do pólo cranial'), M('Adrenal esquerda – altura do pólo caudal'), M('Adrenal esquerda – comprimento'),
+        M('Adrenal direita – altura do pólo cranial'), M('Adrenal direita – altura do pólo caudal'), M('Adrenal direita – comprimento')] },
+      { title: 'Próstata', sex: 'male', measures: [M('Comprimento'), M('Altura'), M('Largura')] },
+      { title: 'Testículos', sex: 'male' },
+      { title: 'Útero', sex: 'female', measures: [M('Corpo uterino'), M('Corno uterino esquerdo'), M('Corno uterino direito')] },
+      { title: 'Ovários', sex: 'female', measures: [M('Ovário esquerdo'), M('Ovário direito')] },
+      { title: 'Tecido mamário', sex: 'female' }, 'Linfonodos', 'Líquido livre peritoneal', 'Outros achados',
+    ]),
     usg('tpl-usg-direcionada', 'Ultrassonografia abdominal direcionada / exame focal', ['Região ou estrutura de interesse', 'Estruturas adjacentes avaliadas', 'Líquido livre (se pesquisado)', 'Outras observações']),
     usg('tpl-usg-urinario', 'Avaliação do trato urinário', ['Rim direito', 'Rim esquerdo', 'Ureteres', 'Bexiga urinária', 'Uretra (se avaliada)']),
     usg('tpl-usg-hepatobiliar', 'Avaliação hepatobiliar', ['Fígado', 'Vesícula biliar', 'Vias biliares', 'Vasos hepáticos e portais avaliados']),
@@ -45,7 +70,7 @@ export function defaultTemplates() {
       id: 'tpl-rx-geral', builtin: true, modality: 'rx', name: 'Radiografia (modelo inicial editável)',
       docTitle: 'Laudo de Radiografia Veterinária', intro: '',
       conclusionTitle: 'Impressão diagnóstica', notesTitle: 'Observações complementares',
-      signature: true, imagesPerRow: 2,
+      signature: true, imagesPerRow: 2, version: 4,
       sections: ['Estruturas ósseas', 'Articulações', 'Tecidos moles', 'Outras estruturas avaliadas'].map(sec),
     },
   ];
@@ -59,9 +84,14 @@ export const saveSettings = (s) => setSetting('app', s);
 
 export async function listTemplates() {
   let all = await dbAll('templates');
-  const have = new Set(all.map((t) => t.id));
+  const byId = new Map(all.map((t) => [t.id, t]));
   for (const t of defaultTemplates()) {
-    if (!have.has(t.id)) { await dbPut('templates', t); all.push(t); }
+    const cur = byId.get(t.id);
+    // Modelos iniciais são sempre atualizados para a versão atual (não são editáveis: duplique para personalizar).
+    if (!cur || (cur.builtin && cur.version !== t.version)) {
+      await dbPut('templates', t);
+      all = all.filter((x) => x.id !== t.id); all.push(t);
+    }
   }
   // Modelos iniciais primeiro, na ordem em que foram definidos; depois os da usuária, por nome.
   const order = defaultTemplates().map((t) => t.id);
@@ -77,7 +107,7 @@ export function newTemplate(modality) {
   return {
     id: uid(), builtin: false, modality, name: 'Novo modelo',
     docTitle: base.docTitle, intro: '', conclusionTitle: base.conclusionTitle, notesTitle: base.notesTitle,
-    signature: true, imagesPerRow: 2, sections: [sec('Nova estrutura')],
+    signature: true, imagesPerRow: 2, sections: [sec('Nova estrutura')], version: 1,
   };
 }
 

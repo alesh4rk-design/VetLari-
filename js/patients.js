@@ -1,9 +1,10 @@
 // Cadastro e consulta de pacientes.
-import { uid, esc, todayISO, toast } from './utils.js';
+import { uid, esc, todayISO, toast, ageFromBirth } from './utils.js';
+import { SPECIES, breedsFor, optionsHtml } from './animals.js';
 import { dbAll, dbGet, dbPut, dbDel } from './local-storage.js';
 import { validatePatient, SEXES } from './validation.js';
 import { navigate } from './router.js';
-import { confirmDialog, alertList } from './ui.js';
+import { confirmDialog, alertList, pickOption } from './ui.js';
 
 export const listPatients = async () => (await dbAll('patients')).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 export const getPatient = (id) => dbGet('patients', id);
@@ -35,15 +36,37 @@ export async function renderPatientForm(view, id) {
   const existing = id === 'novo' ? null : await getPatient(id);
   if (id !== 'novo' && !existing) { view.innerHTML = '<div class="card empty">Paciente não encontrado.</div>'; return; }
   const p = existing || emptyPatient();
+  const combo = (name, label, listId) => `<div class="field"><label for="p-${name}">${label}</label><div class="row" style="flex-wrap:nowrap">
+    <input id="p-${name}" name="${name}" value="${esc(p[name])}" list="${listId}" autocomplete="off" placeholder="Escolha ou digite" style="flex:1;min-width:0">
+    <button type="button" class="btn sm" data-pick="${name}">Lista</button></div></div>`;
   const f = (name, label, type = 'text', extra = '') => `<div class="field"><label for="p-${name}">${label}</label><input id="p-${name}" name="${name}" type="${type}" value="${esc(p[name])}" ${extra}></div>`;
   view.innerHTML = `<div class="page-head"><h1>${existing ? 'Editar paciente' : 'Novo paciente'}</h1></div><form class="card" id="pf" novalidate>
-    <div class="grid g2">${f('name', 'Nome do animal *', 'text', 'autofocus required maxlength="200"')}${f('species', 'Espécie')}${f('breed', 'Raça')}
+    <div class="grid g2">${f('name', 'Nome do animal *', 'text', 'autofocus required maxlength="200"')}${combo('species', 'Espécie', 'species-list')}${combo('breed', 'Raça', 'breeds-list')}
+    <datalist id="species-list">${optionsHtml(SPECIES)}</datalist><datalist id="breeds-list">${optionsHtml(breedsFor(p.species))}</datalist>
     <div class="field"><label for="p-sex">Sexo</label><select id="p-sex" name="sex">${SEXES.map((s) => `<option value="${s}" ${p.sex === s ? 'selected' : ''}>${s || 'Selecione'}</option>`).join('')}</select></div>
-    ${f('birthDate', 'Data de nascimento', 'date', `max="${todayISO()}"`)}${f('age', 'Idade (se não souber a data)')}
+    ${f('birthDate', 'Data de nascimento', 'date', `max="${todayISO()}"`)}
+    <div class="field"><label for="p-age">Idade</label><input id="p-age-auto" readonly value="${esc(ageFromBirth(p.birthDate))}" ${p.birthDate ? '' : 'hidden'}>
+      <input id="p-age" name="age" value="${esc(p.age)}" placeholder="Ex.: 3 anos" ${p.birthDate && ageFromBirth(p.birthDate) ? 'hidden' : ''}>
+      <div class="hint" id="p-age-hint">Com a data de nascimento, a idade é calculada sozinha; sem ela, digite a idade.</div></div>
     ${f('weight', 'Peso (kg)', 'text', 'inputmode="decimal"')}${f('tutor', 'Nome do tutor')}${f('identifier', 'Identificador interno (opcional)')}</div>
     <div id="perr"></div>
     <div class="row between"><div class="row"><button class="btn primary" type="submit">Salvar paciente</button><a class="btn" href="#/pacientes">Cancelar</a></div>
     ${existing ? '<button class="btn danger" type="button" id="del">Excluir paciente</button>' : ''}</div></form>`;
+  view.querySelector('#pf').addEventListener('input', (e) => {
+    if (e.target.id === 'p-species') { view.querySelector('#breeds-list').innerHTML = optionsHtml(breedsFor(e.target.value)); }
+    if (e.target.id === 'p-birthDate') {
+      const auto = ageFromBirth(e.target.value), a = view.querySelector('#p-age-auto'), m = view.querySelector('#p-age');
+      a.value = auto; a.hidden = !auto; m.hidden = !!auto;
+    }
+  });
+  view.querySelector('#pf').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-pick]'); if (!b) return;
+    const kind = b.dataset.pick, input = view.querySelector('#p-' + kind);
+    const options = kind === 'species' ? SPECIES : breedsFor(view.querySelector('#p-species').value);
+    if (!options.length) return toast('Não há sugestões de raça para esta espécie: digite a raça no campo.', 'info');
+    const chosen = await pickOption({ title: kind === 'species' ? 'Espécie' : 'Raça', options });
+    if (chosen) { input.value = chosen; input.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
   view.querySelector('#pf').addEventListener('submit', async (e) => {
     e.preventDefault();
     const next = { ...p, ...Object.fromEntries(new FormData(e.target)) };

@@ -57,3 +57,25 @@ export function setPath(obj, path, value) {
   const target = keys.reduce((o, k) => (o[k] ??= {}), obj);
   target[last] = value;
 }
+
+/** Janela com todas as opções e busca. Resolve com o texto escolhido ou null. */
+export function pickOption({ title, options }) {
+  const m = openModal(`<h2>${esc(title)}</h2>
+    <div class="field"><label for="po-q">Pesquisar</label><input id="po-q" type="search" autocomplete="off" autofocus></div>
+    <div id="po-list" class="chips" style="max-height:50vh;overflow:auto"></div>
+    <div class="row end" style="margin-top:10px"><button class="btn" data-x="cancel">Cancelar</button></div>`, { label: title });
+  const draw = () => {
+    const q = m.el.querySelector('#po-q').value.trim().toLowerCase();
+    const res = options.filter((o) => !q || o.toLowerCase().includes(q));
+    m.el.querySelector('#po-list').innerHTML = res.length ? res.map((o) => `<button type="button" class="chip" data-opt="${esc(o)}">${esc(o)}</button>`).join('')
+      : '<span class="muted">Nada encontrado. Feche e digite no campo.</span>';
+  };
+  draw();
+  m.el.addEventListener('input', draw);
+  m.el.addEventListener('click', (e) => {
+    const o = e.target.closest('[data-opt]');
+    if (o) return m.close(o.dataset.opt);
+    if (e.target.closest('[data-x=cancel]')) m.close(null);
+  });
+  return m.closed;
+}

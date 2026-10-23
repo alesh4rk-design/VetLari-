@@ -39,6 +39,8 @@ export function renderSettings(view, settings, onChange) {
     <div class="field"><label for="s-size">Tamanho da fonte (pt)</label><select id="s-size">${[10, 11, 12].map((n) => `<option ${Number(settings.fontSize) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
     <div class="field"><label for="s-logo">Logotipo (PNG ou JPEG, até 2 MB)</label><input id="s-logo" type="file" accept="image/png,image/jpeg">
       ${settings.logo ? `<div style="margin-top:8px"><img src="${esc(settings.logo)}" alt="Logotipo atual" style="max-height:60px;background:#fff;padding:4px;border-radius:6px"> <button type="button" class="btn sm" id="rmlogo">Remover</button></div>` : ''}</div>
+    <div class="field"><label for="s-after">Texto fixo após a conclusão</label><textarea id="s-after" rows="3">${esc(settings.afterConclusion || '')}</textarea></div>
+    <label class="check"><input type="checkbox" id="s-list" ${settings.impressionAsList !== false ? 'checked' : ''}> Conclusão em lista de itens (um por linha)</label>
     <h2>Imagens</h2><div class="grid g2"><label class="check"><input type="checkbox" id="s-comp" ${settings.compress ? 'checked' : ''}> Comprimir imagens ao importar</label>
     <div class="field"><label for="s-q">Qualidade JPEG (0,5 a 1)</label><input id="s-q" type="number" min="0.5" max="1" step="0.05" value="${settings.jpegQuality}"></div>
     <div class="field"><label for="s-px">Tamanho máximo (pixels do maior lado)</label><input id="s-px" type="number" min="800" max="4000" step="100" value="${settings.maxImagePx}"></div>
@@ -65,7 +67,7 @@ export function renderSettings(view, settings, onChange) {
     const q = Number(v('s-q')), px = Number(v('s-px')), mb = Number(v('s-mb'));
     if (!(q >= 0.5 && q <= 1) || !(px >= 800 && px <= 4000) || !(mb >= 1 && mb <= 50)) return toast('Revise os valores de qualidade, tamanho e limite.', 'error');
     const next = { ...settings, professional: { name: v('s-name').trim(), service: v('s-service').trim(), crmv: v('s-crmv').trim(), uf: v('s-uf').trim().toUpperCase(), contact: v('s-contact').trim() },
-      headerText: v('s-head').trim(), footerText: v('s-foot').trim(), font: v('s-font'), fontSize: Number(v('s-size')),
+      headerText: v('s-head').trim(), footerText: v('s-foot').trim(), afterConclusion: v('s-after').trim(), impressionAsList: view.querySelector('#s-list').checked, font: v('s-font'), fontSize: Number(v('s-size')),
       compress: view.querySelector('#s-comp').checked, jpegQuality: q, maxImagePx: px, maxImageMB: mb, theme: v('s-theme') };
     try { await saveSettings(next); applyTheme(next.theme); onChange(next); toast('Configurações salvas.', 'success'); }
     catch { toast('Não foi possível salvar as configurações.', 'error'); }

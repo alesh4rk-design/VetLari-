@@ -4,7 +4,7 @@ import { loadSettings } from './templates.js';
 import { applyTheme, renderSettings } from './settings.js';
 import { renderDashboard } from './dashboard.js';
 import { renderPatientList, renderPatientForm } from './patients.js';
-import { renderPhraseLibrary } from './phrase-library.js';
+import { renderPhraseLibrary, seedImpressions } from './phrase-library.js';
 import { renderTemplateList, renderTemplateForm } from './template-editor.js';
 import { renderReferences } from './references.js';
 import { renderCalculations } from './calculations.js';
@@ -66,8 +66,7 @@ async function compare(v, a, b) {
 
 async function viewExams(v, { query }) {
   v.innerHTML = '<div class="page-head"><h1>Meus laudos</h1></div><div id="b"></div>';
-  const all = await renderExamBrowser(v.querySelector('#b'), { initial: { q: query.q || '' } });
-  void all;
+  await renderExamBrowser(v.querySelector('#b'), { initial: { q: query.q || '' }, profile });
 }
 
 async function boot() {
@@ -83,10 +82,11 @@ async function boot() {
   settings = await loadSettings();
   if (!settings.professional.name) { settings.professional.name = profile.name; await saveSettings(settings); }
   applyTheme(settings.theme);
+  await seedImpressions().catch(() => { /* sem armazenamento: segue sem frases iniciais */ });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { /* sem offline: segue normalmente */ });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   document.addEventListener('route', (e) => drawNav(e.detail.path));
-  route('/', safe((v) => renderDashboard(v)));
+  route('/', safe((v) => renderDashboard(v, profile)));
   route('/novo', safe((v, { query }) => renderNewExam(v, query)));
   route('/laudo/:id', safe((v, { params }) => renderEditor(v, params.id, settings, profile)));
   route('/laudo/:id/nova-versao-estrutura', safe((v, { params }) => startFromPrevious(v, params.id)));

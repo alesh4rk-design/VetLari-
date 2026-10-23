@@ -2,16 +2,19 @@
 import { esc, debounce, download, reportFileName, toast, fmtDateTimeBR, fmtDateBR, MODALITY, uid } from './utils.js';
 import { getPath, setPath, alertList, confirmDialog } from './ui.js';
 import { SEXES } from './validation.js';
+import { SPECIES, breedsFor, optionsHtml } from './animals.js';
+import { ageFromBirth } from './utils.js';
 import { navigate, setLeaveGuard } from './router.js';
-import { getExam, listExams, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
-import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, FINAL_CHECKLIST } from './quality.js';
+import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
+import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, FINAL_CHECKLIST, sectionHasContent } from './quality.js';
 import { can } from './profiles.js';
-import { openModal } from './ui.js';
+import { openModal, pickOption } from './ui.js';
 import { listPatients, getPatient, upsertPatient } from './patients.js';
 import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor } from './phrase-library.js';
 import { openDictation } from './voice.js';
 import { fillPhrase } from './phrase-logic.js';
+import { composeDescription, toggleOption, pendingFields, expandBlocks } from './builder-logic.js';
 import { listReferences, referenceCard } from './references.js';
 import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
@@ -92,30 +95,125 @@ export async function renderEditor(view, id, settings, profile) {
 
   const field = (label, bind, { type = 'text', extra = '' } = {}) => `<div class="field"><label for="f-${bind}">${label}</label>
     <input id="f-${bind}" type="${type}" data-bind="${bind}" value="${esc(getPath(exam, bind))}" ${locked ? 'disabled' : ''} ${extra}></div>`;
+  /** Campo com sugestões e digitação livre + botão "Lista" com todas as opções. */
+  const comboField = (label, bind, listId, kind) => `<div class="field"><label for="f-${bind}">${label}</label>
+    <div class="row" style="flex-wrap:nowrap"><input id="f-${bind}" data-bind="${bind}" value="${esc(getPath(exam, bind))}" list="${listId}" autocomplete="off" placeholder="Escolha ou digite" ${locked ? 'disabled' : ''} style="flex:1;min-width:0">
+    ${locked ? '' : `<button type="button" class="btn sm" data-act="pick-list" data-kind="${kind}" data-target="f-${bind}">Lista</button>`}</div></div>`;
   const area = (label, bind, rows = 4, structure = '') => `<div class="field"><label for="f-${bind}">${label}</label>
     <textarea id="f-${bind}" data-bind="${bind}" rows="${rows}" ${locked ? 'disabled' : ''}>${esc(getPath(exam, bind))}</textarea>
     ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="f-${bind}" data-structure="${esc(structure)}">Inserir frase</button>
     <button type="button" class="btn sm ghost" data-act="dictate" data-target="f-${bind}" data-label="${esc(label)}">Ditar</button></div>`}</div>`;
 
-  const statusSelect = (s) => `<select data-sf="status" aria-label="Status da avaliação de ${esc(s.title)}" ${locked ? 'disabled' : ''}>${
-    Object.entries(STRUCTURE_STATUS).map(([k, v]) => `<option value="${k}" ${(s.status || '') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
-  const measureRows = (s) => `<div class="field"><label>Medidas (valor e unidade)</label>
-    ${(s.measuresList || []).map((m) => `<div class="mrow" data-mrow="${m.id}">
-      <input data-mf="label" data-mid="${m.id}" placeholder="Ex.: comprimento" aria-label="Nome da medida" value="${esc(m.label)}" ${locked || m.calculated ? 'disabled' : ''} class="m-label">
-      <input data-mf="value" data-mid="${m.id}" placeholder="Valor" inputmode="decimal" aria-label="Valor da medida" value="${esc(m.value)}" ${locked || m.calculated ? 'disabled' : ''} class="m-small">
-      <input data-mf="unit" data-mid="${m.id}" list="units" placeholder="Unidade" aria-label="Unidade da medida" value="${esc(m.unit)}" ${locked || m.calculated ? 'disabled' : ''} class="m-small">
-      ${locked ? '' : `<button type="button" class="iconbtn danger" data-act="m-del" data-mid="${m.id}" aria-label="Excluir medida">✕</button>`}
-      ${m.calculated ? `<div class="small muted" style="flex:1 1 100%">Calculado: ${esc(m.calcName)} (${esc(m.formula)}) a partir de ${esc(Object.entries(m.inputs || {}).map(([k, v]) => `${k}=${v}`).join('; '))}</div>` : ''}</div>`).join('')}
-    <div class="row">${locked ? '' : '<button type="button" class="btn sm" data-act="m-add">Adicionar medida</button><button type="button" class="btn sm" data-act="m-calc">Calcular</button>'}
-    <button type="button" class="btn sm ghost" data-act="m-refs">Ver referências</button></div></div>`;
+  // ----- Achados: lista de órgãos (esquerda) + painel do órgão selecionado (direita) -----
+  const patientSex = () => (/^Macho/.test(exam.patient.sex || '') ? 'male' : /^Fêmea/.test(exam.patient.sex || '') ? 'female' : '');
+  const hasData = (s) => !!s.status || sectionHasContent(s);
+  // Estruturas de outro sexo ficam ocultas, mas nunca se já tiverem dados registrados.
+  const visibleSections = () => exam.sections.filter((s) => !s.sex || !patientSex() || s.sex === patientSex() || hasData(s));
+  let selSec = null;
+  const current = () => {
+    const vis = visibleSections();
+    return vis.find((s) => s.id === selSec) || vis[0] || null;
+  };
+
+  const organList = () => {
+    const cur = current();
+    return `<ul class="organ-list">${visibleSections().map((s) => `<li><button type="button" class="organ ${cur && s.id === cur.id ? 'active' : ''}" data-act="org-pick" data-id="${s.id}" ${cur && s.id === cur.id ? 'aria-current="true"' : ''}>
+      <span class="dot ${hasData(s) ? 'done' : ''}" aria-hidden="true"></span><span class="oname">${esc(s.title || 'Sem nome')}</span>
+      <span class="ostat">${s.status ? esc(STRUCTURE_STATUS[s.status]) : (sectionHasContent(s) ? 'Preenchido' : '')}</span></button></li>`).join('')}</ul>
+      ${locked ? '' : `<div class="row" style="margin-top:10px"><input id="newsec" placeholder="Nova estrutura" aria-label="Nome da nova estrutura" style="flex:1;min-width:0"><button class="btn sm" data-act="sec-add">Adicionar</button></div>`}`;
+  };
+
+  const statusButtons = (s) => `<div class="seg" role="group" aria-label="Status da avaliação">${
+    Object.entries(STRUCTURE_STATUS).filter(([k]) => k).map(([k, v]) => `<button type="button" class="segbtn" data-act="set-status" data-val="${k}" aria-pressed="${(s.status || '') === k}" ${locked ? 'disabled' : ''}>${v}</button>`).join('')}</div>
+    <div class="small muted">${s.status ? '' : 'Nenhum status marcado: a estrutura fica como "Não informado" e não aparece no laudo se estiver vazia.'}</div>`;
+
+  const measureBlock = (s) => {
+    const slots = (s.measuresList || []).some((m) => m.slot);
+    return `<div class="field"><label>Medidas deste órgão</label>
+      <p class="small muted">${slots ? 'Os nomes e as unidades já vêm do modelo: <strong>digite só o valor</strong> do que você mediu (ex.: 5,2). O que ficar em branco não aparece no laudo.' : 'Este modelo não tem medidas pré-definidas para este órgão. Use "Adicionar outra medida": informe o que foi medido, o valor e a unidade.'}</p>
+      <div class="mtable">${(s.measuresList || []).length ? '<div class="mhead"><span>O que foi medido</span><span>Valor</span><span>Unidade</span><span></span></div>' : ''}
+      ${(s.measuresList || []).map((m) => `<div class="mrow" data-mrow="${m.id}">
+        ${m.slot || m.calculated ? `<div class="mlabel">${esc(m.label)}</div>` : `<input data-mf="label" data-mid="${m.id}" placeholder="Ex.: espessura da parede" aria-label="O que foi medido" value="${esc(m.label)}" ${locked ? 'disabled' : ''}>`}
+        <input data-mf="value" data-mid="${m.id}" placeholder="Valor" inputmode="decimal" aria-label="Valor de ${esc(m.label || 'medida')}" value="${esc(m.value)}" ${locked || m.calculated ? 'disabled' : ''}>
+        <input data-mf="unit" data-mid="${m.id}" list="units" placeholder="Unidade" aria-label="Unidade de ${esc(m.label || 'medida')}" value="${esc(m.unit)}" ${locked || m.calculated ? 'disabled' : ''}>
+        ${locked || m.slot ? '<span></span>' : `<button type="button" class="iconbtn danger" data-act="m-del" data-mid="${m.id}" aria-label="Excluir medida">✕</button>`}
+        ${m.calculated ? `<div class="small muted mnote">Calculado: ${esc(m.calcName)} (${esc(m.formula)}) a partir de ${esc(Object.entries(m.inputs || {}).map(([k, v]) => `${k}=${v}`).join('; '))}</div>` : ''}</div>`).join('')}</div>
+      <div class="row" style="margin-top:8px">${locked ? '' : '<button type="button" class="btn sm" data-act="m-add">Adicionar outra medida</button><button type="button" class="btn sm" data-act="m-calc">Calcular</button>'}
+      <button type="button" class="btn sm ghost" data-act="m-refs">Ver referências</button></div></div>`;
+  };
+
+  // ----- Montador de descrição: marcar opções gera o texto no estilo da veterinária -----
+  const isManual = (s) => !!(s.build && s.description.trim() && s.description !== s.build.auto);
+  /** Regenera a descrição a partir das escolhas. Não sobrescreve texto editado à mão (a menos que force). */
+  function syncBuild(s, force = false) {
+    if (!s.build) return false;
+    const text = composeDescription(s.build.def, s.build.sel, s.measuresList, s.build.extras);
+    if (force || !s.description.trim() || s.description === s.build.auto) { s.description = text; s.build.auto = text; }
+    const ta = view.querySelector('#d-' + s.id);
+    if (ta && s.id === (current() || {}).id) ta.value = s.description;
+    const note = view.querySelector('#bnotice'); if (note) note.hidden = !isManual(s);
+    return true;
+  }
+  const builderBlock = (s) => {
+    if (!s.build) return '';
+    const blocks = expandBlocks(s.build.def);
+    const need = pendingFields(s.build.def, s.build.sel, s.measuresList, {});
+    return `<div class="builder"><h3>Montar descrição</h3>
+      <p class="small muted">Marque o que você observou e digite as medidas: o texto é escrito sozinho, com as suas frases. O que não for marcado não entra no laudo.</p>
+      ${blocks.map((bl) => `<div class="bblock">${bl.label ? `<div class="bhead">${esc(bl.label)}</div>` : ''}${bl.groups.map((g) => {
+        const on = s.build.sel[g.key] || [];
+        return `<div class="bgroup"><div class="blabel">${esc(g.label)}${g.kind === 'many' || g.kind === 'sentences' ? ' <span class="muted">(pode marcar várias)</span>' : ''}</div>
+          <div class="chips">${g.options.map((op, i) => `<button type="button" class="chip" data-act="b-opt" data-g="${g.key}" data-o="${i}" aria-pressed="${on.includes(i)}" ${locked ? 'disabled' : ''} title="${esc(op.text)}">${esc(op.label || op.text)}</button>`).join('')}</div></div>`;
+      }).join('')}</div>`).join('')}
+      ${need.length ? `<div class="bextras"><div class="small muted">Complete os campos da frase:</div>${need.map((n) => `<div class="field"><label for="bx-${esc(n.key)}">${esc(n.key)}</label><input id="bx-${esc(n.key)}" data-bx="${esc(n.key)}" value="${esc(s.build.extras[n.key] || '')}" ${locked ? 'disabled' : ''}></div>`).join('')}</div>` : ''}
+      <div id="bnotice" class="alert warn" ${isManual(s) ? '' : 'hidden'}>Você editou o texto manualmente: novas escolhas não o alteram. ${locked ? '' : '<button type="button" class="btn sm" data-act="b-regen">Gerar de novo (substitui o texto)</button>'}</div>
+      ${locked ? '' : '<div class="row"><button type="button" class="btn sm ghost" data-act="b-clear">Limpar escolhas</button></div>'}</div>`;
+  };
+
+  const organPanel = () => {
+    const s = current();
+    if (!s) return '<div class="card empty">Nenhuma estrutura neste modelo. Adicione uma na lista.</div>';
+    const vis = visibleSections();
+    const hasNext = vis.length > 1;
+    return `<section class="sec" data-sec="${s.id}">
+      <div class="sec-head"><input data-sf="title" aria-label="Nome da estrutura" value="${esc(s.title)}" ${locked ? 'disabled' : ''} style="font-size:1.15rem"></div>
+      <div class="field"><label>Status da avaliação</label>${statusButtons(s)}</div>
+      ${builderBlock(s)}
+      <div class="field"><label>Descrição</label><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
+      ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>
+      <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button></div>`}</div>
+      ${measureBlock(s)}
+      <div class="field"><label>Outras medidas (texto livre, opcional)</label><input data-sf="measures" value="${esc(s.measures)}" ${locked ? 'disabled' : ''}></div>
+      <div class="field"><label>Observações (opcional)</label><input data-sf="notes" value="${esc(s.notes)}" ${locked ? 'disabled' : ''}></div>
+      <div class="row between">${hasNext ? '<button type="button" class="btn primary" data-act="org-next">Próximo órgão</button>' : '<span></span>'}
+      ${locked ? '' : '<button type="button" class="btn danger sm" data-act="sec-del">Excluir esta estrutura</button>'}</div></section>`;
+  };
+
+  /** Idade: calculada sozinha a partir da data de nascimento (na data do exame); manual só sem data de nascimento. */
+  const autoAge = () => ageFromBirth(exam.patient.birthDate, exam.date);
+  const ageField = () => {
+    const auto = autoAge();
+    return `<div class="field"><label for="f-age">Idade</label>
+      <input id="age-auto" readonly value="${esc(auto)}" aria-describedby="age-hint" ${auto ? '' : 'hidden'}>
+      <input id="f-age" data-bind="patient.age" value="${esc(exam.patient.age)}" placeholder="Ex.: 3 anos" ${locked ? 'disabled' : ''} ${auto ? 'hidden' : ''}>
+      <div class="hint" id="age-hint">${auto ? 'Calculada automaticamente a partir da data de nascimento, na data do exame.' : 'Informe a data de nascimento para calcular sozinha, ou digite a idade.'}</div></div>`;
+  };
+  const updateAge = () => {
+    const auto = autoAge(), a = view.querySelector('#age-auto'), m = view.querySelector('#f-age'), h = view.querySelector('#age-hint');
+    if (!a || !m) return;
+    a.value = auto; a.hidden = !auto; m.hidden = !!auto;
+    if (h) h.textContent = auto ? 'Calculada automaticamente a partir da data de nascimento, na data do exame.' : 'Informe a data de nascimento para calcular sozinha, ou digite a idade.';
+  };
 
   const steps = {
     0: () => `<div class="card"><h2>Paciente</h2>
       ${locked ? '' : `<div class="field"><label for="pick">Paciente cadastrado</label><select id="pick" data-act="pick"><option value="">Selecione para preencher automaticamente</option>
         ${patients.map((p) => `<option value="${p.id}" ${p.id === exam.patientId ? 'selected' : ''}>${esc(p.name)}${p.tutor ? ' — ' + esc(p.tutor) : ''}</option>`).join('')}</select></div>`}
-      <div class="grid g2">${field('Nome do animal *', 'patient.name', { extra: 'required maxlength="200"' })}${field('Espécie', 'patient.species')}${field('Raça', 'patient.breed')}
+      <div class="grid g2">${field('Nome do animal *', 'patient.name', { extra: 'required maxlength="200"' })}
+      ${comboField('Espécie', 'patient.species', 'species-list', 'species')}${comboField('Raça', 'patient.breed', 'breeds-list', 'breed')}
+      <datalist id="species-list">${optionsHtml(SPECIES)}</datalist><datalist id="breeds-list">${optionsHtml(breedsFor(exam.patient.species))}</datalist>
       <div class="field"><label for="f-sex">Sexo</label><select id="f-sex" data-bind="patient.sex" ${locked ? 'disabled' : ''}>${SEXES.map((s) => `<option value="${s}" ${exam.patient.sex === s ? 'selected' : ''}>${s || 'Selecione'}</option>`).join('')}</select></div>
-      ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${field('Idade (se não souber a data)', 'patient.age')}${field('Peso (kg)', 'patient.weight', { extra: 'inputmode="decimal"' })}
+      ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${ageField()}${field('Peso (kg)', 'patient.weight', { extra: 'inputmode="decimal"' })}
       ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}
       ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame *', 'date', { type: 'date' })}</div>
       ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
@@ -127,19 +225,7 @@ export async function renderEditor(view, id, settings, profile) {
     1: () => `${mod.techniqueHtml(exam, locked)}<div class="card"><h2>Achados por estrutura</h2><p class="muted small">${esc(mod.findingsHint)}</p>
       <datalist id="units">${MEASURE_UNITS.map((u) => `<option value="${esc(u)}">`).join('')}</datalist>
       ${area('Texto introdutório (opcional)', 'intro', 2)}
-      ${exam.sections.map((s, i) => `<section class="sec" data-sec="${s.id}"><div class="sec-head">
-        <input data-sf="title" aria-label="Nome da estrutura" value="${esc(s.title)}" ${locked ? 'disabled' : ''}>
-        ${locked ? '' : `<div class="sec-tools"><button class="iconbtn" data-act="sec-up" aria-label="Mover estrutura para cima" ${i === 0 ? 'disabled' : ''}>▲</button>
-        <button class="iconbtn" data-act="sec-down" aria-label="Mover estrutura para baixo" ${i === exam.sections.length - 1 ? 'disabled' : ''}>▼</button>
-        <button class="iconbtn danger" data-act="sec-del" aria-label="Excluir estrutura">✕</button></div>`}</div>
-        <div class="field"><label>Status da avaliação</label>${statusSelect(s)}</div>
-        <div class="field"><label>Descrição</label><textarea data-sf="description" id="d-${s.id}" rows="3" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
-        ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>
-        <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button></div>`}</div>
-        ${measureRows(s)}
-        <div class="grid g2"><div class="field"><label>Outras medidas (texto livre, opcional)</label><input data-sf="measures" value="${esc(s.measures)}" ${locked ? 'disabled' : ''}></div>
-        <div class="field"><label>Observações (opcional)</label><input data-sf="notes" value="${esc(s.notes)}" ${locked ? 'disabled' : ''}></div></div></section>`).join('')}
-      ${locked ? '' : `<div class="row"><input id="newsec" placeholder="Nome da nova estrutura" aria-label="Nome da nova estrutura" style="flex:1;min-width:200px"><button class="btn" data-act="sec-add">Adicionar estrutura</button></div>`}</div>`,
+      <div class="findings"><nav class="organs" id="organs" aria-label="Órgãos e estruturas">${organList()}</nav><div id="organ-panel">${organPanel()}</div></div></div>`,
     2: () => `<div class="card"><h2>Imagens</h2><p class="muted small">As imagens ficam salvas somente neste aparelho (perfil de ${esc(profile.name)}).</p><div id="imgroot">${imagesStepHtml(exam, locked, mod.regionLabel)}</div></div>`,
     3: () => `<div class="card"><h2>Conclusão</h2>
       ${area(exam.layout.conclusionTitle || 'Impressão diagnóstica', 'impression', 5)}${area('Diagnósticos diferenciais (se houver)', 'differentials', 3)}
@@ -159,18 +245,20 @@ export async function renderEditor(view, id, settings, profile) {
             : '<span class="muted small">Retificações e adendos exigem perfil de médico(a)-veterinário(a).</span>')
           : `${exam.status === 'draft' ? '<button class="btn" data-act="prelim">Marcar como preliminar</button>' : '<button class="btn" data-act="undraft">Voltar para rascunho</button>'}
              <button class="btn" data-act="final" ${canFinalize ? '' : 'disabled'}>Finalizar laudo</button>
-             <button class="btn danger" data-act="discard">Descartar rascunho</button>
+             <button class="btn danger" data-act="discard">Excluir exame</button>
              ${canFinalize ? '' : '<span class="muted small">Seu perfil (auxiliar) não pode finalizar nem assinar laudos.</span>'}`}</div></div>
         ${reportToHtml(report)}
         <details class="card no-print"><summary>Histórico do laudo (${exam.history.length})</summary><ul class="list">${hist}</ul></details>`;
     },
   };
 
-  function draw() {
+  function draw({ top = false } = {}) {
+    const keepY = window.scrollY;
     const histLast = exam.history[exam.history.length - 1];
     view.innerHTML = `<div class="page-head"><div><h1>${MODALITY[exam.type].label} <span class="badge ${exam.status}">${STATUS_LABEL[exam.status]} · v${exam.version}${exam.revisionKind ? ' · ' + REVISION_LABEL[exam.revisionKind] : ''}</span></h1>
       <div class="muted small">${esc(exam.patient.name || 'Paciente sem nome')} · última ação: ${esc(histLast.action)} (${fmtDateTimeBR(histLast.ts)})</div></div>
-      <a class="btn sm" href="#/laudo/${exam.id}/nova-versao-estrutura">Novo laudo com esta estrutura</a></div>
+      <div class="row"><a class="btn sm" href="#/laudo/${exam.id}/nova-versao-estrutura">Novo laudo com esta estrutura</a>
+      ${canDelete(exam, profile) ? '<button class="btn sm danger" data-act="del-exam">Excluir exame</button>' : ''}</div></div>
       ${related.length ? `<details class="card"><summary>Outros exames deste paciente (${related.length})</summary><ul class="list">${related.map((x) => `<li><span>${MODALITY[x.type].code} · ${fmtDateBR(x.date)} · v${x.version} · ${STATUS_LABEL[x.status]}</span><span class="row"><a class="btn sm" href="#/laudo/${x.id}">Abrir</a><a class="btn sm" href="#/comparar/${x.id}/${exam.id}">Comparar</a></span></li>`).join('')}</ul></details>` : ''}
       ${locked ? '<div class="alert info">Laudo finalizado: o conteúdo está protegido contra alterações. Para corrigir, use "Retificar" ou "Adicionar adendo" na etapa de revisão: uma nova versão é criada e a original permanece preservada.</div>' : ''}
       <div class="savebar"><span id="savestate" class="status ${state}" role="status">${STATUS_TEXT[state]}</span>
@@ -180,9 +268,20 @@ export async function renderEditor(view, id, settings, profile) {
       <div class="row between no-print"><button class="btn" data-act="prev" ${step === 0 ? 'disabled' : ''}>Voltar</button>
       <button class="btn primary" data-act="next" ${step === STEPS.length - 1 ? 'disabled' : ''}>Avançar</button></div>`;
     if (step === 2) bindImages(view.querySelector('#imgroot'), exam, settings, (structural) => { touch(); if (structural) draw(); });
-    window.scrollTo({ top: 0 });
+    // Só volta ao topo ao trocar de etapa; demais alterações mantêm a posição da página.
+    window.scrollTo(0, top ? 0 : keepY);
   }
-  draw();
+  draw({ top: true });
+
+  /** Atualiza só a lista (marcadores de preenchimento) enquanto se digita; o painel não é redesenhado. */
+  function refreshOrgans() { const o = view.querySelector('#organs'); if (o) o.innerHTML = organList(); }
+
+  /** Atualiza só a lista de órgãos e o painel, sem mexer na rolagem. */
+  function refreshFindings() {
+    const o = view.querySelector('#organs'), p = view.querySelector('#organ-panel');
+    if (!o || !p) return draw();
+    o.innerHTML = organList(); p.innerHTML = organPanel();
+  }
 
   const doExport = async (kind) => {
     const report = buildReport(exam, settings);
@@ -289,32 +388,42 @@ export async function renderEditor(view, id, settings, profile) {
 
   view.onclick = async (e) => {
     const stepBtn = e.target.closest('[data-step]');
-    if (stepBtn) { step = Number(stepBtn.dataset.step); return draw(); }
+    if (stepBtn) { step = Number(stepBtn.dataset.step); return draw({ top: true }); }
     const b = e.target.closest('[data-act]');
     if (!b || b.tagName === 'SELECT') return;
     const act = b.dataset.act;
     const secId = b.closest('[data-sec]') && b.closest('[data-sec]').dataset.sec;
-    if (act === 'next') { step = Math.min(STEPS.length - 1, step + 1); draw(); }
-    else if (act === 'prev') { step = Math.max(0, step - 1); draw(); }
-    else if (act === 'sec-up' && moveItem(exam.sections, secId, -1)) { touch(); draw(); }
-    else if (act === 'sec-down' && moveItem(exam.sections, secId, 1)) { touch(); draw(); }
+    if (act === 'next') { step = Math.min(STEPS.length - 1, step + 1); draw({ top: true }); }
+    else if (act === 'prev') { step = Math.max(0, step - 1); draw({ top: true }); }
+    else if (act === 'org-pick') { selSec = b.dataset.id; refreshFindings(); if (window.innerWidth <= 820) view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' }); }
+    else if (act === 'org-next') {
+      const vis = visibleSections(); const i = vis.findIndex((s) => s.id === (current() || {}).id);
+      selSec = vis[(i + 1) % vis.length].id; refreshFindings(); view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' });
+    } else if (act === 'b-opt') {
+      const s = current(); s.build.sel = toggleOption(s.build.def, s.build.sel, b.dataset.g, Number(b.dataset.o)); syncBuild(s); touch(); refreshFindings();
+    } else if (act === 'b-clear') { const s = current(); s.build.sel = {}; s.build.extras = {}; syncBuild(s); touch(); refreshFindings(); }
+    else if (act === 'b-regen') {
+      const s = current();
+      if (await confirmDialog('Gerar o texto de novo a partir das escolhas? O texto que você editou à mão será substituído.', { ok: 'Substituir' })) { syncBuild(s, true); touch(); refreshFindings(); }
+    } else if (act === 'set-status') {
+      const s = current(); s.status = s.status === b.dataset.val ? '' : b.dataset.val; touch(); refreshFindings();
+    }
     else if (act === 'sec-del') {
       const s = exam.sections.find((x) => x.id === secId);
-      const hasText = s && (s.description || s.measures || s.notes || s.status || (s.measuresList || []).length);
-      if (!hasText || await confirmDialog(`Excluir "${s.title}" e o que já foi registrado nela?`, { ok: 'Excluir', danger: true })) {
-        exam.sections = exam.sections.filter((x) => x.id !== secId); touch(); draw();
+      if (!hasData(s) || await confirmDialog(`Excluir "${s.title}" e o que já foi registrado nela?`, { ok: 'Excluir', danger: true })) {
+        exam.sections = exam.sections.filter((x) => x.id !== secId); selSec = null; touch(); refreshFindings();
       }
     } else if (act === 'sec-add') {
       const input = view.querySelector('#newsec');
       const title = input.value.trim();
       if (!title) return toast('Digite o nome da estrutura.', 'error');
-      exam.sections.push(blankSection(title)); touch(); draw();
-    } else if (act === 'm-add') { secOf(b).measuresList.push({ id: uid(), label: '', value: '', unit: '' }); touch(); draw(); }
-    else if (act === 'm-del') { const s = secOf(b); s.measuresList = s.measuresList.filter((m) => m.id !== b.dataset.mid); touch(); draw(); }
+      const ns = blankSection(title); exam.sections.push(ns); selSec = ns.id; touch(); refreshFindings();
+    } else if (act === 'm-add') { secOf(b).measuresList.push({ id: uid(), label: '', value: '', unit: '' }); touch(); refreshFindings(); }
+    else if (act === 'm-del') { const s = secOf(b); s.measuresList = s.measuresList.filter((m) => m.id !== b.dataset.mid); touch(); refreshFindings(); }
     else if (act === 'm-calc') {
       const s = secOf(b);
       const res = await openCalculator(s, calcs);
-      if (res) { s.measuresList.push(res); touch(); draw(); }
+      if (res) { s.measuresList.push(res); touch(); refreshFindings(); }
     } else if (act === 'm-refs') showReferences(secOf(b));
     else if (act === 'phrase') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
@@ -328,7 +437,13 @@ export async function renderEditor(view, id, settings, profile) {
         if (extras === null) return; // cancelou: nada é inserido
         ({ text } = fillPhrase(raw, measures, extras));
       }
-      insertAtCursor(target, text);
+      insertAtCursor(target, text, { newline: ['f-impression', 'f-differentials'].includes(b.dataset.target) });
+    } else if (act === 'pick-list') {
+      const input = view.querySelector('#' + CSS.escape(b.dataset.target));
+      const options = b.dataset.kind === 'species' ? SPECIES : breedsFor(exam.patient.species);
+      if (!options.length) return toast('Não há sugestões de raça para esta espécie: digite a raça no campo.', 'info');
+      const chosen = await pickOption({ title: b.dataset.kind === 'species' ? 'Espécie' : 'Raça', options });
+      if (chosen && input) { input.value = chosen; input.dispatchEvent(new Event('input', { bubbles: true })); }
     } else if (act === 'dictate') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
       const text = await openDictation({ label: b.dataset.label });
@@ -339,8 +454,8 @@ export async function renderEditor(view, id, settings, profile) {
       await setStatus(exam, act === 'prelim' ? 'preliminary' : 'draft', actor); dirty = false; draw();
     } else if (act === 'final') { if (canFinalize) finalizeDialog(); }
     else if (act === 'revise') { if (canRevise) revisionDialog(b.dataset.kind); }
-    else if (act === 'discard' && await confirmDialog('Descartar este rascunho? O conteúdo será apagado e não poderá ser recuperado.', { ok: 'Descartar', danger: true })) {
-      autosave.cancel(); dirty = false; await deleteExam(exam.id); navigate('/');
+    else if (act === 'discard' || act === 'del-exam') {
+      if (await deleteExamFlow(exam, profile)) { autosave.cancel(); dirty = false; failed = false; navigate('/'); }
     }
   };
 
@@ -349,13 +464,18 @@ export async function renderEditor(view, id, settings, profile) {
     if (locked) return;
     if (t.dataset.bind) {
       setPath(exam, t.dataset.bind, t.dataset.num ? Number(t.value) : t.value);
+      if (t.dataset.bind === 'patient.birthDate' || t.dataset.bind === 'date') updateAge();
+      if (t.dataset.bind === 'patient.species') { const bl = view.querySelector('#breeds-list'); if (bl) bl.innerHTML = optionsHtml(breedsFor(t.value)); }
       touch();
+    } else if (t.dataset.bx !== undefined) {
+      const s = current(); s.build.extras[t.dataset.bx] = t.value; syncBuild(s); touch();
     } else if (t.dataset.mf) {
-      const m = secOf(t).measuresList.find((x) => x.id === t.dataset.mid);
-      if (m) { m[t.dataset.mf] = t.value; touch(); }
+      const sec = secOf(t);
+      const m = sec.measuresList.find((x) => x.id === t.dataset.mid);
+      if (m) { m[t.dataset.mf] = t.value; syncBuild(sec); touch(); refreshOrgans(); }
     } else if (t.dataset.sf) {
       const s = secOf(t);
-      if (s) { s[t.dataset.sf] = t.value; touch(); }
+      if (s) { s[t.dataset.sf] = t.value; if (t.dataset.sf === 'description') { const nt = view.querySelector('#bnotice'); if (nt) nt.hidden = !isManual(s); } touch(); refreshOrgans(); }
     } else if (t.id === 'savepat') savePatientFlag = t.checked;
   };
   view.onchange = async (e) => {

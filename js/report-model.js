@@ -16,7 +16,8 @@ export function buildReport(exam, settings = {}) {
   const isRx = exam.type === 'rx';
   const tpl = exam.layout || {};
 
-  const age = filled(p.age) ? p.age : ageFromBirth(p.birthDate, exam.date);
+  // Com data de nascimento, a idade é sempre calculada na data do exame (nunca fica desatualizada).
+  const age = ageFromBirth(p.birthDate, exam.date) || (filled(p.age) ? p.age : '');
   const weight = filled(p.weight) ? `${String(p.weight).replace('.', ',')} kg` : '';
   const patientRows = [
     ['Animal', p.name], ['Espécie', p.species], ['Raça', p.breed], ['Sexo', p.sex],
@@ -61,7 +62,14 @@ export function buildReport(exam, settings = {}) {
     }
   }
 
-  if (filled(exam.impression)) blocks.push({ kind: 'h', text: tpl.conclusionTitle || 'Impressão diagnóstica' }, { kind: 'p', text: exam.impression.trim() });
+  if (filled(exam.impression)) {
+    blocks.push({ kind: 'h', text: tpl.conclusionTitle || 'Impressão diagnóstica' });
+    const lines = exam.impression.split(/\r?\n/).map((l) => l.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
+    // Conclusão em lista de itens (um por linha), como nos laudos da veterinária; desligável em Configurações.
+    if (settings.impressionAsList !== false && lines.length) blocks.push({ kind: 'list', items: lines });
+    else blocks.push({ kind: 'p', text: exam.impression.trim() });
+    if (filled(settings.afterConclusion)) blocks.push({ kind: 'note', text: settings.afterConclusion.trim() });
+  }
   if (filled(exam.differentials)) blocks.push({ kind: 'h', text: 'Diagnósticos diferenciais' }, { kind: 'p', text: exam.differentials.trim() });
   if (filled(exam.notes)) blocks.push({ kind: 'h', text: tpl.notesTitle || 'Observações' }, { kind: 'p', text: exam.notes.trim() });
 

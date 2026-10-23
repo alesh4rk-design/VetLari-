@@ -94,3 +94,40 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .mrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; align-items: center; }
 .mrow .m-label { flex: 2 1 180px; min-width: 0; } .mrow .m-small { flex: 1 1 90px; min-width: 0; }
 .profile-link { margin-top: auto; border-top: 1px solid var(--line); border-radius: 0 !important; }
+
+/* Achados: lista de órgãos + painel do órgão */
+.findings { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; }
+.organs { position: sticky; top: 64px; max-height: calc(100vh - 80px); overflow: auto; }
+.organ-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.organ { width: 100%; display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 6px 12px; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+.organ:hover { border-color: var(--accent); }
+.organ.active { background: var(--panel2); border-color: var(--accent); box-shadow: inset 3px 0 var(--accent); font-weight: 600; }
+.organ .dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+.organ .dot.done { background: var(--ok); border-color: var(--ok); }
+.organ .oname { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.organ .ostat { font-size: .75rem; color: var(--muted); font-weight: 400; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.segbtn { min-height: 42px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+.segbtn:hover { border-color: var(--accent); }
+.segbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.mtable { display: flex; flex-direction: column; gap: 6px; }
+.mhead, .mtable .mrow { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1fr) 40px; gap: 8px; align-items: center; margin: 0; }
+.mhead { font-size: .8rem; color: var(--muted); padding: 0 2px; }
+.mlabel { padding: 8px 4px; font-weight: 600; overflow-wrap: anywhere; }
+.mnote { grid-column: 1 / -1; }
+@media (max-width: 820px) {
+  .findings { grid-template-columns: minmax(0, 1fr); }
+  .organs { position: static; max-height: none; }
+  .organ-list { display: grid; grid-template-columns: 1fr 1fr; }
+  .organ .ostat { display: none; }
+  .mhead { display: none; }
+  .mtable .mrow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .mtable .mrow .mlabel, .mtable .mrow > input[data-mf="label"] { grid-column: 1 / -1; }
+}
+
+/* Montador de descrição */
+.builder { border: 1px dashed var(--accent); border-radius: var(--radius); padding: 12px; margin-bottom: 14px; background: var(--panel2); }
+.builder .bhead { font-weight: 700; margin: 10px 0 4px; color: var(--accent); }
+.builder .bgroup { margin-bottom: 8px; } .builder .blabel { font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+.builder .chip { white-space: normal; text-align: left; min-height: 36px; line-height: 1.25; }
+.builder .bextras { margin-top: 8px; }

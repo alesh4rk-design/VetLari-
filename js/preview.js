@@ -15,6 +15,8 @@ export function reportToHtml(r) {
   const blocks = r.blocks.map((b) => {
     if (b.kind === 'h') return `<h3>${esc(b.text)}</h3>`;
     if (b.kind === 'p') return `<p class="sub">${esc(b.text)}</p>`;
+    if (b.kind === 'list') return `<ul style="margin:4px 0 8px 22px;padding:0">${b.items.map((i) => `<li><strong>${esc(i)}</strong></li>`).join('')}</ul>`;
+    if (b.kind === 'note') return `<p class="sub" style="font-style:italic;color:#555;font-size:.85em">${esc(b.text)}</p>`;
     if (b.kind === 'kv') return `<p class="sub"><strong>${esc(b.label)}:</strong> ${esc(b.text)}</p>`;
     return `<h3>${esc(b.title)}</h3>${b.items.map((it) => `<p class="sub">${it.label ? `<strong>${esc(it.label)}:</strong> ` : ''}${esc(it.text)}</p>`).join('')}`;
   }).join('');

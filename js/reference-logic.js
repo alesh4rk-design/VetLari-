@@ -3,6 +3,7 @@
 // NÃO classifica nada como "normal" ou "anormal": só informa a posição do valor frente ao intervalo
 // publicado na fonte cadastrada, deixando a interpretação para a profissional.
 import { norm, isNumericValue } from './utils.js';
+import { speciesKey } from './animals.js';
 
 export const OUTDATED_YEARS = 5;
 const has = (v) => String(v ?? '').trim().length > 0;
@@ -49,7 +50,7 @@ export function isOutdated(r, now = new Date()) {
 export function matchReferences(refs, { species, structure, label }) {
   if (!has(species)) return [];
   return refs.filter((r) => r.status === 'approved'
-    && norm(r.species) === norm(species)
+    && speciesKey(r.species) === speciesKey(species)
     && (!has(r.structure) || norm(r.structure) === norm(structure))
     && (!has(label) || !has(r.measureLabel) || norm(r.measureLabel) === norm(label)));
 }

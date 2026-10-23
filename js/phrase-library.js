@@ -1,7 +1,8 @@
 // Biblioteca de frases do usuário: CRUD, busca, favoritos, importação/exportação JSON e seletor de inserção.
 // Nenhuma frase é fornecida de fábrica: o conteúdo clínico é criado ou aprovado pela veterinária.
 import { uid, esc, fmtDateBR, download, toast, todayISO } from './utils.js';
-import { dbAll, dbPut, dbDel } from './local-storage.js';
+import { dbAll, dbPut, dbDel, getSetting, setSetting } from './local-storage.js';
+import { USG_IMPRESSIONS } from './catalog-usg.js';
 import { validatePhrase, validatePhraseImport } from './validation.js';
 import { openModal, confirmDialog, alertList } from './ui.js';
 import { fillPhrase, placeholders } from './phrase-logic.js';
@@ -24,10 +25,11 @@ export function filterPhrases(all, { q = '', category = '', modality = '', favOn
 }
 
 /** Insere texto na posição do cursor sem apagar o conteúdo existente. */
-export function insertAtCursor(el, text) {
+export function insertAtCursor(el, text, { newline = false } = {}) {
   const start = el.selectionStart ?? el.value.length, end = el.selectionEnd ?? start;
   const before = el.value.slice(0, start), after = el.value.slice(end);
-  const sep = before && !/[\s]$/.test(before) ? ' ' : '';
+  // Em listas (ex.: conclusão), cada frase entra em uma nova linha.
+  const sep = newline ? (before && !before.endsWith('\n') ? '\n' : '') : (before && !/[\s]$/.test(before) ? ' ' : '');
   el.value = before + sep + text + after;
   const pos = (before + sep + text).length;
   el.setSelectionRange(pos, pos);
@@ -152,4 +154,22 @@ export async function renderPhraseLibrary(view) {
       toast(`${res.phrases.length} frase(s) importada(s)${res.skipped ? `, ${res.skipped} ignorada(s) por estarem incompletas` : ''}.`, 'success');
     } catch (err) { toast(err instanceof SyntaxError ? 'Arquivo JSON inválido.' : err.message, 'error'); }
   });
+}
+
+/**
+ * Carrega as impressões diagnósticas dos laudos da veterinária, por versão: cada versão nova do catálogo
+ * acrescenta só as frases novas, sem recriar as que ela já excluiu nem duplicar as existentes.
+ */
+export async function seedImpressions() {
+  const legacy = (await getSetting('seeded-usg-impressions-v1', false)) ? 1 : 0;
+  const applied = await getSetting('impressions-seed-version', legacy);
+  const latest = Math.max(...USG_IMPRESSIONS.map((i) => i[2] || 1));
+  if (applied >= latest) return;
+  const have = new Set((await dbAll('phrases')).map((x) => x.text));
+  for (const [text, structure, ver = 1] of USG_IMPRESSIONS) {
+    if (ver <= applied || have.has(text)) continue;
+    const title = text.split(/\.\s/)[0].replace(/\.$/, '').slice(0, 70);
+    await dbPut('phrases', { id: uid(), title, text, category: 'Impressão diagnóstica', modality: 'usg', structure, keywords: '', favorite: false, updatedAt: todayISO(), source: 'laudos da veterinária' });
+  }
+  await setSetting('impressions-seed-version', latest);
 }

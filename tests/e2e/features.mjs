@@ -30,6 +30,7 @@ await page.waitForSelector('text=Painel de laudos');
 await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', 'Paciente Voz');
 await page.click('[data-step="1"]');
+await page.click('.organ:has-text("Fígado")');
 
 // Ditado
 const desc = '[data-sec] textarea >> nth=0';
