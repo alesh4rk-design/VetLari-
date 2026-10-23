@@ -164,6 +164,68 @@ export const USG_BUILDERS = {
   'Outros achados': { blocks: [{ groups: [g('Achado', 'sentences', [o('Presença de descontinuidade da parede abdominal em região umbilical, medindo {Medida da descontinuidade}, tendo como conteúdo em subcutâneo omento/gordura. Houve redução do conteúdo no momento do exame', 'descontinuidade umbilical (hérnia)')])] }] },
 };
 
+/**
+ * Opções acrescentadas depois do primeiro catálogo (laudos de outubro/2026). Sempre entram no FIM do grupo,
+ * para não mudar a posição das opções antigas (exames salvos guardam a escolha pela posição).
+ */
+const addOptions = (organ, group, options, blockIndex) => {
+  const blocks = USG_BUILDERS[organ].blocks.filter((_, i) => blockIndex === undefined || i === blockIndex);
+  const g = blocks.flatMap((b) => b.groups).find((x) => x.label === group);
+  if (!g) throw new Error(`Catálogo: grupo "${group}" não existe em ${organ}`);
+  g.options.push(...options);
+};
+const addGroup = (organ, blockIndex, group) => USG_BUILDERS[organ].blocks[blockIndex].groups.push(group);
+const DUODENO_JEJUNO = '({?Duodeno – espessura da parede} – duodeno; {?Jejuno – espessura da parede} – jejuno)';
+const ESTRAT = 'Parede normoecogênica, com preservação da estratificação em camadas';
+
+addOptions('Vesícula urinária', 'Parede', [o('Parede normoecogênica, homogênea, regular e normoespessada ({?Espessura da parede})', 'normoespessada')]);
+addOptions('Rins', 'Regularidade do contorno', [CS('e levemente irregulares', 'contornos levemente irregulares', 'levemente irregulares')]);
+addOptions('Rins', 'Corticomedular', [o('relação corticomedular preservada, definição corticomedular discretamente diminuída', 'definição discretamente diminuída')]);
+addOptions('Rins', 'Ecogenicidade', [
+  o('ecogenicidade mantida, exceto por halo hiperecogênico em medular interna (sinal de medular)', 'mantida, exceto halo hiperecogênico'),
+  o('ecogenicidade mantida predominantemente, exceto pelo aumento da ecogenicidade da junção corticomedular, halo hiperecogênico em medular interna (sinal de medular)', 'mantida, exceto junção e halo hiperecogênico')]);
+addOptions('Fígado', 'Parênquima', [o('parênquima discretamente a moderadamente hiperecogênico', 'discreta a moderadamente hiperecogênico')]);
+addOptions('Fígado', 'Ecotextura', [o('ecotextura levemente grosseira')]);
+addOptions('Fígado', 'Vasos', [o('Vasos com calibre discretamente a moderadamente aumentado e trajetos preservados', 'calibre discreta a moderadamente aumentado')]);
+addOptions('Vesícula biliar', 'Material ecogênico', [
+  o('apresentando moderada quantidade de material ecogênico, gravidade dependente, ocupando cerca de {Ocupação do lúmen} do lúmen', 'moderada quantidade, gravidade dependente'),
+  o('apresentando moderada quantidade de material ecogênico, dependente de gravidade, ocupando cerca de {Ocupação do lúmen} do lúmen vesical', 'moderada quantidade, dependente de gravidade'),
+  o('apresentando cerca de {Ocupação do lúmen} de material ecogênico e hiperecogênico gravidade dependente (depositado em fundo)', 'ecogênico e hiperecogênico, depositado em fundo'),
+  o('apresentando mais de 75% de material ecogênico parcialmente gravidade dependente (depositado em fundo) e parcialmente não gravidade dependente (em suspensão)', 'mais de 75%, depositado e em suspensão'),
+  o('apresentando até 25% de material ecogênico, gravidade dependente (depositada em fundo)', 'até 25%, depositada em fundo')]);
+addOptions('Vesícula biliar', 'Parede', [o('Parede ecogênica, regular e normoespessada', 'regular e normoespessada'),
+  o('Parede ecogênica, regular, sem alterações predominantemente, exceto por parede parcialmente discretamente irregular devido à presença de discretos pequenos cistos que se projetam para o lúmen', 'parcialmente irregular, pequenos cistos')]);
+addGroup('Vesícula biliar', 0, g('Ducto cístico', 'sentence', [o('Ducto cístico discretamente a moderadamente dilatado, medindo {Ducto cístico} e com discreta a moderada quantidade de lama biliar intraluminal', 'discreta a moderadamente dilatado, com lama')]));
+addOptions('Baço', 'Dimensões', [o('com dimensões discretamente aumentadas', 'discretamente aumentadas'),
+  o('com dimensões discretamente aumentadas, medindo {Espessura em corpo esplênico} de espessura em região de corpo esplênico', 'discretamente aumentadas, com espessura')]);
+addOptions('Estômago', 'Conteúdo', [o('vazio'), o('com discreta a moderada quantidade de conteúdo líquido e gasoso', 'líquido e gasoso (discreta a moderada)')]);
+addOptions('Estômago', 'Parede', [o(`${ESTRAT}, contorno regular e espessura habitual limítrofe ({?Espessura da parede})`, 'espessura habitual limítrofe')]);
+addOptions('Alças intestinais', 'Conteúdo', [o('com moderada quantidade de conteúdo mucoso e gasoso; segmentos jejunais com discreto conteúdo líquido', 'mucoso e gasoso, jejuno com conteúdo líquido')], 0);
+addOptions('Alças intestinais', 'Parede', [
+  o(`${ESTRAT} predominantemente, exceto por segmentos jejunais com evidência da submucosa, contorno regular e espessura preservada ${DUODENO_JEJUNO}`, 'evidência da submucosa (jejuno)'),
+  o(`${ESTRAT}, contorno regular predominantemente, exceto por segmentos jejunais com contorno discretamente irregular e espessura preservada ${DUODENO_JEJUNO}`, 'contorno discretamente irregular (jejuno)'),
+  o(`${ESTRAT} predominantemente, exceto por segmentos jejunais com discreto espessamento da muscular, contorno irregular e espessura preservada predominantemente, exceto por segmentos jejunais com espessura discretamente aumentada ${DUODENO_JEJUNO}`, 'espessamento da muscular, contorno irregular')], 0);
+addOptions('Alças intestinais', 'Conteúdo', [o('vazio'), o('com discreta quantidade de conteúdo líquido', 'líquido (discreta)')], 1);
+addOptions('Pâncreas', 'Dimensões', [o('com dimensões discretamente aumentadas, medindo {Lobo pancreático direito} (lobo pancreático direito)', 'discretamente aumentadas, com medida do lobo direito')]);
+addOptions('Pâncreas', 'Ecogenicidade', [o('ecogenicidade aumentada')]);
+addOptions('Pâncreas', 'Ecotextura', [o('ecotextura grosseira')]);
+addOptions('Adrenais', 'Dimensões', [o('com dimensões preservadas em polo cranial e discretamente aumentadas em polo caudal ({?Altura do pólo cranial:valor} x {?Altura do pólo caudal:valor} x {?Comprimento} – altura pólo cranial x altura pólo caudal x comprimento)', 'preservadas em polo cranial, aumentadas em polo caudal')]);
+addOptions('Adrenais', 'Formato', [o('formato abaulado em polo caudal')]);
+addOptions('Próstata', 'Tamanho', [o('com dimensões aumentadas ({?Comprimento:valor} x {?Altura:valor} x {?Largura} – comprimento x altura x largura)', 'dimensões aumentadas')]);
+addOptions('Próstata', 'Ecotextura e ecogenicidade', [o('ecotextura discretamente grosseira e ecogenicidade aumentada', 'ecotextura grosseira e ecogenicidade aumentada')]);
+addGroup('Próstata', 0, g('Achados adicionais', 'sentence', [o('Presença de cisto simples medindo {Medida do cisto}', 'cisto simples')]));
+addOptions('Testículos', 'Aspecto', [o('localizados em cavidade abdominal bilateralmente, apresentando contorno regular, ecotextura homogênea e ecogenicidade diminuída', 'abdominais bilateralmente, ecogenicidade diminuída')], 0);
+addOptions('Testículos', 'Localização', [o('localizado em cavidade abdominal', 'em cavidade abdominal'),
+  o('localizado em cavidade abdominal, cranial e lateral esquerda a vesícula urinária', 'abdominal, lateral esquerda à vesícula urinária'),
+  o('localizado em região média lateral esquerda, entre rim esquerdo e bexiga', 'média lateral esquerda, entre rim e bexiga'),
+  o('localizado em região média lateral direita, entre rim direito e bexiga', 'média lateral direita, entre rim e bexiga')]);
+addOptions('Testículos', 'Medida', [o('medindo {Medidas do testículo}', 'medindo')]);
+addOptions('Testículos', 'Aspecto', [o('apresentando contorno regular, ecotextura homogênea e ecogenicidade diminuída', 'ecogenicidade diminuída')], 1);
+addOptions('Útero', 'Descrição', [o('Com diâmetro dentro da normalidade ({?Corpo uterino} – corpo; {?Corno uterino direito} – corno direito), contorno regular, ecotextura e ecogenicidade habituais', 'diâmetro dentro da normalidade')]);
+addOptions('Ovários', 'Descrição', [o('tópicos, simétricos, formato arredondado, medindo aproximadamente {Medida dos ovários}', 'tópicos, simétricos, arredondados, uma medida')]);
+addOptions('Ovários', 'Contorno e ecogenicidade', [o('contorno regular, ecogenicidade e ecotextura habituais', 'ecogenicidade e ecotextura habituais')]);
+addOptions('Outros achados', 'Achado', [o('Presença de descontinuidade da parede abdominal em região inguinal direita, medindo {Medida da descontinuidade}, tendo como conteúdo em subcutâneo alças intestinais de jejuno, omento/gordura e discreto conteúdo líquido associado; houve discreta redução do conteúdo no momento do exame', 'descontinuidade inguinal direita (hérnia)')]);
+
 /** Impressões diagnósticas usadas nos laudos da veterinária (biblioteca de frases, para inserir com um toque). */
 const REC = 'Sugere-se correlacionar com exames laboratoriais complementares, caso o clínico julgue necessário.';
 export const USG_IMPRESSIONS = [
@@ -187,6 +249,23 @@ export const USG_IMPRESSIONS = [
   ['Imagens esplênicas sugestivas de mielolipomas.', 'Baço', 2],
   ['Moderada esplenomegalia com formação nodular a esclarecer, diagnóstico diferencial processo neoplásico. Diagnóstico definitivo sujeito a análise cito/histopatológica.', 'Baço', 2],
   ['Exame sem alterações relevantes dignas de nota.', '', 2],
+  // Versão 3 (laudos de outubro/2026)
+  ['Discreta infiltração gordurosa hepática.', 'Fígado', 3], ['Discreta a moderada hepatomegalia.', 'Fígado', 3],
+  ['Hepatopatia reacional/aguda leve e discreta a moderada hepatomegalia.', 'Fígado', 3],
+  ['Hepatopatia. Discreta a moderada esteatose hepática/hepatopatia crônica são diagnósticos diferenciais.', 'Fígado', 3],
+  ['Discreto a moderado processo congestivo hepático (podendo estar relacionado com alteração cardíaca ou torácica).', 'Fígado', 3],
+  ['Hepatopatia crônica leve/esteatose hepática.', 'Fígado', 3], ['Discreta esplenomegalia.', 'Baço', 3],
+  ['Lama biliar grau II associada a processo mucinoso incipiente. A lama biliar está relacionada a alterações na composição da bile, processo inflamatório, endocrinopatias e ou desmotilidade da vesícula biliar.', 'Vesícula biliar', 3],
+  ['Lama biliar densa grau {Grau}.', 'Vesícula biliar', 3],
+  ['Colangiectasia com discreta a moderada quantidade de lama biliar intraluminal, podendo estar relacionada a colangite.', 'Vesícula biliar', 3],
+  ['Moderada quantidade de conteúdo fecal, de aspecto ultrassonográfico habitual. Sugere-se radiografia abdominal, como exame complementar, a critério clínico.', 'Alças intestinais', 3],
+  ['Sutil processo inflamatório em segmentos jejunais.', 'Alças intestinais', 3], ['Gastroenterocolite leve a moderada.', 'Alças intestinais', 3],
+  ['Enteropatia crônica.', 'Alças intestinais', 3],
+  ['Pancreatopatia crônica/infiltrado fibroadiposo pancreático.', 'Pâncreas', 3], ['Adrenomegalia esquerda.', 'Adrenais', 3],
+  [`Alterações renais sugestivas de nefropatia bilateral. ${REC}`, 'Rins', 3],
+  ['Testículo esquerdo ectópico.', 'Testículos', 3], ['Testículos ectópicos bilateralmente.', 'Testículos', 3],
+  ['Hiperplasia prostática benigna cística.', 'Próstata', 3],
+  ['Hérnia inguinal direita com discreto processo inflamatório associado.', 'Outros achados', 3],
 ];
 
 export const AFTER_CONCLUSION_NOTE = 'A interpretação do resultado deste exame e a conclusão diagnóstica são atos médicos, estes dependem da análise conjunta dos dados clínicos e demais exames do paciente - Consulte o médico veterinário responsável';

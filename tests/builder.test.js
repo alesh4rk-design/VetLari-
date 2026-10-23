@@ -174,7 +174,7 @@ test('catálogo: nenhuma opção cola sem opção anterior e o sinal & ida e vol
 test('impressões: versões e novas frases dos laudos', () => {
   const texts = USG_IMPRESSIONS.map((i) => i[0]);
   assert.ok(texts.includes('Testículo direito ectópico.') && texts.includes('Exame sem alterações relevantes dignas de nota.'));
-  assert.ok(USG_IMPRESSIONS.some((i) => i[2] === 2) && USG_IMPRESSIONS.every((i) => (i[2] || 1) <= 2));
+  assert.ok(USG_IMPRESSIONS.some((i) => i[2] === 2) && USG_IMPRESSIONS.every((i) => (i[2] || 1) <= 3));
   assert.equal(new Set(texts).size, texts.length);
 });
 
@@ -226,4 +226,21 @@ test('contorno: órgãos com "contorno regular" também têm "contorno irregular
 test('rins: pelve com normodilatada e graus de dilatação', () => {
   const g = expandBlocks(USG_BUILDERS.Rins).find((b) => b.label === 'Rim direito').groups.find((x) => x.label === 'Pelve');
   assert.deepEqual(g.options.map((o) => o.text), ['Pelve normodilatada', 'Pelve discretamente dilatada', 'Pelve moderadamente dilatada', 'Pelve acentuadamente dilatada']);
+});
+
+test('laudos de outubro/2026: novas opções geram o texto da veterinária', () => {
+  const pickBy = (def, label, group, optLabel, sel = {}) => {
+    const g = expandBlocks(def).find((b) => b.label === label).groups.find((x) => x.label === group);
+    return toggleOption(def, sel, g.key, g.options.findIndex((o) => (o.label || o.text) === optLabel));
+  };
+  const vb = USG_BUILDERS['Vesícula biliar'];
+  let sel = pickBy(vb, '', 'Ducto cístico', 'discreta a moderadamente dilatado, com lama');
+  assert.equal(composeDescription(vb, sel, [], { 'Ducto cístico': '0,68 a 0,78 cm' }), 'Ducto cístico discretamente a moderadamente dilatado, medindo 0,68 a 0,78 cm e com discreta a moderada quantidade de lama biliar intraluminal.');
+  const bc = USG_BUILDERS.Baço;
+  sel = pickBy(bc, '', 'Dimensões', 'discretamente aumentadas, com espessura');
+  assert.ok(composeDescription(bc, sel, [], { 'Espessura em corpo esplênico': '1,06 cm' }).includes('discretamente aumentadas, medindo 1,06 cm de espessura em região de corpo esplênico'.replace('discretamente aumentadas, ', 'dimensões discretamente aumentadas, ')));
+  const rins = USG_BUILDERS.Rins;
+  sel = pickBy(rins, 'Rim esquerdo', 'Regularidade do contorno', 'levemente irregulares', pickBy(rins, 'Rim esquerdo', 'Definição do contorno', 'definidos'));
+  assert.ok(composeDescription(rins, sel, [], {}).includes('contornos definidos e levemente irregulares'));
+  assert.ok(USG_IMPRESSIONS.some((i) => i[0] === 'Hiperplasia prostática benigna cística.' && i[2] === 3));
 });
