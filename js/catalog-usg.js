@@ -23,7 +23,7 @@ export const USG_BUILDERS = {
   Rins: { blocks: [
     { groups: [g('Posição', 'sentence', [N(o('tópicos e simétricos'))])] },
     { labels: ['Rim esquerdo', 'Rim direito'], groups: [
-      g('Dimensões', 'one', [N(o('com dimensões preservadas ({?Comprimento})', 'dimensões preservadas'))]),
+      g('Dimensões', 'one', [N(o('com dimensões preservadas ({?Comprimento})', 'dimensões preservadas')), o('com dimensões diminuídas ({?Comprimento})', 'dimensões diminuídas'), o('com dimensões aumentadas ({?Comprimento})', 'dimensões aumentadas')]),
       g('Definição do contorno', 'one', [N(o('contornos definidos', 'definidos')), o('contornos indefinidos', 'indefinidos')]),
       g('Regularidade do contorno', 'one', [N(CS('e regulares', 'contornos regulares', 'regulares')), CS('e irregulares', 'contornos irregulares', 'irregulares')]),
       g('Corticomedular', 'one', [N(o('relação e definição corticomedular preservada', 'relação e definição preservadas')), o('relação corticomedular preservada, definição corticomedular diminuída', 'definição diminuída')]),

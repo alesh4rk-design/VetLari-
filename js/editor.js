@@ -190,7 +190,8 @@ export async function renderEditor(view, id, settings, profile) {
       <div class="sec-head"><input data-sf="title" aria-label="Nome da estrutura" value="${esc(s.title)}" ${locked ? 'disabled' : ''} style="font-size:1.15rem"></div>
       <div class="field"><label>Status da avaliação</label>${statusButtons(s)}</div>
       ${builderBlock(s)}
-      <div class="field"><label>Descrição <span class="muted small">(use **negrito** e __itálico__ se quiser destacar)</span></label><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
+      <div class="field"><label>Descrição <span class="muted small">(use **negrito** e __itálico__ se quiser destacar)</span></label>
+      <div class="descprefix" id="dp-${s.id}"><strong>${esc(s.title)}:</strong> <span class="muted small">o nome da estrutura entra antes da frase no laudo</span></div><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
       ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>
       <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button>
       <button type="button" class="btn sm ghost" data-act="save-phrase">Guardar esta frase</button></div>`}</div>
@@ -505,7 +506,7 @@ export async function renderEditor(view, id, settings, profile) {
       if (m) { m[t.dataset.mf] = t.value; syncBuild(sec); touch(); refreshOrgans(); }
     } else if (t.dataset.sf) {
       const s = secOf(t);
-      if (s) { s[t.dataset.sf] = t.value; if (t.dataset.sf === 'description') { const nt = view.querySelector('#bnotice'); if (nt) nt.hidden = !isManual(s); } touch(); refreshOrgans(); }
+      if (s) { s[t.dataset.sf] = t.value; if (t.dataset.sf === 'title') { const dp = view.querySelector('#dp-' + s.id + ' strong'); if (dp) dp.textContent = (t.value.trim() || 'Estrutura') + ':'; } if (t.dataset.sf === 'description') { const nt = view.querySelector('#bnotice'); if (nt) nt.hidden = !isManual(s); } touch(); refreshOrgans(); }
     } else if (t.id === 'savepat') savePatientFlag = t.checked;
   };
   view.onchange = async (e) => {

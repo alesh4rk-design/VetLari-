@@ -142,3 +142,4 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .helpbar { margin: -6px 0 12px; }
 .help-link { background: none; border: 0; padding: 4px 0; color: var(--accent); font: inherit; font-size: .9rem; text-decoration: underline; cursor: pointer; }
 .helplist { padding-left: 20px; line-height: 1.5; } .helplist li { margin-bottom: 6px; }
+.descprefix { margin: 2px 0 6px; font-size: 1rem; }
