@@ -33,7 +33,7 @@ const usg = (id, name, sections, extra = {}) => ({
   id, builtin: true, modality: 'usg', name: `${name} (modelo inicial)`,
   docTitle: 'Relatório Ultrassonográfico', intro: '',
   conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações e recomendações',
-  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 11,
+  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 12,
 });
 
 /**
@@ -44,7 +44,7 @@ export function defaultTemplates() {
   return [
     usg('tpl-usg-abdominal', 'Ultrassonografia abdominal completa', [
       { title: 'Vesícula urinária', measures: [M('Espessura da parede')] },
-      { title: 'Rins', measures: [M('Rim esquerdo – comprimento'), M('Rim direito – comprimento')] },
+      { title: 'Rins', measures: [M('Rim esquerdo – comprimento'), M('Rim direito – comprimento'), M('Rim esquerdo – pelve'), M('Rim direito – pelve')] },
       'Fígado',
       { title: 'Vesícula biliar', measures: [M('Volume', 'ml')] },
       'Baço',
@@ -71,7 +71,7 @@ export function defaultTemplates() {
       id: 'tpl-rx-geral', builtin: true, modality: 'rx', name: 'Radiografia (modelo inicial editável)',
       docTitle: 'Relatório Radiográfico', intro: '',
       conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações complementares',
-      signature: true, imagesPerRow: 3, version: 11,
+      signature: true, imagesPerRow: 3, version: 12,
       sections: ['Estruturas ósseas', 'Articulações', 'Tecidos moles', 'Outras estruturas avaliadas'].map(sec),
     },
   ];
