@@ -178,11 +178,11 @@ export async function seedImpressions() {
  * "Guardar esta frase": a veterinária decide guardar o texto de um laudo na biblioteca (aparece em "Inserir frase"
  * para a mesma estrutura nos próximos laudos). Nada é guardado sozinho. Valores de medidas viram campos {Medida}.
  */
-export async function saveToLibraryDialog({ text, structure, modality, measures }) {
+export async function saveToLibraryDialog({ text, structure, modality, measures, where = '', category = 'Minhas frases' }) {
   const g = genericizeText(text, measures);
   const defTitle = (g.text.replace(/\*\*|__/g, '').split(/[.:]\s/)[0] || structure).slice(0, 60);
   const m = openModal(`<h2>Guardar esta frase</h2>
-    <p class="muted small">Ela ficará na Biblioteca de frases e aparecerá em "Inserir frase" nos próximos laudos de <strong>${esc(structure)}</strong>. Evite nomes de pacientes ou tutores.</p>
+    <p class="muted small">Ela ficará na Biblioteca de frases e aparecerá em "Inserir frase" nos próximos laudos de <strong>${esc(where || structure)}</strong>. Evite nomes de pacientes ou tutores.</p>
     <form id="sf" novalidate>
     <div class="field"><label for="sv-title">Nome curto *</label><input id="sv-title" value="${esc(defTitle)}" maxlength="120" autofocus></div>
     <div class="field"><label for="sv-text">Texto *</label><textarea id="sv-text" rows="6">${esc(g.text)}</textarea>
@@ -192,7 +192,7 @@ export async function saveToLibraryDialog({ text, structure, modality, measures 
     m.el.querySelector('[data-x=cancel]').onclick = () => m.close(null);
     m.el.querySelector('#sf').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const phrase = { id: uid(), title: m.el.querySelector('#sv-title').value.trim(), category: 'Minhas frases', modality, structure, text: m.el.querySelector('#sv-text').value.trim(),
+      const phrase = { id: uid(), title: m.el.querySelector('#sv-title').value.trim(), category, modality, structure, text: m.el.querySelector('#sv-text').value.trim(),
         keywords: '', favorite: false, updatedAt: todayISO(), source: 'minha' };
       const errs = validatePhrase(phrase);
       if (errs.length) { m.el.querySelector('#sv-err').innerHTML = alertList('Corrija:', errs, 'error'); return; }
