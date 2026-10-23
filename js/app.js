@@ -11,6 +11,12 @@ import { renderExamBrowser, getExam } from './exams.js';
 import { buildReport } from './report-model.js';
 import { reportToHtml } from './preview.js';
 import { esc, toast } from './utils.js';
+import { loadRegistry, getActive, chosenThisSession } from './profiles.js';
+import { renderProfilePicker } from './profile-ui.js';
+import { useDatabase } from './local-storage.js';
+import { saveSettings } from './templates.js';
+import { compareMeasures, orderByDate } from './compare.js';
+import { fmtDateBR } from './utils.js';
 
 const NAV = [
   ['/', '🏠', 'Início'], ['/novo', '➕', 'Novo laudo'], ['/laudos', '📄', 'Laudos'], ['/pacientes', '🐾', 'Pacientes'],
@@ -18,6 +24,7 @@ const NAV = [
 ];
 
 let settings;
+let profile;
 const view = () => document.getElementById('view');
 
 function drawNav(path) {
@@ -25,7 +32,7 @@ function drawNav(path) {
     NAV.map(([href, ico, label]) => {
       const active = href === '/' ? path === '/' : path.startsWith(href) || (href === '/laudos' && path.startsWith('/laudo/'));
       return `<a href="#${href}" ${active ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${ico}</span><span>${label}</span></a>`;
-    }).join('') + '<div class="spacer"></div>';
+    }).join('') + `<div class="spacer"></div><a href="#/perfis" class="profile-link" title="Trocar perfil"><span class="ico" aria-hidden="true">👤</span><span>${esc(profile ? profile.name : 'Perfil')}</span></a>`;
 }
 
 /** Executa uma tela capturando erros para nunca deixar a página em branco. */
@@ -45,8 +52,14 @@ const safe = (fn) => async (ctx) => {
 async function compare(v, a, b) {
   const [x, y] = await Promise.all([getExam(a), getExam(b)]);
   if (!x || !y) { v.innerHTML = '<div class="card empty">Laudos não encontrados.</div>'; return; }
-  v.innerHTML = `<div class="page-head"><h1>Comparar laudos</h1><p class="muted">Cada coluna é um laudo independente; nada é misturado.</p></div>
-    <div class="cmp">${[x, y].map((e) => `<div><div class="muted small">v${e.version} · ${e.status === 'final' ? 'Finalizado' : 'Rascunho'}</div>${reportToHtml(buildReport(e, settings))}</div>`).join('')}</div>`;
+  const [early, late] = orderByDate(x, y);
+  const { rows, notes } = compareMeasures(early, late);
+  const cell = (m) => (m ? `${esc(m.value)} ${esc(m.unit)}` : '—');
+  v.innerHTML = `<div class="page-head"><div><h1>Comparar laudos</h1><p class="muted">Comparação de medidas e textos. O sistema não conclui crescimento, redução ou evolução: a interpretação é da veterinária.</p></div></div>
+    <div class="card"><h2>Medidas</h2>${notes.length ? `<div class="alert warn"><ul>${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>` : ''}
+    ${rows.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th align="left">Estrutura / medida</th><th align="left">${fmtDateBR(early.date)} (v${early.version})</th><th align="left">${fmtDateBR(late.date)} (v${late.version})</th><th align="left">Diferença numérica</th></tr></thead><tbody>${rows.map((r) => `<tr style="border-top:1px solid var(--line)"><td>${esc(r.structure)}${r.label ? ' — ' + esc(r.label) : ''}</td><td>${cell(r.earlier)}</td><td>${cell(r.later)}</td>
+      <td>${r.comparable ? `${r.delta > 0 ? '+' : ''}${String(r.delta).replace('.', ',')} ${esc(r.earlier.unit)}` : `<span class="muted small">Não comparável: ${esc(r.reason)}</span>`}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma medida estruturada registrada nos exames.</p>'}</div>
+    <div class="cmp">${[early, late].map((e) => `<div><div class="muted small">v${e.version} · ${esc(e.status)}</div>${reportToHtml(buildReport(e, settings))}</div>`).join('')}</div>`;
 }
 
 async function viewExams(v, { query }) {
@@ -56,12 +69,23 @@ async function viewExams(v, { query }) {
 }
 
 async function boot() {
+  const reg = loadRegistry();
+  const needPicker = location.hash === '#/perfis' || (reg.profiles.length > 1 && !chosenThisSession());
+  if (needPicker) {
+    document.getElementById('nav').innerHTML = '<div class="brand">Vet<span>Laudo</span></div>';
+    renderProfilePicker(document.getElementById('view'), { onChosen: () => { location.hash = '#/'; location.reload(); } });
+    return;
+  }
+  profile = getActive();
+  useDatabase(profile.db);
   settings = await loadSettings();
+  if (!settings.professional.name) { settings.professional.name = profile.name; await saveSettings(settings); }
   applyTheme(settings.theme);
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   document.addEventListener('route', (e) => drawNav(e.detail.path));
   route('/', safe((v) => renderDashboard(v)));
   route('/novo', safe((v, { query }) => renderNewExam(v, query)));
-  route('/laudo/:id', safe((v, { params }) => renderEditor(v, params.id, settings)));
+  route('/laudo/:id', safe((v, { params }) => renderEditor(v, params.id, settings, profile)));
   route('/laudo/:id/nova-versao-estrutura', safe((v, { params }) => startFromPrevious(v, params.id)));
   route('/laudos', safe(viewExams));
   route('/comparar/:a/:b', safe((v, { params }) => compare(v, params.a, params.b)));
@@ -71,6 +95,7 @@ async function boot() {
   route('/modelos', safe((v) => renderTemplateList(v)));
   route('/modelo/:id', safe((v, { params }) => renderTemplateForm(v, params.id)));
   route('/config', safe((v) => renderSettings(v, settings, (s) => { settings = s; })));
+  route('/perfis', () => { location.reload(); });
   await start();
 }
 

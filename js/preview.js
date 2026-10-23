@@ -20,7 +20,7 @@ export function reportToHtml(r) {
   }).join('');
   const imgs = r.images.items.length ? `<h3>Imagens</h3><div class="pimgs" style="grid-template-columns:repeat(${r.images.perRow},1fr)">${
     r.images.items.map((im) => `<figure><img src="${esc(im.dataUrl)}" alt="${esc(im.caption || 'Imagem do exame')}" style="width:${Math.round(im.scale * 100)}%">${im.caption ? `<figcaption>${esc(im.caption)}</figcaption>` : ''}</figure>`).join('')}</div>` : '';
-  const sig = r.signature ? `<div class="sig"><div class="line">${esc(r.signature.name || 'Assinatura do médico-veterinário')}${r.signature.crmv ? `<br>${esc(r.signature.crmv)}` : ''}</div></div>` : '';
+  const sig = r.signature ? `<div class="sig"><div class="line">${esc(r.signature.name || 'Assinatura do médico-veterinário')}${r.signature.crmv ? `<br>${esc(r.signature.crmv)}` : ''}${r.signature.stamp ? `<br><small>${esc(r.signature.stamp)}</small>` : ''}</div></div>` : '';
   const foot = r.footerText ? `<div class="pfoot">${esc(r.footerText)}</div>` : '';
-  return `<article class="paper ${r.font}" aria-label="Prévia do laudo">${head}<h1>${esc(r.title)}</h1>${pt}${blocks}${imgs}${sig}${foot}</article>`;
+  return `<article class="paper ${r.font}" aria-label="Prévia do laudo">${head}<h1>${esc(r.title)}</h1>${r.statusNote ? `<p style="text-align:center;font-weight:700;color:#b43c00">${esc(r.statusNote)}</p>` : ''}${pt}${blocks}${imgs}${sig}${foot}</article>`;
 }

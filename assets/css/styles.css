@@ -42,7 +42,7 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .field { margin-bottom: 12px; } .field .hint { font-size: .8rem; color: var(--muted); margin-top: 4px; }
 .stat { text-align: center; } .stat .n { font-size: 2rem; font-weight: 700; color: var(--accent); }
 .badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: .75rem; font-weight: 600; border: 1px solid var(--line); }
-.badge.draft { color: var(--warn); border-color: var(--warn); } .badge.final { color: var(--ok); border-color: var(--ok); } .badge.mod { color: var(--accent2); border-color: var(--accent2); }
+.badge.draft, .badge.preliminary { color: var(--warn); border-color: var(--warn); } .badge.final { color: var(--ok); border-color: var(--ok); } .badge.mod { color: var(--accent2); border-color: var(--accent2); }
 .list { list-style: none; margin: 0; padding: 0; } .list li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .list li:last-child { border-bottom: 0; }
 .empty { text-align: center; padding: 28px 12px; color: var(--muted); }
@@ -90,3 +90,7 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .paper .sig { margin: 48px auto 0; text-align: center; width: 60%; } .paper .sig .line { border-top: 1px solid #000; padding-top: 4px; }
 .paper .pfoot { border-top: 1px solid #999; margin-top: 18px; padding-top: 6px; font-size: .75em; color: #555; }
 .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+
+.mrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; align-items: center; }
+.mrow .m-label { flex: 2 1 180px; min-width: 0; } .mrow .m-small { flex: 1 1 90px; min-width: 0; }
+.profile-link { margin-top: auto; border-top: 1px solid var(--line); border-radius: 0 !important; }

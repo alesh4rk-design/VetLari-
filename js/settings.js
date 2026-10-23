@@ -1,9 +1,8 @@
 // Configurações: dados profissionais, cabeçalho/rodapé, tipografia, imagens, tema, backup e dados locais.
-import { esc, toast, download, todayISO } from './utils.js';
+import { esc, toast, download, todayISO, formatBytes } from './utils.js';
 import { saveSettings } from './templates.js';
 import { exportBackup, importBackup, wipeAll, dbAll, dbDel } from './local-storage.js';
 import { confirmDialog } from './ui.js';
-import { SEXES } from './validation.js';
 
 export function applyTheme(theme) { document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark'; }
 
@@ -49,8 +48,17 @@ export function renderSettings(view, settings, onChange) {
   <div class="card"><h2>Backup e dados deste dispositivo</h2>
     <p class="muted small">Os dados ficam apenas neste navegador. Faça backups regulares: limpar os dados do navegador apaga tudo. O arquivo de backup contém dados clínicos e pessoais — guarde-o com cuidado.</p>
     <div class="row"><button class="btn" id="bk">Exportar backup</button><button class="btn" id="rs">Restaurar backup</button><input type="file" id="rsf" accept="application/json,.json" style="display:none"></div></div>
+  <div class="card"><h2>Armazenamento neste aparelho</h2><p class="muted small" id="storinfo">Verificando…</p></div>
   <div class="card"><h2>Retenção e exclusão</h2><div class="grid g2"><div class="field"><label for="ret">Excluir laudos finalizados com mais de (dias)</label><input id="ret" type="number" min="1" placeholder="Ex.: 365"></div></div>
     <div class="row"><button class="btn danger" id="apply-ret">Aplicar política agora</button><button class="btn danger" id="wipe">Apagar todos os dados deste dispositivo</button></div></div>`;
+  (async () => {
+    const el = view.querySelector('#storinfo');
+    try {
+      const est = await navigator.storage.estimate();
+      const persisted = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+      el.textContent = `Usado: ${formatBytes(est.usage || 0)} de ${formatBytes(est.quota || 0)} disponíveis. Armazenamento protegido contra limpeza automática: ${persisted ? 'sim' : 'não garantido (faça backups)'}.`;
+    } catch { el.textContent = 'Não foi possível medir o armazenamento neste navegador.'; }
+  })();
   view.querySelector('#sf').addEventListener('submit', async (e) => {
     e.preventDefault();
     const v = (id) => view.querySelector('#' + id).value;

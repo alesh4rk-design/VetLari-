@@ -2,8 +2,20 @@
 import { uid, esc, todayISO, fmtDateBR, fmtDateTimeBR, MODALITY } from './utils.js';
 import { dbAll, dbGet, dbPut, dbDel } from './local-storage.js';
 
-export const getExam = (id) => dbGet('exams', id);
-export const listExams = async () => (await dbAll('exams')).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+export const STATUS_LABEL = { draft: 'Rascunho', preliminary: 'Preliminar', final: 'Finalizado' };
+
+/** Completa campos introduzidos depois da Fase 1 em laudos antigos, sem alterar o conteúdo clínico. */
+export function normalizeExam(e) {
+  if (!e) return e;
+  e.clinical ??= { indication: '', history: '', question: '', medications: '', operator: '', equipment: '', location: '', limitations: '' };
+  e.differentials ??= '';
+  e.addendum ??= '';
+  for (const s of e.sections || []) { s.status ??= ''; s.measuresList ??= []; }
+  return e;
+}
+
+export const getExam = async (id) => normalizeExam(await dbGet('exams', id));
+export const listExams = async () => (await dbAll('exams')).map(normalizeExam).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 export const deleteExam = (id) => dbDel('exams', id);
 
 export function saveExam(exam) {
@@ -20,25 +32,54 @@ export function newExam(type, template, patient) {
     patientId: p.id || null,
     patient: { name: p.name || '', species: p.species || '', breed: p.breed || '', sex: p.sex || '', birthDate: p.birthDate || '', age: p.age || '', weight: p.weight || '', tutor: p.tutor || '', identifier: p.identifier || '' },
     clinic: '', requestingVet: '', rx: { region: '', projections: '', quality: '' },
-    sections: template.sections.map((s) => ({ id: uid(), title: s.title, description: '', measures: '', notes: '' })),
-    impression: '', notes: '', images: [],
+    clinical: { indication: '', history: '', question: '', medications: '', operator: '', equipment: '', location: '', limitations: '' },
+    sections: template.sections.map((s) => blankSection(s.title)),
+    impression: '', differentials: '', notes: '', addendum: '', images: [],
     history: [{ ts: Date.now(), action: 'Rascunho criado', version: 1 }],
   };
 }
 
-export function finalizeExam(exam) {
-  exam.status = 'final';
-  exam.finalizedAt = Date.now();
-  exam.history.push({ ts: exam.finalizedAt, action: 'Laudo finalizado', version: exam.version });
+export const blankSection = (title) => ({ id: uid(), title, status: '', description: '', measuresList: [], measures: '', notes: '' });
+
+/** Registro de auditoria local: quem fez o quê e quando (não é à prova de adulteração). */
+export function logAction(exam, action, profile, detail = '') {
+  exam.history.push({ ts: Date.now(), action, detail, version: exam.version, actor: profile ? { name: profile.name, role: profile.role } : null });
+}
+
+/** Registra "Editado" no máximo uma vez a cada 15 minutos por pessoa, para o histórico não virar ruído. */
+export function logEdit(exam, profile) {
+  const last = exam.history[exam.history.length - 1];
+  const sameActor = last && last.actor && profile && last.actor.name === profile.name;
+  if (!(last && last.action === 'Editado' && sameActor && Date.now() - last.ts < 15 * 60000)) logAction(exam, 'Editado', profile);
+}
+
+export function setStatus(exam, status, profile) {
+  exam.status = status;
+  logAction(exam, `Status alterado para "${STATUS_LABEL[status]}"`, profile);
   return saveExam(exam);
 }
 
-/** Cria nova versão editável a partir de um laudo finalizado; o original permanece intacto. */
-export async function createCorrection(original) {
+export function finalizeExam(exam, profile, { justification = '', pending = [] } = {}) {
+  exam.status = 'final';
+  exam.finalizedAt = Date.now();
+  exam.finalizedBy = profile ? { name: profile.name, crmv: profile.crmv || '' } : null;
+  const detail = [pending.length ? `Itens não confirmados/pendências: ${pending.join('; ')}` : '', justification && `Justificativa: ${justification}`].filter(Boolean).join(' | ');
+  logAction(exam, 'Laudo finalizado', profile, detail);
+  return saveExam(exam);
+}
+
+export const REVISION_LABEL = { correction: 'Retificação', addendum: 'Adendo' };
+
+/** Cria nova versão (retificação ou adendo) a partir de um laudo finalizado; o original permanece intacto. */
+export async function createRevision(original, kind, justification, profile) {
+  if (!REVISION_LABEL[kind]) throw new Error('Tipo de revisão inválido.');
+  if (!String(justification || '').trim()) throw new Error('Informe a justificativa.');
   const copy = JSON.parse(JSON.stringify(original));
   copy.id = uid(); copy.status = 'draft'; copy.version = original.version + 1; copy.originId = original.id;
-  copy.createdAt = Date.now(); delete copy.finalizedAt;
-  copy.history = [...original.history, { ts: Date.now(), action: `Correção iniciada a partir da versão ${original.version}`, version: copy.version }];
+  copy.revisionKind = kind; copy.justification = justification.trim();
+  copy.createdAt = Date.now(); delete copy.finalizedAt; delete copy.finalizedBy;
+  copy.history = [...original.history];
+  logAction(copy, `${REVISION_LABEL[kind]} iniciado(a) a partir da versão ${original.version}`, profile, `Justificativa: ${copy.justification}`);
   await saveExam(copy);
   return copy;
 }
@@ -46,14 +87,15 @@ export async function createCorrection(original) {
 /** Nova versão apenas com a estrutura (modelo) de um laudo anterior, sem achados nem paciente. */
 export function structureFrom(prev, template) {
   const fresh = newExam(prev.type, template || { id: prev.templateId, ...prev.layout, imagesPerRow: prev.imagesPerRow, sections: prev.sections }, null);
-  fresh.sections = prev.sections.map((s) => ({ id: uid(), title: s.title, description: '', measures: '', notes: '' }));
+  fresh.sections = prev.sections.map((s) => blankSection(s.title));
   return fresh;
 }
 
 export function searchableText(e) {
   const p = e.patient || {};
-  return [p.name, p.tutor, e.clinic, e.requestingVet, e.impression, e.notes, e.rx && Object.values(e.rx).join(' '),
-    ...(e.sections || []).map((s) => `${s.title} ${s.description} ${s.measures} ${s.notes}`),
+  return [p.name, p.tutor, e.clinic, e.requestingVet, e.impression, e.differentials, e.notes, e.addendum,
+    e.rx && Object.values(e.rx).join(' '), e.clinical && Object.values(e.clinical).join(' '),
+    ...(e.sections || []).map((s) => `${s.title} ${s.description} ${s.measures} ${s.notes} ${(s.measuresList || []).map((m) => `${m.label} ${m.value} ${m.unit}`).join(' ')}`),
     ...(e.images || []).map((i) => `${i.caption} ${i.region}`)].join(' ').toLowerCase();
 }
 
@@ -74,10 +116,11 @@ export function filterExams(all, f = {}) {
 }
 
 export function examRow(e) {
-  const stale = e.status === 'draft' && Date.now() - e.updatedAt > 3 * 86400000;
+  const stale = e.status !== 'final' && Date.now() - e.updatedAt > 3 * 86400000;
+  const rev = e.revisionKind ? ` · ${REVISION_LABEL[e.revisionKind]}` : '';
   return `<li><div><strong>${esc(e.patient.name || 'Sem nome')}</strong>
     <span class="badge mod">${MODALITY[e.type].code}</span>
-    <span class="badge ${e.status}">${e.status === 'final' ? `Finalizado v${e.version}` : 'Rascunho local'}</span>${stale ? ' <span class="badge draft">Revisão pendente</span>' : ''}
+    <span class="badge ${e.status}">${STATUS_LABEL[e.status]} v${e.version}${rev}</span>${stale ? ' <span class="badge draft">Revisão pendente</span>' : ''}
     <div class="muted small">${fmtDateBR(e.date)}${e.patient.tutor ? ' · Tutor: ' + esc(e.patient.tutor) : ''}${e.clinic ? ' · ' + esc(e.clinic) : ''} · atualizado ${fmtDateTimeBR(e.updatedAt)}</div></div>
     <div class="row"><a class="btn sm primary" href="#/laudo/${e.id}">${e.status === 'final' ? 'Abrir' : 'Continuar'}</a></div></li>`;
 }
@@ -92,7 +135,7 @@ export async function renderExamBrowser(container, { compact = false, limit = 0,
     ${compact ? '' : field('tutor', 'Tutor', 'text', f.tutor || '')}${field('clinic', 'Clínica', 'text', f.clinic || '')}
     ${field('from', 'Data inicial', 'date')}${field('to', 'Data final', 'date')}
     <div class="field"><label for="type">Modalidade</label><select id="type" data-f="type"><option value="">Todas</option><option value="usg">Ultrassonografia</option><option value="rx">Radiografia</option></select></div>
-    ${compact ? '' : '<div class="field"><label for="status">Status</label><select id="status" data-f="status"><option value="">Todos</option><option value="draft">Rascunho</option><option value="final">Finalizado</option></select></div>'}
+    ${compact ? '' : '<div class="field"><label for="status">Status</label><select id="status" data-f="status"><option value="">Todos</option><option value="draft">Rascunho</option><option value="preliminary">Preliminar</option><option value="final">Finalizado</option></select></div>'}
     </div></div><div class="card" id="exlist" aria-live="polite"></div>`;
   const draw = () => {
     let res = filterExams(all, f);

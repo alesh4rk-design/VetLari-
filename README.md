@@ -4,27 +4,36 @@ Sistema web gratuito para elaboração de **laudos veterinários de ultrassonogr
 
 > Ferramenta de documentação e produtividade. **Não** gera diagnósticos, não inventa achados e não assina em nome da profissional.
 
+## Modelo de uso (decisão do projeto)
+- **Cada pessoa tem o próprio perfil**, no próprio aparelho (celular, tablet ou computador). Cada perfil tem pacientes, laudos, modelos, frases, configurações e **imagens separados**.
+- **Nada sai do aparelho**: não há servidor, login em nuvem nem armazenamento de imagens na internet. A pessoa escolhe **Word ou PDF** ao exportar.
+- Funções: *médico(a)-veterinário(a)* (pode finalizar, retificar e fazer adendo) e *auxiliar* (cadastra e edita rascunhos, **não** finaliza nem assina).
+- Limite importante: perfis e permissões organizam o uso, mas **não protegem contra quem tem acesso ao aparelho desbloqueado**, e a auditoria é local (não é à prova de adulteração). Para isso seria preciso servidor e login (Fase 2, ainda não necessária).
+
 ## Estado do projeto
 
-| Fase | Conteúdo | Situação |
+| Etapa | Conteúdo | Situação |
 |------|----------|----------|
-| 1 | Protótipo funcional: interface responsiva (tema escuro/claro), pacientes, editor USG e RX, biblioteca de frases, imagens, Word/PDF, rascunhos locais, histórico, backup | **Implementada e testada** |
-| 2 | Firebase Authentication, Firestore, regras de segurança, sincronização | Pendente |
-| 3 | Ditado por voz, edição/anotação de imagens, PWA | Pendente |
-| 4 | Validação real com a veterinária, testes de segurança, checklist de uso com dados reais | Pendente |
+| 1 | Interface responsiva, pacientes, editor de laudos, frases, imagens, Word/PDF, rascunhos locais, histórico, backup | **Pronta e testada** |
+| 2 | Perfis por aparelho, modelo clínico (status por estrutura, medidas com unidade), estados do laudo, checklist de finalização, retificação/adendo, auditoria local, comparação de medidas, modelos iniciais de ultrassonografia | **Pronta e testada** |
+| 3 | Ditado por voz, visualizador/anotação de imagens, DICOM básico no navegador, PWA instalável | Pendente |
+| 4 | Ecocardiograma (módulo próprio), base de referências científicas aprovada pela veterinária | Pendente (depende da veterinária) |
+| 5 | IA opcional de redação (desligada por padrão) | Pendente (decisão de custo/privacidade) |
+| 6 | Validação clínica e de segurança com profissionais | Pendente |
 
-### O que a Fase 1 já faz
-- Cadastro rápido de pacientes (só o nome do animal é obrigatório; sem CPF).
-- Editor de **ultrassonografia** por estruturas (adicionar, renomear, reordenar, excluir) e de **radiografia** (região, projeções, qualidade técnica + estruturas).
-- **Modelos personalizáveis** (Meus modelos) e **biblioteca de frases** própria (busca, categorias, favoritas, importar/exportar JSON, inserção sem apagar o texto existente).
-- **Imagens**: seleção múltipla, arrastar para reordenar, legenda, giro, tamanho no documento, compressão opcional, limite por arquivo. Entram de fato no Word e no PDF.
-- **Word (.docx)** editável e **PDF** com texto selecionável, mesmo conteúdo nos dois, cabeçalho/rodapé, paginação e prévia antes de exportar. Nome: `Laudo_USG_NomeDoAnimal_2026-10-10.docx`.
-- **Rascunhos** com salvamento automático (IndexedDB), indicador de estado e recuperação após recarregar.
-- **Laudos finalizados** são preservados; correções criam nova versão. Histórico com filtros, busca por palavra, comparação entre laudos.
-- **Backup/restauração**, política de retenção e exclusão de dados (em Configurações).
+### O que já faz
+- **Pacientes**, **modelos** de ultrassonografia (abdominal completa, direcionada/focal, urinário, hepatobiliar, gastrointestinal, reprodutivo, superficial, musculoesquelético) e de radiografia. São *modelos iniciais editáveis*, não protocolos validados.
+- **Estrutura por estrutura**: status (normal, alterado, indeterminado, não visualizado, não avaliado ou não informado), descrição, medidas com valor e unidade, observações. **Nada é presumido normal**: estrutura sem informação não aparece no laudo.
+- **Laudo**: indicação, histórico, pergunta clínica, operador, equipamento, técnica e limitações, achados, impressão, diagnósticos diferenciais, recomendações.
+- **Estados**: rascunho, preliminar, finalizado; **retificação** e **adendo** criam nova versão com justificativa, preservando a original. Arquivos de rascunho/preliminar saem marcados.
+- **Revisão automática por regras** (sem IA): medida sem unidade ou não numérica, estrutura "não avaliada" com texto, "normal" sem descrição, identificação profissional ausente etc. Alertas críticos exigem correção ou justificativa; o sistema nunca altera o texto clínico sozinho.
+- **Checklist de finalização** e **histórico** com quem fez cada ação.
+- **Comparação de medidas** entre exames do mesmo paciente: só calcula diferença quando estrutura, medida e unidade são iguais; não converte unidades nem declara "crescimento".
+- Imagens (JPEG/PNG/WebP) com legenda, ordem, giro, tamanho; **Word editável e PDF** com o mesmo conteúdo; backup, retenção e exclusão de dados.
+- A "finalização" é uma **confirmação eletrônica simples** (nome, data e hora), **sem certificado digital ICP-Brasil**. O documento informa isso.
 
 ### Ainda NÃO implementado
-Login e sincronização em nuvem, armazenamento de imagens em nuvem, ditado por voz, anotações (setas) nas imagens, PWA instalável, DICOM, importação de modelos a partir de documentos Word.
+Login e nuvem, ditado por voz, IA, análise de imagens, DICOM/PACS, anotações nas imagens, ecocardiograma, base de referências, assinatura com certificado digital, PWA.
 
 ## Como executar
 Precisa apenas de um servidor de arquivos estáticos (módulos ES não funcionam abrindo o arquivo direto com `file://`):
@@ -35,7 +44,7 @@ npm run serve        # http://localhost:8080
 
 ## Testes
 ```bash
-npm test             # validação, modelo do documento, geração de Word e PDF (Node)
+npm test             # validação, qualidade, comparação, perfis, geração de Word e PDF (Node)
 npm run test:e2e     # fluxo completo no navegador (requer Playwright/Chromium)
 ```
 O teste e2e usa os arquivos `tests/fixture-*.{jpg,png}` (imagens fictícias).

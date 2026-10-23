@@ -43,6 +43,7 @@ export async function buildDocx(report, lib) {
   const body = [];
   body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 200 },
     children: [run(report.title.toUpperCase(), { bold: true, size: size + 6 })] }));
+  if (report.statusNote) body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [run(report.statusNote, { bold: true, color: 'B43C00' })] }));
 
   if (report.patientRows.length) {
     const rows = [];
@@ -106,7 +107,7 @@ export async function buildDocx(report, lib) {
   if (report.signature) {
     body.push(new Paragraph({ spacing: { before: 700 }, alignment: AlignmentType.CENTER, keepNext: true,
       children: [run('______________________________________')] }));
-    const l = [report.signature.name, report.signature.crmv].filter(Boolean);
+    const l = [report.signature.name, report.signature.crmv, report.signature.stamp].filter(Boolean);
     if (!l.length) l.push('Assinatura do médico-veterinário');
     l.forEach((t, k) => body.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: k < l.length - 1, children: [run(t)] })));
   }

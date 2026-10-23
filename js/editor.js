@@ -1,9 +1,12 @@
 // Editor de laudos (ultrassonografia e radiografia): etapas, salvamento automático, imagens, prévia e exportação.
-import { esc, debounce, download, reportFileName, toast, fmtDateTimeBR, MODALITY, uid } from './utils.js';
+import { esc, debounce, download, reportFileName, toast, fmtDateTimeBR, fmtDateBR, MODALITY, uid } from './utils.js';
 import { getPath, setPath, alertList, confirmDialog } from './ui.js';
-import { SEXES, validateExam } from './validation.js';
+import { SEXES } from './validation.js';
 import { navigate, setLeaveGuard } from './router.js';
-import { getExam, listExams, saveExam, newExam, finalizeExam, createCorrection, deleteExam, structureFrom } from './exams.js';
+import { getExam, listExams, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
+import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, FINAL_CHECKLIST } from './quality.js';
+import { can } from './profiles.js';
+import { openModal } from './ui.js';
 import { listPatients, getPatient, upsertPatient } from './patients.js';
 import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor } from './phrase-library.js';
@@ -46,13 +49,16 @@ export async function renderNewExam(view, query) {
   });
 }
 
-export async function renderEditor(view, id, settings) {
+export async function renderEditor(view, id, settings, profile) {
   const exam = await getExam(id);
   if (!exam) { view.innerHTML = '<div class="card empty">Laudo não encontrado.</div>'; return; }
   const mod = MODS[exam.type];
   const patients = await listPatients();
   const related = (await listExams()).filter((x) => x.id !== exam.id && x.patient.name && x.patient.name.trim().toLowerCase() === (exam.patient.name || '').trim().toLowerCase());
   const locked = exam.status === 'final';
+  const prof = settings.professional;
+  const actor = { name: prof.name || profile.name, role: profile.role, crmv: prof.crmv || '' };
+  const canFinalize = can(profile, 'finalize'), canRevise = can(profile, 'revise');
   let step = 0, state = 'saved', dirty = false, failed = false, savePatientFlag = true;
 
   const setState = (s) => {
@@ -67,7 +73,7 @@ export async function renderEditor(view, id, settings) {
     catch { failed = true; setState('error'); toast('Não foi possível salvar. Seu texto continua na tela: copie ou exporte antes de fechar.', 'error'); }
   };
   const autosave = debounce(save, 700);
-  const touch = () => { if (locked) return; dirty = true; setState('dirty'); autosave(); };
+  const touch = () => { if (locked) return; logEdit(exam, actor); dirty = true; setState('dirty'); autosave(); };
 
   const onBeforeUnload = (e) => { if (dirty || failed) { e.preventDefault(); e.returnValue = ''; } };
   window.addEventListener('beforeunload', onBeforeUnload);
@@ -84,6 +90,16 @@ export async function renderEditor(view, id, settings) {
     <textarea id="f-${bind}" data-bind="${bind}" rows="${rows}" ${locked ? 'disabled' : ''}>${esc(getPath(exam, bind))}</textarea>
     ${locked ? '' : `<button type="button" class="btn sm ghost" data-act="phrase" data-target="f-${bind}" data-structure="${esc(structure)}">Inserir frase</button>`}</div>`;
 
+  const statusSelect = (s) => `<select data-sf="status" aria-label="Status da avaliação de ${esc(s.title)}" ${locked ? 'disabled' : ''}>${
+    Object.entries(STRUCTURE_STATUS).map(([k, v]) => `<option value="${k}" ${(s.status || '') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
+  const measureRows = (s) => `<div class="field"><label>Medidas (valor e unidade)</label>
+    ${(s.measuresList || []).map((m) => `<div class="mrow" data-mrow="${m.id}">
+      <input data-mf="label" data-mid="${m.id}" placeholder="Ex.: comprimento" aria-label="Nome da medida" value="${esc(m.label)}" ${locked ? 'disabled' : ''} class="m-label">
+      <input data-mf="value" data-mid="${m.id}" placeholder="Valor" inputmode="decimal" aria-label="Valor da medida" value="${esc(m.value)}" ${locked ? 'disabled' : ''} class="m-small">
+      <input data-mf="unit" data-mid="${m.id}" list="units" placeholder="Unidade" aria-label="Unidade da medida" value="${esc(m.unit)}" ${locked ? 'disabled' : ''} class="m-small">
+      ${locked ? '' : `<button type="button" class="iconbtn danger" data-act="m-del" data-mid="${m.id}" aria-label="Excluir medida">✕</button>`}</div>`).join('')}
+    ${locked ? '' : '<button type="button" class="btn sm" data-act="m-add">Adicionar medida</button>'}</div>`;
+
   const steps = {
     0: () => `<div class="card"><h2>Paciente</h2>
       ${locked ? '' : `<div class="field"><label for="pick">Paciente cadastrado</label><select id="pick" data-act="pick"><option value="">Selecione para preencher automaticamente</option>
@@ -93,44 +109,62 @@ export async function renderEditor(view, id, settings) {
       ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${field('Idade (se não souber a data)', 'patient.age')}${field('Peso (kg)', 'patient.weight', { extra: 'inputmode="decimal"' })}
       ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}
       ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame *', 'date', { type: 'date' })}</div>
-      ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>`,
+      ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
+      <div class="card"><h2>Exame</h2><p class="muted small">Preencha o que for conhecido. Itens deixados em branco aparecem como pendência informativa, nunca como "normal".</p>
+      ${area('Indicação clínica', 'clinical.indication', 2)}${area('Pergunta clínica a responder', 'clinical.question', 2)}
+      ${area('Histórico relevante', 'clinical.history', 3)}${area('Medicamentos informados', 'clinical.medications', 2)}
+      <div class="grid g2">${field('Operador (quem adquiriu as imagens)', 'clinical.operator')}${field('Equipamento', 'clinical.equipment')}${field('Local', 'clinical.location')}</div>
+      ${area('Técnica e limitações do exame', 'clinical.limitations', 3)}</div>`,
     1: () => `${mod.techniqueHtml(exam, locked)}<div class="card"><h2>Achados por estrutura</h2><p class="muted small">${esc(mod.findingsHint)}</p>
+      <datalist id="units">${MEASURE_UNITS.map((u) => `<option value="${esc(u)}">`).join('')}</datalist>
       ${area('Texto introdutório (opcional)', 'intro', 2)}
       ${exam.sections.map((s, i) => `<section class="sec" data-sec="${s.id}"><div class="sec-head">
         <input data-sf="title" aria-label="Nome da estrutura" value="${esc(s.title)}" ${locked ? 'disabled' : ''}>
         ${locked ? '' : `<div class="sec-tools"><button class="iconbtn" data-act="sec-up" aria-label="Mover estrutura para cima" ${i === 0 ? 'disabled' : ''}>▲</button>
         <button class="iconbtn" data-act="sec-down" aria-label="Mover estrutura para baixo" ${i === exam.sections.length - 1 ? 'disabled' : ''}>▼</button>
         <button class="iconbtn danger" data-act="sec-del" aria-label="Excluir estrutura">✕</button></div>`}</div>
+        <div class="field"><label>Status da avaliação</label>${statusSelect(s)}</div>
         <div class="field"><label>Descrição</label><textarea data-sf="description" id="d-${s.id}" rows="3" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
         ${locked ? '' : `<button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>`}</div>
-        <div class="grid g2"><div class="field"><label>Medidas (opcional)</label><input data-sf="measures" value="${esc(s.measures)}" ${locked ? 'disabled' : ''}></div>
+        ${measureRows(s)}
+        <div class="grid g2"><div class="field"><label>Outras medidas (texto livre, opcional)</label><input data-sf="measures" value="${esc(s.measures)}" ${locked ? 'disabled' : ''}></div>
         <div class="field"><label>Observações (opcional)</label><input data-sf="notes" value="${esc(s.notes)}" ${locked ? 'disabled' : ''}></div></div></section>`).join('')}
       ${locked ? '' : `<div class="row"><input id="newsec" placeholder="Nome da nova estrutura" aria-label="Nome da nova estrutura" style="flex:1;min-width:200px"><button class="btn" data-act="sec-add">Adicionar estrutura</button></div>`}</div>`,
-    2: () => `<div class="card"><h2>Imagens</h2><div id="imgroot">${imagesStepHtml(exam, locked, mod.regionLabel)}</div></div>`,
+    2: () => `<div class="card"><h2>Imagens</h2><p class="muted small">As imagens ficam salvas somente neste aparelho (perfil de ${esc(profile.name)}).</p><div id="imgroot">${imagesStepHtml(exam, locked, mod.regionLabel)}</div></div>`,
     3: () => `<div class="card"><h2>Conclusão</h2>
-      ${area(exam.layout.conclusionTitle || 'Impressão diagnóstica', 'impression', 5)}${area(exam.layout.notesTitle || 'Observações e recomendações', 'notes', 4)}</div>`,
+      ${area(exam.layout.conclusionTitle || 'Impressão diagnóstica', 'impression', 5)}${area('Diagnósticos diferenciais (se houver)', 'differentials', 3)}
+      ${area(exam.layout.notesTitle || 'Observações e recomendações', 'notes', 4)}
+      ${exam.revisionKind === 'addendum' ? area('Texto do adendo', 'addendum', 4) : ''}</div>`,
     4: () => {
-      const { errors, warnings } = validateExam(exam);
+      const { critical, info } = reviewExam(exam, actor);
       const report = buildReport(exam, settings);
+      const hist = [...exam.history].reverse().map((h) => `<li><span><strong>${esc(h.action)}</strong>${h.detail ? `<div class="muted small">${esc(h.detail)}</div>` : ''}</span>
+        <span class="muted small">${esc(h.actor ? h.actor.name : '—')} · ${fmtDateTimeBR(h.ts)} · v${h.version}</span></li>`).join('');
       return `<div class="card no-print"><h2>Revisão e exportação</h2>
-        ${alertList('Pendências que impedem finalizar:', errors, 'error')}${alertList('Atenção:', warnings, 'warn')}
-        <p class="muted small">Revise o texto abaixo. Word e PDF contêm exatamente o mesmo conteúdo. O sistema não preenche nem assina nada em seu nome.</p>
-        <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button>
-        ${locked ? '<button class="btn" data-act="correct">Criar correção (nova versão)</button>'
-          : '<button class="btn" data-act="final">Finalizar laudo</button><button class="btn danger" data-act="discard">Descartar rascunho</button>'}</div></div>
-        ${reportToHtml(report)}`;
+        ${alertList('Alertas críticos (exigem correção ou justificativa para finalizar):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
+        <p class="muted small">Word e PDF contêm exatamente o mesmo conteúdo da prévia abaixo. O sistema não preenche, não conclui nem assina nada em seu nome.${exam.status !== 'final' ? ' Arquivos de laudos não finalizados saem marcados como rascunho/preliminar.' : ''}</p>
+        <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button></div>
+        <div class="row" style="margin-top:10px">${locked
+          ? (canRevise ? '<button class="btn" data-act="revise" data-kind="correction">Retificar (nova versão)</button><button class="btn" data-act="revise" data-kind="addendum">Adicionar adendo (nova versão)</button>'
+            : '<span class="muted small">Retificações e adendos exigem perfil de médico(a)-veterinário(a).</span>')
+          : `${exam.status === 'draft' ? '<button class="btn" data-act="prelim">Marcar como preliminar</button>' : '<button class="btn" data-act="undraft">Voltar para rascunho</button>'}
+             <button class="btn" data-act="final" ${canFinalize ? '' : 'disabled'}>Finalizar laudo</button>
+             <button class="btn danger" data-act="discard">Descartar rascunho</button>
+             ${canFinalize ? '' : '<span class="muted small">Seu perfil (auxiliar) não pode finalizar nem assinar laudos.</span>'}`}</div></div>
+        ${reportToHtml(report)}
+        <details class="card no-print"><summary>Histórico do laudo (${exam.history.length})</summary><ul class="list">${hist}</ul></details>`;
     },
   };
 
   function draw() {
     const histLast = exam.history[exam.history.length - 1];
-    view.innerHTML = `<div class="page-head"><div><h1>${MODALITY[exam.type].label} <span class="badge ${exam.status}">${locked ? `Finalizado · v${exam.version}` : 'Rascunho local'}</span></h1>
+    view.innerHTML = `<div class="page-head"><div><h1>${MODALITY[exam.type].label} <span class="badge ${exam.status}">${STATUS_LABEL[exam.status]} · v${exam.version}${exam.revisionKind ? ' · ' + REVISION_LABEL[exam.revisionKind] : ''}</span></h1>
       <div class="muted small">${esc(exam.patient.name || 'Paciente sem nome')} · última ação: ${esc(histLast.action)} (${fmtDateTimeBR(histLast.ts)})</div></div>
       <a class="btn sm" href="#/laudo/${exam.id}/nova-versao-estrutura">Novo laudo com esta estrutura</a></div>
-      ${related.length ? `<details class="card"><summary>Outros exames deste paciente (${related.length})</summary><ul class="list">${related.map((x) => `<li><span>${MODALITY[x.type].code} · ${x.date} · v${x.version} · ${x.status === 'final' ? 'Finalizado' : 'Rascunho'}</span><span class="row"><a class="btn sm" href="#/laudo/${x.id}">Abrir</a><a class="btn sm" href="#/comparar/${x.id}/${exam.id}">Comparar</a></span></li>`).join('')}</ul></details>` : ''}
-      ${locked ? '<div class="alert info">Laudo finalizado: o conteúdo está protegido contra alterações. Use "Criar correção" para gerar uma nova versão sem perder o original.</div>' : ''}
+      ${related.length ? `<details class="card"><summary>Outros exames deste paciente (${related.length})</summary><ul class="list">${related.map((x) => `<li><span>${MODALITY[x.type].code} · ${fmtDateBR(x.date)} · v${x.version} · ${STATUS_LABEL[x.status]}</span><span class="row"><a class="btn sm" href="#/laudo/${x.id}">Abrir</a><a class="btn sm" href="#/comparar/${x.id}/${exam.id}">Comparar</a></span></li>`).join('')}</ul></details>` : ''}
+      ${locked ? '<div class="alert info">Laudo finalizado: o conteúdo está protegido contra alterações. Para corrigir, use "Retificar" ou "Adicionar adendo" na etapa de revisão: uma nova versão é criada e a original permanece preservada.</div>' : ''}
       <div class="savebar"><span id="savestate" class="status ${state}" role="status">${STATUS_TEXT[state]}</span>
-      <span class="small muted">${locked ? 'Somente leitura' : 'Salvamento automático neste navegador (sem sincronização)'}</span></div>
+      <span class="small muted">${locked ? 'Somente leitura' : 'Salvamento automático neste aparelho (sem sincronização)'}</span></div>
       <nav class="steps" aria-label="Etapas do laudo">${STEPS.map((s, i) => `<button data-step="${i}" ${i === step ? 'aria-current="step"' : ''}>${i + 1}. ${s}</button>`).join('')}</nav>
       <div id="step">${steps[step]()}</div>
       <div class="row between no-print"><button class="btn" data-act="prev" ${step === 0 ? 'disabled' : ''}>Voltar</button>
@@ -146,9 +180,70 @@ export async function renderEditor(view, id, settings) {
       const blob = kind === 'docx' ? await buildDocx(report) : pdfBlob(report);
       const name = reportFileName(exam, kind);
       download(blob, name);
+      logAction(exam, `Exportado em ${kind === 'docx' ? 'Word' : 'PDF'}`, actor, name);
+      await saveExam(exam);
       toast(`Arquivo ${name} gerado.`, 'success');
     } catch (e) { toast(`Falha ao gerar o ${kind === 'docx' ? 'Word' : 'PDF'}: ${e.message}`, 'error'); }
   };
+
+  /** Janela de finalização: checklist de conferência + justificativa quando houver pendências. */
+  function finalizeDialog() {
+    const { critical } = reviewExam(exam, actor);
+    const m = openModal(`<h2>Finalizar laudo</h2>
+      <p class="muted small">Confirme cada item. Itens não marcados ou alertas críticos exigem uma justificativa, que ficará registrada no histórico. Esta ação cria a versão emitida: depois dela, só é possível retificar ou fazer adendo em nova versão.</p>
+      ${alertList('Alertas críticos em aberto:', critical, 'error')}
+      <div>${FINAL_CHECKLIST.map((t, i) => `<label class="check"><input type="checkbox" data-ck="${i}"> ${esc(t)}</label>`).join('')}</div>
+      <div class="field" id="jwrap" style="display:none"><label for="just">Justificativa *</label><textarea id="just" rows="3"></textarea></div>
+      <div class="row end"><button class="btn" data-x="cancel">Cancelar</button><button class="btn primary" data-x="ok" disabled>Finalizar</button></div>`, { label: 'Finalizar laudo' });
+    const refresh = () => {
+      const unchecked = FINAL_CHECKLIST.filter((_, i) => !m.el.querySelector(`[data-ck="${i}"]`).checked);
+      const needs = critical.length > 0 || unchecked.length > 0;
+      m.el.querySelector('#jwrap').style.display = needs ? '' : 'none';
+      const just = m.el.querySelector('#just').value.trim();
+      m.el.querySelector('[data-x=ok]').disabled = needs && !just;
+      return { unchecked, needs, just };
+    };
+    m.el.addEventListener('input', refresh);
+    m.el.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-x]'); if (!b) return;
+      if (b.dataset.x === 'cancel') return m.close(null);
+      const { unchecked, needs, just } = refresh();
+      if (needs && !just) return;
+      m.close(true);
+      try {
+        autosave.cancel();
+        if (savePatientFlag) {
+          const pid = exam.patientId || uid();
+          await upsertPatient({ ...(await getPatient(pid) || {}), ...exam.patient, id: pid });
+          exam.patientId = pid;
+        }
+        await finalizeExam(exam, actor, { justification: just, pending: [...critical, ...unchecked.map((u) => `não confirmado: ${u}`)] });
+        dirty = false; toast('Laudo finalizado.', 'success');
+        navigate(`/laudo/${exam.id}?r=${Date.now()}`);
+      } catch (err) { toast(`Não foi possível finalizar: ${err.message}`, 'error'); }
+    });
+  }
+
+  function revisionDialog(kind) {
+    const m = openModal(`<h2>${REVISION_LABEL[kind]}</h2>
+      <p class="muted small">Será criada uma nova versão editável. O laudo finalizado atual permanece preservado no histórico.</p>
+      <div class="field"><label for="rj">Justificativa *</label><textarea id="rj" rows="3"></textarea></div>
+      <div class="row end"><button class="btn" data-x="cancel">Cancelar</button><button class="btn primary" data-x="ok">Criar nova versão</button></div>`, { label: REVISION_LABEL[kind] });
+    m.el.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-x]'); if (!b) return;
+      if (b.dataset.x === 'cancel') return m.close(null);
+      const just = m.el.querySelector('#rj').value.trim();
+      if (!just) return toast('Informe a justificativa.', 'error');
+      m.close(true);
+      try {
+        const copy = await createRevision(exam, kind, just, actor);
+        toast(`Versão ${copy.version} criada. O original foi preservado.`, 'success');
+        navigate(`/laudo/${copy.id}`);
+      } catch (err) { toast(err.message, 'error'); }
+    });
+  }
+
+  const secOf = (el) => exam.sections.find((x) => x.id === el.closest('[data-sec]').dataset.sec);
 
   view.onclick = async (e) => {
     const stepBtn = e.target.closest('[data-step]');
@@ -163,42 +258,28 @@ export async function renderEditor(view, id, settings) {
     else if (act === 'sec-down' && moveItem(exam.sections, secId, 1)) { touch(); draw(); }
     else if (act === 'sec-del') {
       const s = exam.sections.find((x) => x.id === secId);
-      const hasText = s && (s.description || s.measures || s.notes);
-      if (!hasText || await confirmDialog(`Excluir "${s.title}" e o texto já escrito nela?`, { ok: 'Excluir', danger: true })) {
+      const hasText = s && (s.description || s.measures || s.notes || s.status || (s.measuresList || []).length);
+      if (!hasText || await confirmDialog(`Excluir "${s.title}" e o que já foi registrado nela?`, { ok: 'Excluir', danger: true })) {
         exam.sections = exam.sections.filter((x) => x.id !== secId); touch(); draw();
       }
     } else if (act === 'sec-add') {
       const input = view.querySelector('#newsec');
       const title = input.value.trim();
       if (!title) return toast('Digite o nome da estrutura.', 'error');
-      exam.sections.push({ id: uid(), title, description: '', measures: '', notes: '' }); touch(); draw();
-    } else if (act === 'phrase') {
+      exam.sections.push(blankSection(title)); touch(); draw();
+    } else if (act === 'm-add') { secOf(b).measuresList.push({ id: uid(), label: '', value: '', unit: '' }); touch(); draw(); }
+    else if (act === 'm-del') { const s = secOf(b); s.measuresList = s.measuresList.filter((m) => m.id !== b.dataset.mid); touch(); draw(); }
+    else if (act === 'phrase') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
       const text = await pickPhrase({ modality: exam.type, structure: b.dataset.structure });
       if (text && target) insertAtCursor(target, text);
     } else if (act === 'docx' || act === 'pdf') await doExport(act);
-    else if (act === 'final') {
-      const { errors, warnings } = validateExam(exam);
-      if (errors.length) { toast('Há pendências que impedem finalizar. Veja a lista acima.', 'error'); return; }
-      const msg = warnings.length ? `Atenção:\n- ${warnings.join('\n- ')}\n\nFinalizar mesmo assim? Depois disso o conteúdo só poderá ser alterado criando uma nova versão.`
-        : 'Finalizar o laudo? Depois disso o conteúdo só poderá ser alterado criando uma nova versão.';
-      if (!await confirmDialog(msg, { ok: 'Finalizar' })) return;
-      try {
-        autosave.cancel();
-        if (savePatientFlag) {
-          const pid = exam.patientId || uid();
-          await upsertPatient({ ...(await getPatient(pid) || {}), ...exam.patient, id: pid });
-          exam.patientId = pid;
-        }
-        await finalizeExam(exam);
-        dirty = false; toast('Laudo finalizado.', 'success');
-        navigate(`/laudo/${exam.id}?r=${Date.now()}`);
-      } catch (err) { toast(`Não foi possível finalizar: ${err.message}`, 'error'); }
-    } else if (act === 'correct') {
-      const copy = await createCorrection(exam);
-      toast(`Versão ${copy.version} criada. O original foi preservado.`, 'success');
-      navigate(`/laudo/${copy.id}`);
-    } else if (act === 'discard' && await confirmDialog('Descartar este rascunho? O conteúdo será apagado e não poderá ser recuperado.', { ok: 'Descartar', danger: true })) {
+    else if (act === 'prelim' || act === 'undraft') {
+      if (!can(profile, 'prelim')) return;
+      await setStatus(exam, act === 'prelim' ? 'preliminary' : 'draft', actor); dirty = false; draw();
+    } else if (act === 'final') { if (canFinalize) finalizeDialog(); }
+    else if (act === 'revise') { if (canRevise) revisionDialog(b.dataset.kind); }
+    else if (act === 'discard' && await confirmDialog('Descartar este rascunho? O conteúdo será apagado e não poderá ser recuperado.', { ok: 'Descartar', danger: true })) {
       autosave.cancel(); dirty = false; await deleteExam(exam.id); navigate('/');
     }
   };
@@ -209,8 +290,11 @@ export async function renderEditor(view, id, settings) {
     if (t.dataset.bind) {
       setPath(exam, t.dataset.bind, t.dataset.num ? Number(t.value) : t.value);
       touch();
+    } else if (t.dataset.mf) {
+      const m = secOf(t).measuresList.find((x) => x.id === t.dataset.mid);
+      if (m) { m[t.dataset.mf] = t.value; touch(); }
     } else if (t.dataset.sf) {
-      const s = exam.sections.find((x) => x.id === t.closest('[data-sec]').dataset.sec);
+      const s = secOf(t);
       if (s) { s[t.dataset.sf] = t.value; touch(); }
     } else if (t.id === 'savepat') savePatientFlag = t.checked;
   };

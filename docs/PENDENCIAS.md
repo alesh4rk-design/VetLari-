@@ -3,15 +3,24 @@
 Lista viva do que falta. (Peça "o que temos pendente?" para receber o resumo.)
 
 ## Ações do responsável técnico (não dependem da veterinária)
-- [ ] Publicar no GitHub Pages: Settings → Pages → branch `main`, pasta `/ (root)` (depois de mesclar o trabalho em `main`).
-- [ ] Fase 2: criar projeto Firebase (conta Google), ativar Authentication e Firestore, informar a configuração pública do app.
-- [ ] Decidir se o armazenamento de imagens em nuvem (Firebase Storage) será usado, conforme as cotas vigentes.
+- [ ] Mesclar a branch de desenvolvimento na `main` (pull request) e ativar o GitHub Pages: Settings → Pages → branch `main`, pasta `/ (root)`.
+- [ ] Testar em celular Android e iPhone reais (até agora só em navegador de computador com tela simulada).
+
+## Depende da veterinária (quando ela puder)
+- [ ] Revisar os modelos iniciais de ultrassonografia (estruturas) e ajustar à rotina dela.
+- [ ] Definir o módulo de **ecocardiograma** (estruturas, medidas e cálculos, referências). Não será inventado.
+- [ ] Cadastrar as **referências científicas** que ela aprova (com fonte verificável). O sistema não traz valores de referência prontos.
+- [ ] Testar com casos fictícios e dizer o que atrapalha o fluxo.
 
 ## Desenvolvimento
-- [ ] Fase 2 — Firebase Auth, Firestore, regras de segurança, sincronização.
-- [ ] Fase 3 — ditado por voz, edição/anotação de imagens, PWA.
-- [ ] Fase 4 — testes em dispositivos reais, revisão de modelos com a veterinária, testes de segurança.
-- [ ] Futuro — suporte a DICOM (estudo de viabilidade).
+- [ ] Ditado por voz (Web Speech API), com transcrição revisável antes de inserir.
+- [ ] Visualizador de imagens com zoom, anotações e medidas; seleção de imagens representativas.
+- [ ] DICOM básico no navegador (estudo de viabilidade primeiro; PACS fora do escopo sem servidor).
+- [ ] PWA instalável (funcionar offline no celular).
+- [ ] IA opcional de redação: só após decidir provedor, custo e privacidade; desligada por padrão, sempre com revisão obrigatória.
+- [ ] Login/nuvem (somente se um dia for necessário sincronizar entre aparelhos ou impor regras no servidor).
+- [ ] Assinatura eletrônica com certificado (ICP-Brasil), se a legislação/uso exigir. Requer serviço externo.
+- [ ] Avaliar com profissional habilitado os requisitos do CFMV (prontuário, telediagnóstico) antes de uso real.
 
 ## Ideias da veterinária
 (registrar aqui as ideias recebidas nas conversas)

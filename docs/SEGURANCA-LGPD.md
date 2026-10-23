@@ -2,9 +2,11 @@
 
 > Este documento é uma lista de verificação técnica, **não** é parecer jurídico. Para a LGPD, confirme os pontos com um profissional da área.
 
-## Situação atual (Fase 1)
+## Situação atual
 Os dados ficam **somente no navegador do dispositivo** (IndexedDB). Nada é enviado a servidores. Por isso, hoje:
-- [ ] Use apenas **dados fictícios** até concluir as fases 2 e 4.
+- [ ] Use apenas **dados fictícios** até a validação (etapa 6) e até a veterinária revisar os modelos.
+- [ ] Perfis e funções (auxiliar/veterinária) organizam o uso, mas **não são barreira de segurança**: quem tem o aparelho desbloqueado acessa os dados. Use bloqueio de tela com senha/biometria.
+- [ ] A auditoria dos laudos é **local** e pode ser alterada por quem controla o aparelho.
 - [ ] Não use o sistema em computador compartilhado/sem senha de usuário do sistema operacional.
 - [ ] Faça **backup** regularmente (Configurações → Exportar backup). O arquivo contém dados pessoais: guarde em local protegido.
 - [ ] Limpar os dados do navegador apaga tudo; o backup é a única cópia de segurança.

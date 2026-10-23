@@ -68,7 +68,13 @@ export function buildPdf(report, jsPDFCtor) {
   doc.setFont(family, 'bold').setFontSize(fs + 5).setTextColor(0);
   ensure(10);
   doc.text(report.title.toUpperCase(), PAGE_W / 2, y, { align: 'center', baseline: 'top' });
-  y += 11;
+  y += report.statusNote ? 6 : 11;
+  if (report.statusNote) {
+    doc.setFont(family, 'bold').setFontSize(fs).setTextColor(180, 60, 0);
+    doc.text(report.statusNote, PAGE_W / 2, y, { align: 'center', baseline: 'top' });
+    doc.setTextColor(0);
+    y += 9;
+  }
 
   // Identificação do paciente (duas colunas)
   if (report.patientRows.length) {
@@ -152,7 +158,7 @@ export function buildPdf(report, jsPDFCtor) {
     doc.setDrawColor(0).setLineWidth(0.3).line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y);
     y += 1.5;
     doc.setFont(family, 'normal').setFontSize(fs).setTextColor(0);
-    const lines = [report.signature.name, report.signature.crmv].filter(Boolean);
+    const lines = [report.signature.name, report.signature.crmv, report.signature.stamp].filter(Boolean);
     if (!lines.length) lines.push('Assinatura do médico-veterinário');
     lines.forEach((ln) => { doc.text(ln, PAGE_W / 2, y, { align: 'center', baseline: 'top' }); y += lh(fs); });
   }

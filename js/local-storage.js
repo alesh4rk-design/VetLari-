@@ -1,16 +1,29 @@
 // Persistência local em IndexedDB (rascunhos, laudos, pacientes, frases, modelos e configurações).
 import { BACKUP_STORES, validateBackup } from './validation.js';
 
-const DB_NAME = 'vetlaudo';
+let dbName = 'vetlaudo';
 const DB_VERSION = 1;
 const KEYED = { settings: 'key' };
 let dbPromise;
+
+/** Seleciona o banco do perfil ativo (cada perfil tem seus dados separados neste aparelho). */
+export function useDatabase(name) { dbName = name; dbPromise = null; }
+
+export function deleteDatabase(name) {
+  return new Promise((resolve, reject) => {
+    if (!globalThis.indexedDB) return resolve();
+    const req = indexedDB.deleteDatabase(name);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => resolve();
+  });
+}
 
 function open() {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
       if (!globalThis.indexedDB) return reject(new Error('IndexedDB indisponível neste navegador.'));
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      const req = indexedDB.open(dbName, DB_VERSION);
       req.onupgradeneeded = () => {
         const db = req.result;
         for (const s of BACKUP_STORES) {

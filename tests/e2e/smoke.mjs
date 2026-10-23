@@ -53,6 +53,22 @@ await page.click('.modal [data-use]');
 const val = await page.inputValue('[data-sec] textarea >> nth=0');
 check('frase inserida sem apagar texto existente', val.startsWith('Descrição inicial.') && val.includes('Texto fictício de teste inserido.'), JSON.stringify(val));
 
+// Status da estrutura e medidas com unidade
+await page.selectOption('[data-sec] select[data-sf="status"] >> nth=0', 'alterado');
+await page.click('[data-sec] [data-act="m-add"] >> nth=0');
+await page.fill('[data-mf="label"]', 'Comprimento'); await page.fill('[data-mf="value"]', '5,2');
+await page.click('[data-step="4"]');
+await page.waitForSelector('.paper');
+check('medida sem unidade gera alerta crítico', (await page.textContent('.alert.error')).includes('sem unidade'));
+await page.click('[data-step="1"]');
+await page.fill('[data-mf="unit"]', 'cm');
+await page.click('[data-step="4"]');
+await page.waitForSelector('.paper');
+const prev = await page.textContent('.paper');
+check('prévia mostra status e medida com unidade', prev.includes('Fígado — Alterado') && prev.includes('Comprimento: 5,2 cm'), JSON.stringify(prev.replace(/\s+/g, ' ').slice(0, 600)));
+check('prévia de rascunho vem marcada', prev.includes('RASCUNHO'));
+check('estruturas não preenchidas não aparecem como normais', !/Baço/.test(prev) && !/normal/i.test(prev));
+
 // Imagens
 await page.click('[data-step="2"]');
 await page.setInputFiles('#img-file', [join(here, '../fixture-usg.jpg'), join(here, '../fixture-rx.png')]);
@@ -84,21 +100,34 @@ await dDocx.saveAs(docxPath);
 check('nome do Word padronizado', /^Laudo_USG_Thor_Ficticio_\d{4}-\d{2}-\d{2}\.docx$/.test(dDocx.suggestedFilename()), dDocx.suggestedFilename());
 const media = execFileSync('unzip', ['-l', docxPath]).toString().match(/word\/media\/\S+\.\w+/g) || [];
 check('Word contém as 2 imagens', media.length === 2, String(media.length));
+check('Word de rascunho vem marcado', execFileSync('unzip', ['-p', docxPath, 'word/document.xml']).toString().includes('RASCUNHO'));
 const [dPdf] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="pdf"]')]);
 const pdfPath = join(mkdtempSync(join(tmpdir(), 'e2e-')), dPdf.suggestedFilename());
 await dPdf.saveAs(pdfPath);
 const pdf = readFileSync(pdfPath);
 check('PDF válido com imagens', pdf.slice(0, 5).toString() === '%PDF-' && pdf.length > 20000, String(pdf.length));
 
-// Finalizar
+// Preliminar e finalização com checklist
+await page.click('[data-act="prelim"]');
+await page.waitForSelector('text=Preliminar');
+check('marcar como preliminar', (await page.textContent('.paper')).includes('PRELIMINAR'));
 await page.click('[data-act="final"]');
-await page.click('.modal button.primary');
+check('finalizar exige confirmação do checklist', await page.isDisabled('.modal [data-x="ok"]'));
+for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
+check('pendência crítica (CRMV ausente) exige justificativa', await page.isDisabled('.modal [data-x="ok"]'));
+await page.fill('#just', 'Teste: CRMV será preenchido depois.');
+await page.click('.modal [data-x="ok"]');
 await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 check('finalização bloqueia edição', await page.isDisabled('#f-patient\\.name'));
 await page.click('[data-step="4"]');
-await page.click('[data-act="correct"]');
-await page.waitForSelector('text=Rascunho local');
-check('correção cria nova versão', (await page.textContent('h1')).includes('Rascunho'));
+await page.click('details summary');
+const histTxt = await page.textContent('details');
+check('histórico do laudo mostra finalização com justificativa', histTxt.includes('Laudo finalizado') && histTxt.includes('CRMV será preenchido'));
+await page.click('[data-act="revise"][data-kind="correction"]');
+await page.fill('#rj', 'Correção de teste');
+await page.click('.modal [data-x="ok"]');
+await page.waitForSelector('text=Retificação');
+check('retificação cria nova versão', (await page.textContent('h1')).includes('v2'));
 await page.goto(base + '#/laudos');
 await page.waitForSelector('#exlist li');
 const rows = await page.locator('#exlist li').count();
@@ -115,6 +144,22 @@ const bkPath = join(mkdtempSync(join(tmpdir(), 'e2e-')), 'bk.json');
 await dBk.saveAs(bkPath);
 const bk = JSON.parse(readFileSync(bkPath, 'utf8'));
 check('backup exportado', bk.app === 'vetlaudo' && bk.stores.exams.length === 2 && bk.stores.patients.length === 1);
+
+// Perfis: auxiliar não finaliza
+await page.goto(base + '#/perfis');
+await page.waitForSelector('text=Quem está usando?');
+await page.fill('#np-name', 'Auxiliar Teste'); await page.selectOption('#np-role', 'assistant');
+await page.click('#np button[type=submit]');
+await page.waitForSelector('text=Painel de laudos');
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.waitForSelector('#f-patient\\.name');
+await page.click('[data-step="4"]');
+await page.waitForSelector('.paper');
+check('perfil auxiliar não pode finalizar', await page.isDisabled('[data-act="final"]'));
+check('dados do perfil são separados (laudos do outro perfil não aparecem)', (await page.evaluate(() => new Promise((res) => { const r = indexedDB.open('vetlaudo'); r.onsuccess = () => res(true); }))) === true);
+await page.goto(base + '#/laudos');
+await page.waitForSelector('#exlist');
+check('perfil novo começa sem laudos do outro perfil', (await page.locator('#exlist li').count()) === 1);
 
 // Celular
 await page.setViewportSize({ width: 390, height: 800 });
