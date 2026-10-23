@@ -10,7 +10,7 @@ export function normalizeExam(e) {
   e.clinical ??= { indication: '', history: '', question: '', medications: '', operator: '', equipment: '', location: '', limitations: '' };
   e.differentials ??= '';
   e.addendum ??= '';
-  for (const s of e.sections || []) { s.status ??= ''; s.measuresList ??= []; s.sex ??= ''; }
+  for (const s of e.sections || []) { s.status ??= ''; s.measuresList ??= []; s.sex ??= ''; s.build ??= null; }
   return e;
 }
 
@@ -42,6 +42,8 @@ export function newExam(type, template, patient) {
 /** Cria a estrutura do laudo; as medidas do modelo viram linhas "slot" (nome e unidade prontos, só falta o valor). */
 export const blankSection = (title, tpl = {}) => ({
   id: uid(), title, sex: tpl.sex || '', status: '', description: '', measures: '', notes: '',
+  // Montador de descrição: definição copiada do modelo; seleções e extras começam vazios (nada marcado).
+  build: tpl.builder ? { def: JSON.parse(JSON.stringify(tpl.builder)), sel: {}, extras: {}, auto: '' } : null,
   measuresList: (tpl.measures || []).filter((m) => m.label).map((m) => ({ id: uid(), label: m.label, value: '', unit: m.unit || '', slot: true })),
 });
 
@@ -91,7 +93,7 @@ export async function createRevision(original, kind, justification, profile) {
 /** Nova versão apenas com a estrutura (modelo) de um laudo anterior, sem achados nem paciente. */
 export function structureFrom(prev, template) {
   const fresh = newExam(prev.type, template || { id: prev.templateId, ...prev.layout, imagesPerRow: prev.imagesPerRow, sections: prev.sections }, null);
-  fresh.sections = prev.sections.map((s) => blankSection(s.title, { sex: s.sex, measures: (s.measuresList || []).filter((m) => m.label && !m.calculated).map((m) => ({ label: m.label, unit: m.unit })) }));
+  fresh.sections = prev.sections.map((s) => blankSection(s.title, { sex: s.sex, builder: s.build && s.build.def, measures: (s.measuresList || []).filter((m) => m.label && !m.calculated).map((m) => ({ label: m.label, unit: m.unit })) }));
   return fresh;
 }
 

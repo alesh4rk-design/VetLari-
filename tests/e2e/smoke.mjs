@@ -50,7 +50,7 @@ await page.click('[data-step="1"]');
 await page.click('.organ:has-text("Fígado")');
 await page.fill('#d-' + await page.getAttribute('[data-sec] textarea', 'id').then((i) => i.slice(2)), 'Descrição inicial.');
 await page.click('[data-sec] [data-act="phrase"] >> nth=0');
-await page.click('.modal [data-use]');
+await page.click('.phrase:has-text("Frase de teste") [data-use]');
 const val = await page.inputValue('[data-sec] textarea >> nth=0');
 check('frase inserida sem apagar texto existente', val.startsWith('Descrição inicial.') && val.includes('Texto fictício de teste inserido.'), JSON.stringify(val));
 

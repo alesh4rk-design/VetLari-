@@ -1,6 +1,7 @@
 // Modelos de laudo e configurações padrão. Os modelos iniciais são pontos de partida editáveis,
 // não protocolos clínicos: a profissional define as estruturas adequadas à sua rotina.
 import { uid } from './utils.js';
+import { USG_BUILDERS, AFTER_CONCLUSION_NOTE } from './catalog-usg.js';
 import { dbAll, dbPut, dbDel, dbGet, getSetting, setSetting } from './local-storage.js';
 
 export const DEFAULT_SETTINGS = {
@@ -15,17 +16,23 @@ export const DEFAULT_SETTINGS = {
   compress: true,
   jpegQuality: 0.85,
   maxImagePx: 1600,
+  afterConclusion: AFTER_CONCLUSION_NOTE, // texto fixo após a conclusão (editável em Configurações)
+  impressionAsList: true,                 // conclusão em lista de itens
 };
 
 /** Estrutura do modelo: título, sexo a que se aplica ('' = todos) e medidas pré-definidas (nome + unidade). */
-const sec = (x) => (typeof x === 'string' ? { id: uid(), title: x, sex: '', measures: [] } : { id: uid(), sex: '', measures: [], ...x });
+const sec = (x) => {
+  const s = typeof x === 'string' ? { id: uid(), title: x, sex: '', measures: [] } : { id: uid(), sex: '', measures: [], ...x };
+  if (!s.builder && USG_BUILDERS[s.title] && s.useCatalog !== false) s.builder = JSON.parse(JSON.stringify(USG_BUILDERS[s.title]));
+  return s;
+};
 const M = (label, unit = 'cm') => ({ label, unit });
 
 const usg = (id, name, sections, extra = {}) => ({
   id, builtin: true, modality: 'usg', name: `${name} (modelo inicial)`,
   docTitle: 'Laudo de Ultrassonografia Veterinária', intro: '',
   conclusionTitle: 'Impressão diagnóstica', notesTitle: 'Observações e recomendações',
-  signature: true, imagesPerRow: 2, sections: sections.map(sec), ...extra, version: 2,
+  signature: true, imagesPerRow: 2, sections: sections.map(sec), ...extra, version: 3,
 });
 
 /**

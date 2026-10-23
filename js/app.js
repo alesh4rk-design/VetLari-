@@ -4,7 +4,7 @@ import { loadSettings } from './templates.js';
 import { applyTheme, renderSettings } from './settings.js';
 import { renderDashboard } from './dashboard.js';
 import { renderPatientList, renderPatientForm } from './patients.js';
-import { renderPhraseLibrary } from './phrase-library.js';
+import { renderPhraseLibrary, seedImpressions } from './phrase-library.js';
 import { renderTemplateList, renderTemplateForm } from './template-editor.js';
 import { renderReferences } from './references.js';
 import { renderCalculations } from './calculations.js';
@@ -83,6 +83,7 @@ async function boot() {
   settings = await loadSettings();
   if (!settings.professional.name) { settings.professional.name = profile.name; await saveSettings(settings); }
   applyTheme(settings.theme);
+  await seedImpressions().catch(() => { /* sem armazenamento: segue sem frases iniciais */ });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { /* sem offline: segue normalmente */ });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   document.addEventListener('route', (e) => drawNav(e.detail.path));

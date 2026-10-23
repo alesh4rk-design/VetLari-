@@ -67,6 +67,8 @@ export async function buildDocx(report, lib) {
   for (const b of report.blocks) {
     if (b.kind === 'h') body.push(new Paragraph({ keepNext: true, spacing: { before: 200, after: 80 }, children: [run(b.text, { bold: true, size: size + 2 })] }));
     else if (b.kind === 'p') body.push(...lines(b.text, { spacing: { after: 120 } }));
+    else if (b.kind === 'list') for (const it of b.items) body.push(new Paragraph({ indent: { left: 360, hanging: 240 }, spacing: { after: 40 }, children: [run('•  '), run(it, { bold: true })] }));
+    else if (b.kind === 'note') body.push(new Paragraph({ spacing: { before: 120, after: 120 }, children: [run(b.text, { italics: true, size: size - 4, color: '555555' })] }));
     else if (b.kind === 'kv') body.push(new Paragraph({ spacing: { after: 60 }, children: [run(`${b.label}: `, { bold: true }), run(b.text)] }));
     else if (b.kind === 'section') {
       body.push(new Paragraph({ keepNext: true, spacing: { before: 160, after: 40 }, children: [run(b.title, { bold: true })] }));

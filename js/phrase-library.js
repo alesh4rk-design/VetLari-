@@ -1,7 +1,8 @@
 // Biblioteca de frases do usuário: CRUD, busca, favoritos, importação/exportação JSON e seletor de inserção.
 // Nenhuma frase é fornecida de fábrica: o conteúdo clínico é criado ou aprovado pela veterinária.
 import { uid, esc, fmtDateBR, download, toast, todayISO } from './utils.js';
-import { dbAll, dbPut, dbDel } from './local-storage.js';
+import { dbAll, dbPut, dbDel, getSetting, setSetting } from './local-storage.js';
+import { USG_IMPRESSIONS } from './catalog-usg.js';
 import { validatePhrase, validatePhraseImport } from './validation.js';
 import { openModal, confirmDialog, alertList } from './ui.js';
 import { fillPhrase, placeholders } from './phrase-logic.js';
@@ -24,10 +25,11 @@ export function filterPhrases(all, { q = '', category = '', modality = '', favOn
 }
 
 /** Insere texto na posição do cursor sem apagar o conteúdo existente. */
-export function insertAtCursor(el, text) {
+export function insertAtCursor(el, text, { newline = false } = {}) {
   const start = el.selectionStart ?? el.value.length, end = el.selectionEnd ?? start;
   const before = el.value.slice(0, start), after = el.value.slice(end);
-  const sep = before && !/[\s]$/.test(before) ? ' ' : '';
+  // Em listas (ex.: conclusão), cada frase entra em uma nova linha.
+  const sep = newline ? (before && !before.endsWith('\n') ? '\n' : '') : (before && !/[\s]$/.test(before) ? ' ' : '');
   el.value = before + sep + text + after;
   const pos = (before + sep + text).length;
   el.setSelectionRange(pos, pos);
@@ -152,4 +154,16 @@ export async function renderPhraseLibrary(view) {
       toast(`${res.phrases.length} frase(s) importada(s)${res.skipped ? `, ${res.skipped} ignorada(s) por estarem incompletas` : ''}.`, 'success');
     } catch (err) { toast(err instanceof SyntaxError ? 'Arquivo JSON inválido.' : err.message, 'error'); }
   });
+}
+
+/** Carrega uma vez as impressões diagnósticas dos laudos da veterinária. Podem ser editadas ou excluídas (não voltam). */
+export async function seedImpressions() {
+  if (await getSetting('seeded-usg-impressions-v1', false)) return;
+  if ((await dbAll('phrases')).length === 0) {
+    for (const [text, structure] of USG_IMPRESSIONS) {
+      const title = text.split(/\.\s/)[0].replace(/\.$/, '').slice(0, 70);
+      await dbPut('phrases', { id: uid(), title, text, category: 'Impressão diagnóstica', modality: 'usg', structure, keywords: '', favorite: false, updatedAt: todayISO(), source: 'laudos da veterinária' });
+    }
+  }
+  await setSetting('seeded-usg-impressions-v1', true);
 }

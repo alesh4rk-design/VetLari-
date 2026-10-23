@@ -61,7 +61,14 @@ export function buildReport(exam, settings = {}) {
     }
   }
 
-  if (filled(exam.impression)) blocks.push({ kind: 'h', text: tpl.conclusionTitle || 'Impressão diagnóstica' }, { kind: 'p', text: exam.impression.trim() });
+  if (filled(exam.impression)) {
+    blocks.push({ kind: 'h', text: tpl.conclusionTitle || 'Impressão diagnóstica' });
+    const lines = exam.impression.split(/\r?\n/).map((l) => l.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
+    // Conclusão em lista de itens (um por linha), como nos laudos da veterinária; desligável em Configurações.
+    if (settings.impressionAsList !== false && lines.length) blocks.push({ kind: 'list', items: lines });
+    else blocks.push({ kind: 'p', text: exam.impression.trim() });
+    if (filled(settings.afterConclusion)) blocks.push({ kind: 'note', text: settings.afterConclusion.trim() });
+  }
   if (filled(exam.differentials)) blocks.push({ kind: 'h', text: 'Diagnósticos diferenciais' }, { kind: 'p', text: exam.differentials.trim() });
   if (filled(exam.notes)) blocks.push({ kind: 'h', text: tpl.notesTitle || 'Observações' }, { kind: 'p', text: exam.notes.trim() });
 

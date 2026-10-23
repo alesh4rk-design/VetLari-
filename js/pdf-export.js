@@ -107,6 +107,13 @@ export function buildPdf(report, jsPDFCtor) {
   for (const b of report.blocks) {
     if (b.kind === 'h') { ensure(lh(fs + 1) * 3); y += 2; paragraph(b.text, { bold: true, size: fs + 1, gap: 1 }); }
     else if (b.kind === 'p') paragraph(b.text, { gap: 3 });
+    else if (b.kind === 'list') { for (const it of b.items) paragraph(`•  ${it}`, { bold: true, indent: 4, gap: 0.5 }); y += 2; }
+    else if (b.kind === 'note') {
+      doc.setFont(family, 'italic').setFontSize(fs - 2).setTextColor(90);
+      const lines = doc.splitTextToSize(b.text, CONTENT_W);
+      for (const ln of lines) { ensure(lh(fs - 2)); doc.text(ln, MARGIN, y, { baseline: 'top' }); y += lh(fs - 2); }
+      doc.setTextColor(0); y += 3;
+    }
     else if (b.kind === 'kv') labelled(b.label, b.text);
     else if (b.kind === 'section') {
       ensure(lh(fs) * 3);

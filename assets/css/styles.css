@@ -124,3 +124,10 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
   .mtable .mrow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .mtable .mrow .mlabel, .mtable .mrow > input[data-mf="label"] { grid-column: 1 / -1; }
 }
+
+/* Montador de descrição */
+.builder { border: 1px dashed var(--accent); border-radius: var(--radius); padding: 12px; margin-bottom: 14px; background: var(--panel2); }
+.builder .bhead { font-weight: 700; margin: 10px 0 4px; color: var(--accent); }
+.builder .bgroup { margin-bottom: 8px; } .builder .blabel { font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+.builder .chip { white-space: normal; text-align: left; min-height: 36px; line-height: 1.25; }
+.builder .bextras { margin-top: 8px; }

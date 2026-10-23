@@ -12,6 +12,7 @@ import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor } from './phrase-library.js';
 import { openDictation } from './voice.js';
 import { fillPhrase } from './phrase-logic.js';
+import { composeDescription, toggleOption, pendingFields, expandBlocks } from './builder-logic.js';
 import { listReferences, referenceCard } from './references.js';
 import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
@@ -124,7 +125,7 @@ export async function renderEditor(view, id, settings, profile) {
     const slots = (s.measuresList || []).some((m) => m.slot);
     return `<div class="field"><label>Medidas deste órgão</label>
       <p class="small muted">${slots ? 'Os nomes e as unidades já vêm do modelo: <strong>digite só o valor</strong> do que você mediu (ex.: 5,2). O que ficar em branco não aparece no laudo.' : 'Este modelo não tem medidas pré-definidas para este órgão. Use "Adicionar outra medida": informe o que foi medido, o valor e a unidade.'}</p>
-      <div class="mtable"><div class="mhead"><span>O que foi medido</span><span>Valor</span><span>Unidade</span><span></span></div>
+      <div class="mtable">${(s.measuresList || []).length ? '<div class="mhead"><span>O que foi medido</span><span>Valor</span><span>Unidade</span><span></span></div>' : ''}
       ${(s.measuresList || []).map((m) => `<div class="mrow" data-mrow="${m.id}">
         ${m.slot || m.calculated ? `<div class="mlabel">${esc(m.label)}</div>` : `<input data-mf="label" data-mid="${m.id}" placeholder="Ex.: espessura da parede" aria-label="O que foi medido" value="${esc(m.label)}" ${locked ? 'disabled' : ''}>`}
         <input data-mf="value" data-mid="${m.id}" placeholder="Valor" inputmode="decimal" aria-label="Valor de ${esc(m.label || 'medida')}" value="${esc(m.value)}" ${locked || m.calculated ? 'disabled' : ''}>
@@ -135,6 +136,34 @@ export async function renderEditor(view, id, settings, profile) {
       <button type="button" class="btn sm ghost" data-act="m-refs">Ver referências</button></div></div>`;
   };
 
+  // ----- Montador de descrição: marcar opções gera o texto no estilo da veterinária -----
+  const isManual = (s) => !!(s.build && s.description.trim() && s.description !== s.build.auto);
+  /** Regenera a descrição a partir das escolhas. Não sobrescreve texto editado à mão (a menos que force). */
+  function syncBuild(s, force = false) {
+    if (!s.build) return false;
+    const text = composeDescription(s.build.def, s.build.sel, s.measuresList, s.build.extras);
+    if (force || !s.description.trim() || s.description === s.build.auto) { s.description = text; s.build.auto = text; }
+    const ta = view.querySelector('#d-' + s.id);
+    if (ta && s.id === (current() || {}).id) ta.value = s.description;
+    const note = view.querySelector('#bnotice'); if (note) note.hidden = !isManual(s);
+    return true;
+  }
+  const builderBlock = (s) => {
+    if (!s.build) return '';
+    const blocks = expandBlocks(s.build.def);
+    const need = pendingFields(s.build.def, s.build.sel, s.measuresList, {});
+    return `<div class="builder"><h3>Montar descrição</h3>
+      <p class="small muted">Marque o que você observou e digite as medidas: o texto é escrito sozinho, com as suas frases. O que não for marcado não entra no laudo.</p>
+      ${blocks.map((bl) => `<div class="bblock">${bl.label ? `<div class="bhead">${esc(bl.label)}</div>` : ''}${bl.groups.map((g) => {
+        const on = s.build.sel[g.key] || [];
+        return `<div class="bgroup"><div class="blabel">${esc(g.label)}${g.kind === 'many' || g.kind === 'sentences' ? ' <span class="muted">(pode marcar várias)</span>' : ''}</div>
+          <div class="chips">${g.options.map((op, i) => `<button type="button" class="chip" data-act="b-opt" data-g="${g.key}" data-o="${i}" aria-pressed="${on.includes(i)}" ${locked ? 'disabled' : ''} title="${esc(op.text)}">${esc(op.label || op.text)}</button>`).join('')}</div></div>`;
+      }).join('')}</div>`).join('')}
+      ${need.length ? `<div class="bextras"><div class="small muted">Complete os campos da frase:</div>${need.map((n) => `<div class="field"><label for="bx-${esc(n.name)}">${esc(n.name)}</label><input id="bx-${esc(n.name)}" data-bx="${esc(n.name)}" value="${esc(s.build.extras[n.name] || '')}" ${locked ? 'disabled' : ''}></div>`).join('')}</div>` : ''}
+      <div id="bnotice" class="alert warn" ${isManual(s) ? '' : 'hidden'}>Você editou o texto manualmente: novas escolhas não o alteram. ${locked ? '' : '<button type="button" class="btn sm" data-act="b-regen">Gerar de novo (substitui o texto)</button>'}</div>
+      ${locked ? '' : '<div class="row"><button type="button" class="btn sm ghost" data-act="b-clear">Limpar escolhas</button></div>'}</div>`;
+  };
+
   const organPanel = () => {
     const s = current();
     if (!s) return '<div class="card empty">Nenhuma estrutura neste modelo. Adicione uma na lista.</div>';
@@ -143,6 +172,7 @@ export async function renderEditor(view, id, settings, profile) {
     return `<section class="sec" data-sec="${s.id}">
       <div class="sec-head"><input data-sf="title" aria-label="Nome da estrutura" value="${esc(s.title)}" ${locked ? 'disabled' : ''} style="font-size:1.15rem"></div>
       <div class="field"><label>Status da avaliação</label>${statusButtons(s)}</div>
+      ${builderBlock(s)}
       <div class="field"><label>Descrição</label><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
       ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>
       <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button></div>`}</div>
@@ -344,6 +374,12 @@ export async function renderEditor(view, id, settings, profile) {
     else if (act === 'org-next') {
       const vis = visibleSections(); const i = vis.findIndex((s) => s.id === (current() || {}).id);
       selSec = vis[(i + 1) % vis.length].id; refreshFindings(); view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' });
+    } else if (act === 'b-opt') {
+      const s = current(); s.build.sel = toggleOption(s.build.def, s.build.sel, b.dataset.g, Number(b.dataset.o)); syncBuild(s); touch(); refreshFindings();
+    } else if (act === 'b-clear') { const s = current(); s.build.sel = {}; s.build.extras = {}; syncBuild(s); touch(); refreshFindings(); }
+    else if (act === 'b-regen') {
+      const s = current();
+      if (await confirmDialog('Gerar o texto de novo a partir das escolhas? O texto que você editou à mão será substituído.', { ok: 'Substituir' })) { syncBuild(s, true); touch(); refreshFindings(); }
     } else if (act === 'set-status') {
       const s = current(); s.status = s.status === b.dataset.val ? '' : b.dataset.val; touch(); refreshFindings();
     }
@@ -376,7 +412,7 @@ export async function renderEditor(view, id, settings, profile) {
         if (extras === null) return; // cancelou: nada é inserido
         ({ text } = fillPhrase(raw, measures, extras));
       }
-      insertAtCursor(target, text);
+      insertAtCursor(target, text, { newline: ['f-impression', 'f-differentials'].includes(b.dataset.target) });
     } else if (act === 'dictate') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
       const text = await openDictation({ label: b.dataset.label });
@@ -398,12 +434,15 @@ export async function renderEditor(view, id, settings, profile) {
     if (t.dataset.bind) {
       setPath(exam, t.dataset.bind, t.dataset.num ? Number(t.value) : t.value);
       touch();
+    } else if (t.dataset.bx !== undefined) {
+      const s = current(); s.build.extras[t.dataset.bx] = t.value; syncBuild(s); touch();
     } else if (t.dataset.mf) {
-      const m = secOf(t).measuresList.find((x) => x.id === t.dataset.mid);
-      if (m) { m[t.dataset.mf] = t.value; touch(); refreshOrgans(); }
+      const sec = secOf(t);
+      const m = sec.measuresList.find((x) => x.id === t.dataset.mid);
+      if (m) { m[t.dataset.mf] = t.value; syncBuild(sec); touch(); refreshOrgans(); }
     } else if (t.dataset.sf) {
       const s = secOf(t);
-      if (s) { s[t.dataset.sf] = t.value; touch(); refreshOrgans(); }
+      if (s) { s[t.dataset.sf] = t.value; if (t.dataset.sf === 'description') { const nt = view.querySelector('#bnotice'); if (nt) nt.hidden = !isManual(s); } touch(); refreshOrgans(); }
     } else if (t.id === 'savepat') savePatientFlag = t.checked;
   };
   view.onchange = async (e) => {
