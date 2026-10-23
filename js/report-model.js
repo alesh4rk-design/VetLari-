@@ -1,7 +1,7 @@
 // Converte um exame no modelo neutro de documento usado pela prévia, pelo Word e pelo PDF.
 // Garante que os três formatos tenham exatamente o mesmo conteúdo clínico.
 // Função pura: campos vazios são omitidos, nada é preenchido automaticamente.
-import { MODALITY, fmtDateBR, fmtDateTimeBR, ageFromBirth } from './utils.js';
+import { fmtDateBR, fmtDateTimeBR, ageFromBirth } from './utils.js';
 import { STRUCTURE_STATUS } from './quality.js';
 import { documentSource } from './annotations.js';
 
@@ -19,11 +19,12 @@ export function buildReport(exam, settings = {}) {
   // Com data de nascimento, a idade é sempre calculada na data do exame (nunca fica desatualizada).
   const age = ageFromBirth(p.birthDate, exam.date) || (filled(p.age) ? p.age : '');
   const weight = filled(p.weight) ? `${String(p.weight).replace('.', ',')} kg` : '';
+  // Identificação na ordem e com os nomes dos laudos da veterinária (3 colunas no documento).
+  const when = exam.time ? `${fmtDateBR(exam.date)} ${exam.time}` : fmtDateBR(exam.date);
   const patientRows = [
-    ['Animal', p.name], ['Espécie', p.species], ['Raça', p.breed], ['Sexo', p.sex],
-    ['Idade', age], ['Peso', weight], ['Tutor', p.tutor], ['Clínica solicitante', exam.clinic],
-    ['Médico-veterinário solicitante', exam.requestingVet], ['Identificador', p.identifier],
-    ['Modalidade', (MODALITY[exam.type] || MODALITY.usg).label], ['Data do exame', fmtDateBR(exam.date)],
+    ['Paciente', p.name], ['Espécie', p.species], ['Raça', p.breed], ['Sexo', p.sex], ['Idade', age], ['Responsável', p.tutor],
+    ['Data', when], ['Solicitante', exam.requestingVet], ['Clínica/Hospital', exam.clinic],
+    ['Peso', weight], ['Identificador', p.identifier],
     ['Operador', (exam.clinical || {}).operator], ['Equipamento', (exam.clinical || {}).equipment], ['Local', (exam.clinical || {}).location],
   ].filter(([, v]) => filled(v)).map(([k, v]) => [k, String(v).trim()]);
 
@@ -51,15 +52,14 @@ export function buildReport(exam, settings = {}) {
   for (const s of exam.sections || []) {
     const items = [];
     if (filled(s.description)) items.push({ label: '', text: s.description.trim() });
-    const rows = (s.measuresList || []).filter((m) => filled(m.value)).map((m) => `${filled(m.label) ? m.label.trim() + ': ' : ''}${m.value.trim()}${filled(m.unit) ? ' ' + m.unit.trim() : ''}${m.calculated ? ` (calculado: ${m.calcName})` : ''}`);
+    // Medidas já escritas na frase do montador não se repetem; as demais (não usadas no texto) aparecem em "Medidas" para nada se perder.
+    const rows = (s.measuresList || []).filter((m) => filled(m.value) && !(s.build && filled(s.description) && s.description.includes(String(m.value).trim()))).map((m) => `${filled(m.label) ? m.label.trim() + ': ' : ''}${m.value.trim()}${filled(m.unit) ? ' ' + m.unit.trim() : ''}${m.calculated ? ` (calculado: ${m.calcName})` : ''}`);
     if (filled(s.measures)) rows.push(s.measures.trim());
     if (rows.length) items.push({ label: 'Medidas', text: rows.join('; ') });
     if (filled(s.notes)) items.push({ label: 'Observações', text: s.notes.trim() });
-    // Estrutura sem status e sem conteúdo não aparece: ausência de informação nunca vira "normal".
-    if (items.length || s.status) {
-      const title = (s.title || '').trim() || 'Estrutura';
-      blocks.push({ kind: 'section', title: s.status ? `${title} — ${STRUCTURE_STATUS[s.status] || s.status}` : title, items });
-    }
+    // Status explícito sem descrição aparece como foi marcado; ausência de informação nunca vira "normal".
+    if (!items.length && s.status) items.push({ label: '', text: STRUCTURE_STATUS[s.status] || s.status });
+    if (items.length) blocks.push({ kind: 'section', title: (s.title || '').trim() || 'Estrutura', items });
   }
 
   if (filled(exam.impression)) {
@@ -79,22 +79,23 @@ export function buildReport(exam, settings = {}) {
     caption: [im.region, im.caption].filter(filled).map((x) => x.trim()).join(' — '),
   }));
 
-  const headerLines = [prof.service, prof.name && `${prof.name}${prof.crmv ? ` — CRMV-${prof.uf || ''} ${prof.crmv}` : ''}`,
-    prof.contact, settings.headerText].filter(filled);
+  // Sem logotipos, o topo mostra o serviço e o contato; nome e CRMV já constam na assinatura.
+  const headerLines = [prof.service, prof.contact, settings.headerText].filter(filled);
 
   return {
     title: tpl.docTitle || (isRx ? 'Laudo de Radiografia Veterinária' : 'Laudo de Ultrassonografia Veterinária'),
     version: exam.version || 1,
     status: exam.status,
-    headerLines, logo: settings.logo || '',
+    headerLines, logo: settings.logo || '', logo2: settings.logo2 || '',
     footerText: [settings.footerText, `Documento ${String(exam.id || '').slice(0, 8)} · versão ${exam.version || 1}`].filter(filled).join(' · '),
     statusNote: STATUS_NOTE[exam.status] || '',
     font: settings.font === 'serif' ? 'serif' : 'sans',
     fontSize: Number(settings.fontSize) || 11,
-    patientRows, blocks,
-    images: { perRow: Math.min(3, Math.max(1, Number(exam.imagesPerRow) || 2)), items: images },
+    patientRows, blocks, idShort: String(p.name || '').trim(), dateText: fmtDateBR(exam.date),
+    images: { perRow: Math.min(4, Math.max(1, Number(exam.imagesPerRow) || 2)), items: images },
     signature: tpl.signature === false ? null : {
       name: prof.name || '', crmv: filled(prof.crmv) ? `CRMV-${prof.uf || ''} ${prof.crmv}` : '',
+      code: String(exam.id || '').replace(/-/g, '').toUpperCase(),
       stamp: exam.status === 'final' && exam.finalizedAt
         ? `Finalizado eletronicamente em ${fmtDateTimeBR(exam.finalizedAt)}${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''} (sem certificado digital ICP-Brasil)` : '',
     },

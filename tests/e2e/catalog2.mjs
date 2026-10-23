@@ -37,7 +37,7 @@ check('um campo para digitar a medida de cada lado', (await page.locator('[data-
 await page.fill('[data-bx="Testículo esquerdo – Medidas do testículo"]', '2,01 x 1,49 cm');
 await page.fill('[data-bx="Testículo direito – Medidas do testículo"]', '1,41 x 0,55 cm');
 const d = await page.inputValue('[data-sf="description"]');
-check('testículos: texto por lado com as medidas de cada um', d === 'Testículo esquerdo localizado em bolsa escrotal, medindo aprox. 2,01 x 1,49 cm, apresentando contorno regular, ecotextura e ecogenicidade habituais. Testículo direito localizado em subcutâneo de região inguinal direita, medindo aprox. 1,41 x 0,55 cm, apresentando contorno regular, ecotextura homogênea, ecogenicidade diminuída e dimensões diminuídas em relação ao testículo contralateral.', d);
+check('testículos: texto por lado com as medidas de cada um', d === '**Testículo esquerdo** localizado em bolsa escrotal, medindo aprox. 2,01 x 1,49 cm, apresentando contorno regular, ecotextura e ecogenicidade habituais. **Testículo direito** localizado em subcutâneo de região inguinal direita, medindo aprox. 1,41 x 0,55 cm, apresentando contorno regular, ecotextura homogênea, ecogenicidade diminuída e dimensões diminuídas em relação ao testículo contralateral.', d);
 
 // Estruturas novas no modelo: tecido mamário só para fêmeas
 const nomes = await page.locator('.organ .oname').allTextContents();

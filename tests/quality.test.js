@@ -22,12 +22,13 @@ test('estrutura vazia ou não mencionada nunca vira achado normal', () => {
 });
 test('"Normal" só aparece quando a veterinária marca explicitamente', () => {
   const r = buildReport(exam([sec({ status: 'normal' })]), sampleSettings);
-  assert.equal(r.blocks[0].title, 'Fígado — Normal');
-  assert.deepEqual(r.blocks[0].items, []); // nenhum texto inventado
+  assert.equal(r.blocks[0].title, 'Fígado');
+  assert.deepEqual(r.blocks[0].items, [{ label: '', text: 'Normal' }]); // só o status marcado, nenhum texto inventado
 });
 test('"Não avaliado" é exibido como tal, sem texto adicional', () => {
   const r = buildReport(exam([sec({ status: 'nao_avaliado' })]), sampleSettings);
-  assert.equal(r.blocks[0].title, `Fígado — ${STRUCTURE_STATUS.nao_avaliado}`);
+  assert.equal(r.blocks[0].title, 'Fígado');
+  assert.deepEqual(r.blocks[0].items, [{ label: '', text: STRUCTURE_STATUS.nao_avaliado }]);
 });
 test('medidas preservam valor e unidade exatamente como digitados', () => {
   const m = [{ id: '1', label: 'Comprimento', value: '5,2', unit: 'cm' }, { id: '2', label: 'Nódulo', value: '3,2 x 2,1', unit: 'mm' }];
@@ -163,4 +164,19 @@ test('laudo: idade vem da data de nascimento (ignora idade digitada antiga) e us
   assert.ok(semData.patientRows.some(([k, v]) => k === 'Idade' && v === '3 anos'));
   const nada = buildReport(sampleExam({ patient: { name: 'T' } }), sampleSettings);
   assert.ok(!nada.patientRows.some(([k]) => k === 'Idade'));
+});
+
+test('laudo: medida do montador já escrita na frase não se repete; medida fora do texto aparece em "Medidas"', () => {
+  const s = blankSection('Fígado', { measures: [{ label: 'Comprimento', unit: 'cm' }, { label: 'Largura', unit: 'cm' }], builder: { blocks: [{ groups: [{ label: 'x', kind: 'one', options: [{ text: 'com {?Comprimento}' }] }] }] } });
+  s.measuresList[0].value = '5,2'; s.measuresList[1].value = '3,1';
+  s.description = 'com 5,2 cm.'; s.status = 'alterado';
+  const r = buildReport(sampleExam({ sections: [s] }), sampleSettings);
+  const sec = r.blocks.find((b) => b.kind === 'section');
+  assert.deepEqual(sec.items.map((i) => i.text), ['com 5,2 cm.', 'Largura: 3,1 cm']);
+});
+test('laudo: identificação na ordem e com os nomes dos laudos da veterinária, com hora', () => {
+  const r = buildReport(sampleExam({ date: '2026-10-10', time: '10:58', clinic: 'Hamadulu', requestingVet: 'Dra. X', patient: { name: 'A', species: 'Cão', breed: 'SRD', sex: 'Macho', tutor: 'T', birthDate: '2025-10-10' } }), sampleSettings);
+  assert.deepEqual(r.patientRows.map(([k]) => k), ['Paciente', 'Espécie', 'Raça', 'Sexo', 'Idade', 'Responsável', 'Data', 'Solicitante', 'Clínica/Hospital']);
+  assert.equal(r.patientRows.find(([k]) => k === 'Data')[1], '10/10/2026 10:58');
+  assert.equal(r.title, 'Laudo de Ultrassonografia Veterinária'); // título vem do modelo do exame
 });

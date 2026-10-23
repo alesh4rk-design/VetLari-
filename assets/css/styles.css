@@ -78,16 +78,19 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 #toasts { position: fixed; right: 12px; bottom: 76px; display: flex; flex-direction: column; gap: 8px; z-index: 99; max-width: calc(100vw - 24px); }
 .toast { background: var(--panel2); border: 1px solid var(--line); border-left: 4px solid var(--accent2); padding: 10px 14px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
 .toast.error { border-left-color: var(--danger); } .toast.success { border-left-color: var(--ok); }
-/* Prévia do documento: papel branco independente do tema */
-.paper { background: #fff; color: #111; width: 100%; max-width: 794px; margin: 0 auto 16px; padding: 48px 56px; border-radius: 4px; box-shadow: 0 2px 16px rgba(0,0,0,.4); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+/* Prévia do documento: papel branco independente do tema, no formato dos laudos da veterinária */
+.paper { background: #fff; color: #111; width: 100%; max-width: 794px; margin: 0 auto 16px; padding: 40px 48px; border-radius: 4px; box-shadow: 0 2px 16px rgba(0,0,0,.4); font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
 .paper.serif { font-family: "Times New Roman", Times, serif; } .paper.sans { font-family: Arial, Helvetica, sans-serif; }
-.paper h1 { font-size: 1.35em; text-align: center; margin: 0 0 14px; text-transform: uppercase; color: #111; }
-.paper .phead { border-bottom: 1px solid #999; margin-bottom: 14px; padding-bottom: 8px; font-size: .85em; color: #333; display: flex; gap: 12px; align-items: center; }
-.paper .phead img { max-height: 56px; max-width: 140px; }
-.paper table.pt { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: .9em; } .paper table.pt td { border-bottom: 1px solid #bbb; padding: 4px 6px; width: 50%; vertical-align: top; }
-.paper h3 { color: #111; margin: 12px 0 2px; } .paper .sub { margin: 0 0 4px; white-space: pre-wrap; }
-.paper .pimgs { display: grid; gap: 10px; margin-top: 8px; } .paper figure { margin: 0; text-align: center; break-inside: avoid; } .paper figure img { max-width: 100%; display: block; margin: 0 auto; } .paper figcaption { font-size: .8em; font-style: italic; color: #444; }
-.paper .sig { margin: 48px auto 0; text-align: center; width: 60%; } .paper .sig .line { border-top: 1px solid #000; padding-top: 4px; }
+.paper .plogos { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.paper .plogos img { max-height: 56px; max-width: 200px; object-fit: contain; }
+.paper .phead { margin-bottom: 12px; font-size: .85em; color: #444; }
+.paper .pbanner { background: #606060; color: #fff; font-weight: 700; padding: 6px 12px; border-radius: 8px; margin: 12px 0 8px; font-size: 1.05em; }
+.paper .pid { background: #f0f0f0; border-radius: 10px; padding: 10px 14px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 14px; font-size: .92em; }
+.paper .sub { margin: 0 0 9px; text-align: justify; } .paper .pnote { font-style: italic; color: #555; font-size: .85em; }
+.paper .pstatus { text-align: center; font-weight: 700; color: #b43c00; margin: 4px 0 10px; }
+.paper .plist { margin: 4px 0 10px 22px; padding: 0; }
+.paper .pimgs { display: grid; gap: 6px; margin-top: 6px; } .paper figure { margin: 0; text-align: center; break-inside: avoid; } .paper figure img { max-width: 100%; display: block; margin: 0 auto; } .paper figcaption { font-size: .8em; font-style: italic; color: #444; }
+.paper .psig { background: #f0f0f0; border-radius: 10px; padding: 10px 14px; margin-top: 18px; font-size: .92em; } .paper .psig .small { font-size: .8em; color: #555; margin-top: 4px; }
 .paper .pfoot { border-top: 1px solid #999; margin-top: 18px; padding-top: 6px; font-size: .75em; color: #555; }
 .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 

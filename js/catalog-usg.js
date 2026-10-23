@@ -7,7 +7,7 @@ const o = (text, label) => (label ? { text, label } : { text });
 const X = (text) => ({ text, excl: true }); // exclusiva: substitui as outras opções do bloco
 const C = (text, label) => ({ text, ...(label ? { label } : {}), glue: true }); // cola na anterior só com espaço (sem vírgula)
 const g = (label, kind, options) => ({ label, kind, options });
-const OBS = 'Obs: Alimento e gás podem formar artefato de imagem impedindo a visibilização de todo conteúdo gástrico e intestinal, em caso de suspeita de corpo estranho é necessário acompanhamento do paciente com preparo prévio adequado (jejum e uso de antifisético)';
+const OBS = '__Obs: Alimento e gás podem formar artefato de imagem impedindo a visibilização de todo conteúdo gástrico e intestinal, em caso de suspeita de corpo estranho é necessário acompanhamento do paciente com preparo prévio adequado (jejum e uso de antifisético)__';
 const PAREDE_ID = 'Parede normoecogênica, com preservação da estratificação em camadas, contorno regular e espessura';
 
 export const USG_BUILDERS = {
@@ -32,7 +32,7 @@ export const USG_BUILDERS = {
         o('Presença de discretos pontos hiperecogênicos em região de recessos pélvicos', 'pontos hiperecogênicos'), o('Presença de área ecogênica em medular interna', 'área ecogênica')]),
       g('Pelve', 'sentence', [o('Pelve normodilatada')]),
     ] },
-    { groups: [g('Ureteres', 'sentence', [o('Ureteres sem alterações sonográficas visíveis em topografia')])] },
+    { groups: [g('Ureteres', 'sentence', [o('**Ureteres** sem alterações sonográficas visíveis em topografia', 'Ureteres sem alterações')])] },
   ] },
 
   Fígado: { blocks: [{ groups: [

@@ -53,7 +53,7 @@ for (const lado of ['Rim esquerdo', 'Rim direito']) {
 await page.fill('.mrow:has-text("Rim esquerdo – comprimento") [data-mf="value"]', '4,13');
 await page.fill('.mrow:has-text("Rim direito – comprimento") [data-mf="value"]', '4,47');
 const rins = await desc();
-check('rins: cada lado usa a própria medida', rins.includes('Rim esquerdo com dimensões preservadas (4,13 cm)') && rins.includes('Rim direito com dimensões preservadas (4,47 cm)'), rins);
+check('rins: cada lado usa a própria medida', rins.includes('**Rim esquerdo** com dimensões preservadas (4,13 cm)') && rins.includes('**Rim direito** com dimensões preservadas (4,47 cm)'), rins);
 
 // Adrenais: três medidas num parêntese + lado não caracterizado
 await organ('Adrenais');
@@ -62,7 +62,7 @@ for (const [g, t] of [['Dimensões', 'dimensões preservadas'], ['Formato', 'for
 await chip('Dimensões', 'não caracterizada', 'Adrenal direita');
 for (const [lab, v] of [['Adrenal esquerda – altura do pólo cranial', '0,31'], ['Adrenal esquerda – altura do pólo caudal', '0,37'], ['Adrenal esquerda – comprimento', '1,48']]) await page.fill(`.mrow:has-text("${lab}") [data-mf="value"]`, v);
 const adr = await desc();
-check('adrenais: medidas compostas e lado não caracterizado', adr.includes('(0,31 x 0,37 x 1,48 cm – altura pólo cranial x altura pólo caudal x comprimento)') && adr.endsWith('Adrenal direita não caracterizada (encoberta por alças intestinais no momento do exame).'), adr);
+check('adrenais: medidas compostas e lado não caracterizado', adr.includes('**Adrenal esquerda** com dimensões preservadas (0,31 x 0,37 x 1,48 cm – altura pólo cranial x altura pólo caudal x comprimento)') && adr.endsWith('**Adrenal direita** não caracterizada (encoberta por alças intestinais no momento do exame).'), adr);
 
 // Edição manual protege o texto; "Gerar de novo" substitui
 await organ('Fígado');

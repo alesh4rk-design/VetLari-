@@ -1,28 +1,37 @@
-// Prévia HTML do documento (mesmo modelo usado nos arquivos Word/PDF).
+// Prévia HTML do documento (mesmo modelo e mesmo formato usados nos arquivos Word/PDF).
 import { esc } from './utils.js';
+import { parseRich, sectionRich, stripRich } from './richtext.js';
+
+const rich = (text) => parseRich(text).map((r) => {
+  let h = esc(r.text);
+  if (r.bold) h = `<strong>${h}</strong>`;
+  if (r.italic) h = `<em>${h}</em>`;
+  return h;
+}).join('').replace(/\n/g, '<br>');
 
 export function reportToHtml(r) {
-  const head = (r.logo || r.headerLines.length)
-    ? `<div class="phead">${r.logo ? `<img src="${esc(r.logo)}" alt="Logotipo">` : ''}<div>${r.headerLines.map((l) => `<div>${esc(l)}</div>`).join('')}</div></div>` : '';
-  const pt = r.patientRows.length ? `<table class="pt"><tbody>${(() => {
-    const rows = [];
-    for (let i = 0; i < r.patientRows.length; i += 2) {
-      const cell = (p) => p ? `<td><strong>${esc(p[0])}:</strong> ${esc(p[1])}</td>` : '<td></td>';
-      rows.push(`<tr>${cell(r.patientRows[i])}${cell(r.patientRows[i + 1])}</tr>`);
-    }
-    return rows.join('');
-  })()}</tbody></table>` : '';
+  const logos = (r.logo || r.logo2)
+    ? `<div class="plogos">${r.logo ? `<img src="${esc(r.logo)}" alt="Logotipo">` : '<span></span>'}${r.logo2 ? `<img src="${esc(r.logo2)}" alt="Segundo logotipo">` : ''}</div>`
+    : (r.headerLines.length ? `<div class="phead"><div>${r.headerLines.map((l) => `<div>${esc(l)}</div>`).join('')}</div></div>` : '');
+  const ident = r.patientRows.length
+    ? `<div class="pbanner">Identificação</div><div class="pid">${r.patientRows.map(([k, v]) => `<div><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join('')}</div>` : '';
   const blocks = r.blocks.map((b) => {
-    if (b.kind === 'h') return `<h3>${esc(b.text)}</h3>`;
-    if (b.kind === 'p') return `<p class="sub">${esc(b.text)}</p>`;
-    if (b.kind === 'list') return `<ul style="margin:4px 0 8px 22px;padding:0">${b.items.map((i) => `<li><strong>${esc(i)}</strong></li>`).join('')}</ul>`;
-    if (b.kind === 'note') return `<p class="sub" style="font-style:italic;color:#555;font-size:.85em">${esc(b.text)}</p>`;
-    if (b.kind === 'kv') return `<p class="sub"><strong>${esc(b.label)}:</strong> ${esc(b.text)}</p>`;
-    return `<h3>${esc(b.title)}</h3>${b.items.map((it) => `<p class="sub">${it.label ? `<strong>${esc(it.label)}:</strong> ` : ''}${esc(it.text)}</p>`).join('')}`;
+    if (b.kind === 'h') return `<div class="pbanner">${esc(b.text)}</div>`;
+    if (b.kind === 'p') return `<p class="sub">${rich(b.text)}</p>`;
+    if (b.kind === 'list') return `<ul class="plist">${b.items.map((i) => `<li><strong>${esc(stripRich(i))}</strong></li>`).join('')}</ul>`;
+    if (b.kind === 'note') return `<p class="sub pnote">${esc(stripRich(b.text))}</p>`;
+    if (b.kind === 'kv') return `<p class="sub">${rich(`**${b.label}**: ${b.text}`)}</p>`;
+    return `<p class="sub">${rich(sectionRich(b))}</p>`;
   }).join('');
-  const imgs = r.images.items.length ? `<h3>Imagens</h3><div class="pimgs" style="grid-template-columns:repeat(${r.images.perRow},1fr)">${
-    r.images.items.map((im) => `<figure><img src="${esc(im.dataUrl)}" alt="${esc(im.caption || 'Imagem do exame')}" style="width:${Math.round(im.scale * 100)}%">${im.caption ? `<figcaption>${esc(im.caption)}</figcaption>` : ''}</figure>`).join('')}</div>` : '';
-  const sig = r.signature ? `<div class="sig"><div class="line">${esc(r.signature.name || 'Assinatura do médico-veterinário')}${r.signature.crmv ? `<br>${esc(r.signature.crmv)}` : ''}${r.signature.stamp ? `<br><small>${esc(r.signature.stamp)}</small>` : ''}</div></div>` : '';
+  const imgs = r.images.items.length ? `<div class="pbanner">Imagens</div><div class="pimgs" style="grid-template-columns:repeat(${r.images.perRow},1fr)">${
+    r.images.items.map((im) => `<figure><img src="${esc(im.dataUrl)}" alt="${esc(im.caption || 'Imagem do exame')}" style="width:${Math.round(im.scale * 100)}%">${im.caption ? `<figcaption>${esc(stripRich(im.caption))}</figcaption>` : ''}</figure>`).join('')}</div>` : '';
+  let sig = '';
+  if (r.signature) {
+    const s = r.signature;
+    sig = s.stamp
+      ? `<div class="psig"><div><strong>Assinado eletronicamente por:</strong> ${esc(s.name || '(nome não informado)')}</div>${s.crmv ? `<div><strong>${esc(s.crmv)}</strong></div>` : ''}<div>Código identificador: ${esc(s.code)}</div><div class="small">${esc(s.stamp)}</div></div>`
+      : `<div class="psig"><div><strong>Documento não finalizado: sem assinatura eletrônica.</strong></div>${s.name ? `<div>Responsável: ${esc(s.name)}${s.crmv ? ' — ' + esc(s.crmv) : ''}</div>` : ''}<div>Código identificador: ${esc(s.code)}</div></div>`;
+  }
   const foot = r.footerText ? `<div class="pfoot">${esc(r.footerText)}</div>` : '';
-  return `<article class="paper ${r.font}" aria-label="Prévia do laudo">${head}<h1>${esc(r.title)}</h1>${r.statusNote ? `<p style="text-align:center;font-weight:700;color:#b43c00">${esc(r.statusNote)}</p>` : ''}${pt}${blocks}${imgs}${sig}${foot}</article>`;
+  return `<article class="paper ${r.font}" aria-label="Prévia do laudo">${logos}${ident}<div class="pbanner">${esc(r.title)}</div>${r.statusNote ? `<p class="pstatus">${esc(r.statusNote)}</p>` : ''}${blocks}${imgs}${sig}${foot}</article>`;
 }

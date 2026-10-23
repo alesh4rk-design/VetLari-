@@ -99,7 +99,7 @@ export function imagesStepHtml(exam, locked, regionLabel) {
         <button class="iconbtn danger" data-act="img-del" data-id="${im.id}" aria-label="Excluir imagem" title="Excluir">✕</button>
       </div>`}
     </div>`).join('');
-  const n = Math.min(3, Math.max(1, Number(exam.imagesPerRow) || 2));
+  const n = Math.min(4, Math.max(1, Number(exam.imagesPerRow) || 2));
   const mini = imgs.length ? `<h3>Disposição no documento</h3><div class="grid" style="grid-template-columns:repeat(${n},1fr)">${
     imgs.filter((im) => im.include !== false).map((im, i) => `<div style="text-align:center"><img src="${esc(im.annotatedSrc || im.src)}" alt="" style="width:${Math.round(im.scale * 100)}%;max-height:140px;object-fit:contain;background:#000"><div class="small muted">${i + 1}</div></div>`).join('')}</div>` : '';
   return `
@@ -109,7 +109,7 @@ export function imagesStepHtml(exam, locked, regionLabel) {
       <button class="btn primary" data-act="img-pick">Escolher imagens</button></div>`}
     <div class="row between"><div><strong>${imgs.length}</strong> ${imgs.length === 1 ? 'imagem' : 'imagens'} (${imgs.filter((i) => i.include !== false).length} no laudo) · ${formatBytes(total)}</div>
       <div style="min-width:220px"><label for="perrow">Imagens por linha no documento</label>
-        <select id="perrow" data-bind="imagesPerRow" data-num="1" ${locked ? 'disabled' : ''}>${[1, 2, 3].map((v) => `<option value="${v}" ${n === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
+        <select id="perrow" data-bind="imagesPerRow" data-num="1" ${locked ? 'disabled' : ''}>${[1, 2, 3, 4].map((v) => `<option value="${v}" ${n === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
     <div class="imgs" id="imgs" style="margin:12px 0">${cards || '<div class="empty">Nenhuma imagem adicionada.</div>'}</div>
     ${mini}`;
 }

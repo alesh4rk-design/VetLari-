@@ -28,6 +28,8 @@ export function expandBlocks(def) {
 }
 
 const strip = (t) => String(t).trim().replace(/[.;,\s]+$/, '');
+/** Termina com ponto final mantendo o destaque (**…** / __…__) fechado depois dele. */
+const closeSentence = (t) => { const m = /^([\s\S]*?)((?:\*\*|__)*)$/.exec(String(t).trim()); return `${strip(m[1])}.${m[2]}`; };
 export function joinList(items, last = 'e') {
   const l = items.map(strip).filter(Boolean);
   if (l.length <= 1) return l[0] || '';
@@ -71,8 +73,8 @@ export function composeDescription(def, sel = {}, measures = [], extras = {}) {
     const segments = [];
     for (const f of fragments) { if (f.glue && segments.length) segments[segments.length - 1] += ` ${f.text}`; else segments.push(f.text); }
     const parts = [];
-    if (segments.length) parts.push(`${block.label ? block.label + ' ' : ''}${joinList(segments, block.last)}.`);
-    for (const s of sentences) parts.push(`${strip(s)}.`);
+    if (segments.length) parts.push(`${block.label ? `**${block.label}** ` : ''}${joinList(segments, block.last)}.`);
+    for (const s of sentences) parts.push(closeSentence(s));
     if (parts.length) paragraphs.push(parts.join(' '));
   }
   return paragraphs.join(' ');

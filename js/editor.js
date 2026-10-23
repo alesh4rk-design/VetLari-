@@ -179,7 +179,7 @@ export async function renderEditor(view, id, settings, profile) {
       <div class="sec-head"><input data-sf="title" aria-label="Nome da estrutura" value="${esc(s.title)}" ${locked ? 'disabled' : ''} style="font-size:1.15rem"></div>
       <div class="field"><label>Status da avaliação</label>${statusButtons(s)}</div>
       ${builderBlock(s)}
-      <div class="field"><label>Descrição</label><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
+      <div class="field"><label>Descrição <span class="muted small">(use **negrito** e __itálico__ se quiser destacar)</span></label><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
       ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>
       <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button></div>`}</div>
       ${measureBlock(s)}
@@ -215,7 +215,7 @@ export async function renderEditor(view, id, settings, profile) {
       <div class="field"><label for="f-sex">Sexo</label><select id="f-sex" data-bind="patient.sex" ${locked ? 'disabled' : ''}>${SEXES.map((s) => `<option value="${s}" ${exam.patient.sex === s ? 'selected' : ''}>${s || 'Selecione'}</option>`).join('')}</select></div>
       ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${ageField()}${field('Peso (kg)', 'patient.weight', { extra: 'inputmode="decimal"' })}
       ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}
-      ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame *', 'date', { type: 'date' })}</div>
+      ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame *', 'date', { type: 'date' })}${field('Hora do exame', 'time', { type: 'time' })}</div>
       ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
       <div class="card"><h2>Exame</h2><p class="muted small">Preencha o que for conhecido. Itens deixados em branco aparecem como pendência informativa, nunca como "normal".</p>
       ${area('Indicação clínica', 'clinical.indication', 2)}${area('Pergunta clínica a responder', 'clinical.question', 2)}

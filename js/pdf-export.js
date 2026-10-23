@@ -1,7 +1,11 @@
-// Geração de PDF no navegador com jsPDF (texto selecionável, imagens embutidas, paginação controlada).
-import { fmtDateBR } from './utils.js';
+// Geração de PDF no navegador com jsPDF, no formato dos laudos da veterinária: logotipos no topo, faixas
+// cinza (Identificação, título, Impressão Diagnóstica, Imagens), identificação em 3 colunas, texto
+// justificado com nome do órgão em negrito na mesma linha, conclusão em lista e imagens em grade.
+// Texto selecionável; imagens embutidas; paginação controlada.
+import { parseRich, toWords, sectionRich, stripRich } from './richtext.js';
 
-const PAGE_W = 210, PAGE_H = 297, MARGIN = 20, CONTENT_W = PAGE_W - 2 * MARGIN, FOOTER_H = 14;
+const PAGE_W = 210, PAGE_H = 297, MARGIN = 15, CONTENT_W = PAGE_W - 2 * MARGIN, BOTTOM = PAGE_H - 18;
+const GRAY = [96, 96, 96], BOX = [240, 240, 240];
 
 export function buildPdf(report, jsPDFCtor) {
   const JsPDF = jsPDFCtor || (globalThis.jspdf && globalThis.jspdf.jsPDF);
@@ -9,175 +13,176 @@ export function buildPdf(report, jsPDFCtor) {
   const doc = new JsPDF({ unit: 'mm', format: 'a4', compress: true });
   const family = report.font === 'serif' ? 'times' : 'helvetica';
   const fs = report.fontSize;
-  const lh = (size) => size * 0.3528 * 1.4;
-  const headerH = measureHeader();
-  const top = MARGIN + headerH;
-  const bottom = PAGE_H - MARGIN - FOOTER_H + 6;
-  let y = top;
+  const lh = (size) => size * 0.3528 * 1.38;
+  const styleOf = (s) => (s.bold && s.italic ? 'bolditalic' : s.bold ? 'bold' : s.italic ? 'italic' : 'normal');
+  let y = MARGIN;
 
-  function measureHeader() {
-    const textH = report.headerLines.length * lh(9);
-    return Math.max(report.logo ? 18 : 0, textH) + (report.headerLines.length || report.logo ? 6 : 0);
+  const width = (text, st, size) => { doc.setFont(family, st).setFontSize(size); return doc.getTextWidth(text); };
+  const newPage = () => { doc.addPage(); y = MARGIN; };
+  const ensure = (h) => { if (y + h > BOTTOM) newPage(); };
+
+  /** Quebra o texto rico em linhas que cabem na largura. */
+  function layout(text, w, size) {
+    const words = toWords(parseRich(text)).map((wd) => ({ ...wd, w: wd.segs.reduce((s, sg) => s + width(sg.text, styleOf(sg), size), 0) }));
+    const sp = width(' ', 'normal', size);
+    const lines = [];
+    let cur = [], curW = 0;
+    for (const wd of words) {
+      const add = cur.length ? sp + wd.w : wd.w;
+      if (cur.length && curW + add > w) { lines.push(cur); cur = [wd]; curW = wd.w; } else { cur.push(wd); curW += add; }
+    }
+    if (cur.length) lines.push(cur);
+    return { lines, sp };
   }
 
-  function drawHeader() {
-    if (!report.headerLines.length && !report.logo) return;
-    let x = MARGIN;
-    if (report.logo) {
-      try {
-        const props = doc.getImageProperties(report.logo);
-        const h = 16, w = Math.min(40, h * props.width / props.height);
-        doc.addImage(report.logo, props.fileType, MARGIN, MARGIN - 4, w, h);
-        x = MARGIN + w + 4;
-      } catch { /* logotipo inválido: segue sem ele */ }
+  function drawLine(words, x, yy, w, size, sp, justify) {
+    let gap = sp;
+    if (justify && words.length > 1) gap = (w - words.reduce((s, wd) => s + wd.w, 0)) / (words.length - 1);
+    let cx = x;
+    for (const wd of words) {
+      for (const sg of wd.segs) { doc.setFont(family, styleOf(sg)).setFontSize(size).text(sg.text, cx, yy, { baseline: 'top' }); cx += width(sg.text, styleOf(sg), size); }
+      cx += gap;
     }
-    doc.setFont(family, 'normal').setFontSize(9).setTextColor(60);
-    report.headerLines.forEach((line, i) => doc.text(line, x, MARGIN + i * lh(9), { baseline: 'top' }));
-    doc.setDrawColor(150).setLineWidth(0.3).line(MARGIN, top - 3, PAGE_W - MARGIN, top - 3);
   }
 
-  function newPage() { doc.addPage(); drawHeader(); y = top; }
-  function ensure(h) { if (y + h > bottom) newPage(); }
-
-  function paragraph(text, { bold = false, size = fs, gap = 1.5, indent = 0, color = 0 } = {}) {
-    doc.setFont(family, bold ? 'bold' : 'normal').setFontSize(size).setTextColor(color);
-    const lines = doc.splitTextToSize(text, CONTENT_W - indent);
-    for (const line of lines) {
-      ensure(lh(size));
-      doc.text(line, MARGIN + indent, y, { baseline: 'top' });
-      y += lh(size);
-    }
+  /** Parágrafo justificado (a última linha fica à esquerda). */
+  function paragraph(text, { size = fs, gap = 3, x = MARGIN, w = CONTENT_W, justify = true, color = 0 } = {}) {
+    const { lines, sp } = layout(text, w, size);
+    doc.setTextColor(color);
+    lines.forEach((ln, i) => { ensure(lh(size)); drawLine(ln, x, y, w, size, sp, justify && i < lines.length - 1); y += lh(size); });
     y += gap;
   }
 
-  function labelled(label, text) {
-    doc.setFont(family, 'bold').setFontSize(fs);
-    const lw = doc.getTextWidth(`${label}: `);
-    doc.setFont(family, 'normal');
-    const lines = doc.splitTextToSize(text, CONTENT_W - lw);
-    ensure(lh(fs));
-    doc.setFont(family, 'bold').text(`${label}:`, MARGIN, y, { baseline: 'top' });
-    doc.setFont(family, 'normal');
-    lines.forEach((ln, i) => { if (i) ensure(lh(fs)); doc.text(ln, MARGIN + lw, y, { baseline: 'top' }); y += lh(fs); });
+  function banner(text) {
+    ensure(8 + 4 + lh(fs) * 2);
     y += 1;
+    doc.setFillColor(...GRAY).roundedRect(MARGIN, y, CONTENT_W, 8, 2, 2, 'F');
+    doc.setFont(family, 'bold').setFontSize(fs + 1).setTextColor(255).text(text, MARGIN + 3, y + 2.1, { baseline: 'top' });
+    doc.setTextColor(0);
+    y += 8 + 3.5;
   }
 
-  drawHeader();
+  function logos(height) {
+    const put = (url, atRight) => {
+      if (!url) return 0;
+      try {
+        const pr = doc.getImageProperties(url);
+        const h = height, w = Math.min(60, h * pr.width / pr.height);
+        doc.addImage(url, pr.fileType, atRight ? PAGE_W - MARGIN - w : MARGIN, y, w, h);
+        return h;
+      } catch { return 0; } // logotipo inválido: segue sem ele
+    };
+    return Math.max(put(report.logo, false), put(report.logo2, true));
+  }
 
-  // Título
-  doc.setFont(family, 'bold').setFontSize(fs + 5).setTextColor(0);
-  ensure(10);
-  doc.text(report.title.toUpperCase(), PAGE_W / 2, y, { align: 'center', baseline: 'top' });
-  y += report.statusNote ? 6 : 11;
+  // ----- Topo: logotipos (ou texto de cabeçalho, se não houver logotipos) -----
+  const lh0 = logos(16);
+  if (lh0) y += lh0 + 4;
+  else if (report.headerLines.length) {
+    doc.setFont(family, 'normal').setFontSize(9).setTextColor(70);
+    report.headerLines.forEach((l) => { doc.text(l, MARGIN, y, { baseline: 'top' }); y += lh(9); });
+    doc.setTextColor(0); y += 3;
+  }
+
+  // ----- Identificação em 3 colunas -----
+  if (report.patientRows.length) {
+    banner('Identificação');
+    const colW = CONTENT_W / 3, size = fs - 0.5;
+    const rows = [];
+    for (let i = 0; i < report.patientRows.length; i += 3) rows.push(report.patientRows.slice(i, i + 3));
+    const laid = rows.map((r) => r.map(([k, v]) => layout(`**${k}:** ${v}`, colW - 4, size)));
+    const heights = laid.map((r) => Math.max(...r.map((c) => c.lines.length)) * lh(size) + 2.4);
+    const boxH = heights.reduce((a, b) => a + b, 0) + 3;
+    ensure(boxH);
+    doc.setFillColor(...BOX).roundedRect(MARGIN, y, CONTENT_W, boxH, 2.5, 2.5, 'F');
+    let yy = y + 2;
+    laid.forEach((r, ri) => {
+      r.forEach((c, ci) => c.lines.forEach((ln, li) => { doc.setTextColor(0); drawLine(ln, MARGIN + 3 + ci * colW, yy + li * lh(size), colW, size, c.sp, false); }));
+      yy += heights[ri];
+    });
+    y += boxH + 3;
+  }
+
+  // ----- Título -----
+  banner(report.title);
   if (report.statusNote) {
     doc.setFont(family, 'bold').setFontSize(fs).setTextColor(180, 60, 0);
+    ensure(lh(fs) + 2);
     doc.text(report.statusNote, PAGE_W / 2, y, { align: 'center', baseline: 'top' });
-    doc.setTextColor(0);
-    y += 9;
+    doc.setTextColor(0); y += lh(fs) + 3;
   }
 
-  // Identificação do paciente (duas colunas)
-  if (report.patientRows.length) {
-    const colW = CONTENT_W / 2;
-    doc.setDrawColor(190).setLineWidth(0.2);
-    const rows = [];
-    for (let i = 0; i < report.patientRows.length; i += 2) rows.push(report.patientRows.slice(i, i + 2));
-    for (const row of rows) {
-      const cells = row.map(([k, v]) => {
-        doc.setFont(family, 'bold').setFontSize(fs - 1);
-        const kw = doc.getTextWidth(`${k}: `);
-        doc.setFont(family, 'normal');
-        return { k, lines: doc.splitTextToSize(v, colW - kw - 4), kw };
-      });
-      const h = Math.max(...cells.map((c) => c.lines.length)) * lh(fs - 1) + 2.5;
-      ensure(h);
-      cells.forEach((c, i) => {
-        const x = MARGIN + i * colW;
-        doc.setFont(family, 'bold').setFontSize(fs - 1).text(`${c.k}:`, x + 1.5, y + 1.2, { baseline: 'top' });
-        doc.setFont(family, 'normal');
-        c.lines.forEach((ln, j) => doc.text(ln, x + 1.5 + c.kw, y + 1.2 + j * lh(fs - 1), { baseline: 'top' }));
-      });
-      y += h;
-      doc.line(MARGIN, y, PAGE_W - MARGIN, y);
-    }
-    y += 5;
-  }
-
-  // Conteúdo clínico
+  // ----- Conteúdo -----
   for (const b of report.blocks) {
-    if (b.kind === 'h') { ensure(lh(fs + 1) * 3); y += 2; paragraph(b.text, { bold: true, size: fs + 1, gap: 1 }); }
-    else if (b.kind === 'p') paragraph(b.text, { gap: 3 });
-    else if (b.kind === 'list') { for (const it of b.items) paragraph(`•  ${it}`, { bold: true, indent: 4, gap: 0.5 }); y += 2; }
-    else if (b.kind === 'note') {
-      doc.setFont(family, 'italic').setFontSize(fs - 2).setTextColor(90);
-      const lines = doc.splitTextToSize(b.text, CONTENT_W);
-      for (const ln of lines) { ensure(lh(fs - 2)); doc.text(ln, MARGIN, y, { baseline: 'top' }); y += lh(fs - 2); }
-      doc.setTextColor(0); y += 3;
-    }
-    else if (b.kind === 'kv') labelled(b.label, b.text);
-    else if (b.kind === 'section') {
-      ensure(lh(fs) * 3);
-      y += 1.5;
-      paragraph(b.title, { bold: true, size: fs, gap: 0.5 });
-      for (const it of b.items) {
-        if (it.label) labelled(it.label, it.text); else paragraph(it.text, { gap: 1 });
-      }
-      y += 1.5;
-    }
+    if (b.kind === 'h') banner(b.text);
+    else if (b.kind === 'p') paragraph(b.text);
+    else if (b.kind === 'kv') paragraph(`**${b.label}**: ${b.text}`);
+    else if (b.kind === 'section') paragraph(sectionRich(b), { gap: 3.2 });
+    else if (b.kind === 'list') { for (const it of b.items) paragraph(`•  **${stripRich(it)}**`, { x: MARGIN + 5, w: CONTENT_W - 5, justify: false, gap: 0.8 }); y += 3; }
+    else if (b.kind === 'note') paragraph(`__${stripRich(b.text)}__`, { size: fs - 1.5, color: 90, justify: false, gap: 3 });
   }
 
-  // Imagens
+  // ----- Imagens -----
   const imgs = report.images.items;
   if (imgs.length) {
-    ensure(lh(fs + 1) * 2 + 20);
-    y += 3;
-    paragraph('Imagens', { bold: true, size: fs + 1, gap: 2 });
-    const n = report.images.perRow, gap = 5;
+    const n = report.images.perRow, gap = 3;
     const cellW = (CONTENT_W - gap * (n - 1)) / n;
+    const rows = [];
     for (let i = 0; i < imgs.length; i += n) {
-      const row = imgs.slice(i, i + n);
-      const maxH = bottom - top - 12;
-      const laid = row.map((im) => {
+      const maxH = BOTTOM - MARGIN - 6;
+      const laid = imgs.slice(i, i + n).map((im) => {
         let w = cellW * Math.min(1, Math.max(0.3, im.scale));
         let h = w * im.h / im.w;
         if (h > maxH) { h = maxH; w = h * im.w / im.h; }
-        doc.setFont(family, 'italic').setFontSize(fs - 2);
-        const cap = im.caption ? doc.splitTextToSize(im.caption, cellW) : [];
+        const cap = im.caption ? layout(`__${stripRich(im.caption)}__`, cellW, fs - 2) : { lines: [], sp: 0 };
         return { im, w, h, cap };
       });
-      const rowH = Math.max(...laid.map((l) => l.h + (l.cap.length ? l.cap.length * lh(fs - 2) + 1.5 : 0))) + 4;
-      ensure(rowH);
-      laid.forEach((l, j) => {
+      rows.push({ laid, h: Math.max(...laid.map((l) => l.h + (l.cap.lines.length ? l.cap.lines.length * lh(fs - 2) + 1.2 : 0))) + 3 });
+    }
+    ensure(8 + 4.5 + rows[0].h); // a faixa "Imagens" nunca fica sozinha no fim da página
+    banner('Imagens');
+    for (const row of rows) {
+      ensure(row.h);
+      row.laid.forEach((l, j) => {
         const x = MARGIN + j * (cellW + gap) + (cellW - l.w) / 2;
         doc.addImage(l.im.dataUrl, 'JPEG', x, y, l.w, l.h, undefined, 'FAST');
-        doc.setFont(family, 'italic').setFontSize(fs - 2).setTextColor(70);
-        l.cap.forEach((ln, k) => doc.text(ln, MARGIN + j * (cellW + gap) + cellW / 2, y + l.h + 1.5 + k * lh(fs - 2),
-          { align: 'center', baseline: 'top' }));
+        l.cap.lines.forEach((ln, k) => { doc.setTextColor(70); drawLine(ln, MARGIN + j * (cellW + gap), y + l.h + 1.2 + k * lh(fs - 2), cellW, fs - 2, l.cap.sp, false); });
+        doc.setTextColor(0);
       });
-      y += rowH;
+      y += row.h;
     }
   }
 
-  // Assinatura
+  // ----- Assinatura eletrônica (simples) -----
   if (report.signature) {
-    ensure(34);
-    y += 14;
-    doc.setDrawColor(0).setLineWidth(0.3).line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y);
-    y += 1.5;
-    doc.setFont(family, 'normal').setFontSize(fs).setTextColor(0);
-    const lines = [report.signature.name, report.signature.crmv, report.signature.stamp].filter(Boolean);
-    if (!lines.length) lines.push('Assinatura do médico-veterinário');
-    lines.forEach((ln) => { doc.text(ln, PAGE_W / 2, y, { align: 'center', baseline: 'top' }); y += lh(fs); });
+    const sg = report.signature;
+    ensure(40);
+    y += 4;
+    const h0 = logos(11); if (h0) y += h0 + 3;
+    const final = !!sg.stamp;
+    const lines = final
+      ? [`**Assinado eletronicamente por:** ${sg.name || '(nome não informado)'}`, sg.crmv && `**${sg.crmv}**`, `Código identificador: ${sg.code}`, sg.stamp]
+      : ['**Documento não finalizado: sem assinatura eletrônica.**', sg.name && `Responsável: ${sg.name}${sg.crmv ? ' — ' + sg.crmv : ''}`, `Código identificador: ${sg.code}`];
+    const size = fs - 0.5;
+    const laid = lines.filter(Boolean).map((t, i) => layout(t, CONTENT_W - 8, i === 3 && final ? size - 2 : size));
+    const boxH = laid.reduce((s, c, i) => s + c.lines.length * lh(i === 3 && final ? size - 2 : size), 0) + 6;
+    ensure(boxH);
+    doc.setFillColor(...BOX).roundedRect(MARGIN, y, CONTENT_W, boxH, 2.5, 2.5, 'F');
+    let yy = y + 3;
+    laid.forEach((c, i) => { const sz = i === 3 && final ? size - 2 : size; c.lines.forEach((ln) => { doc.setTextColor(i === 3 && final ? 90 : 0); drawLine(ln, MARGIN + 4, yy, CONTENT_W, sz, c.sp, false); yy += lh(sz); }); });
+    doc.setTextColor(0);
+    y += boxH;
   }
 
-  // Rodapé com paginação
+  // ----- Cabeçalho das páginas seguintes e rodapé com paginação -----
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
+    if (i > 1) { doc.setFont(family, 'normal').setFontSize(7.5).setTextColor(120).text(`${report.idShort} — ${report.dateText} — ${report.title}`, MARGIN, 8, { baseline: 'top' }); }
     doc.setFont(family, 'normal').setFontSize(8).setTextColor(100);
-    doc.setDrawColor(190).setLineWidth(0.2).line(MARGIN, PAGE_H - MARGIN - 4, PAGE_W - MARGIN, PAGE_H - MARGIN - 4);
-    if (report.footerText) doc.text(report.footerText, MARGIN, PAGE_H - MARGIN - 2, { baseline: 'top', maxWidth: CONTENT_W - 30 });
-    doc.text(`Página ${i} de ${total}`, PAGE_W - MARGIN, PAGE_H - MARGIN - 2, { align: 'right', baseline: 'top' });
+    doc.setDrawColor(190).setLineWidth(0.2).line(MARGIN, PAGE_H - 13, PAGE_W - MARGIN, PAGE_H - 13);
+    if (report.footerText) doc.text(report.footerText, MARGIN, PAGE_H - 11, { baseline: 'top', maxWidth: CONTENT_W - 30 });
+    doc.text(`Página ${i} de ${total}`, PAGE_W - MARGIN, PAGE_H - 11, { align: 'right', baseline: 'top' });
   }
   doc.setProperties({ title: report.title, creator: 'VetLaudo' });
   return doc;
