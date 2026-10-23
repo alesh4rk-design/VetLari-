@@ -99,10 +99,20 @@ export async function renderEditor(view, id, settings, profile) {
   const comboField = (label, bind, listId, kind) => `<div class="field"><label for="f-${bind}">${label}</label>
     <div class="row" style="flex-wrap:nowrap"><input id="f-${bind}" data-bind="${bind}" value="${esc(getPath(exam, bind))}" list="${listId}" autocomplete="off" placeholder="Escolha ou digite" ${locked ? 'disabled' : ''} style="flex:1;min-width:0">
     ${locked ? '' : `<button type="button" class="btn sm" data-act="pick-list" data-kind="${kind}" data-target="f-${bind}">Lista</button>`}</div></div>`;
-  const area = (label, bind, rows = 4, structure = '') => `<div class="field"><label for="f-${bind}">${label}</label>
+  // Nome do campo de texto para ligar as frases guardadas a ele (ex.: "Pergunta clínica").
+  const FIELD_NAMES = { intro: 'Introdução', 'clinical.indication': 'Indicação clínica', 'clinical.question': 'Pergunta clínica', 'clinical.history': 'Histórico relevante',
+    'clinical.medications': 'Medicamentos informados', 'clinical.limitations': 'Técnica e limitações', impression: 'Impressão Diagnóstica', differentials: 'Diagnósticos diferenciais',
+    notes: 'Observações e recomendações', addendum: 'Adendo' };
+  const area = (label, bind, rows = 4, structure = '') => {
+    const where = FIELD_NAMES[bind] || '';
+    // Na conclusão aparecem frases de todos os órgãos; nos demais campos, só as frases guardadas para o próprio campo (e as gerais).
+    const filter = structure || (bind === 'impression' ? '' : where);
+    return `<div class="field"><label for="f-${bind}">${label}</label>
     <textarea id="f-${bind}" data-bind="${bind}" rows="${rows}" ${locked ? 'disabled' : ''}>${esc(getPath(exam, bind))}</textarea>
-    ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="f-${bind}" data-structure="${esc(structure)}">Inserir frase</button>
-    <button type="button" class="btn sm ghost" data-act="dictate" data-target="f-${bind}" data-label="${esc(label)}">Ditar</button></div>`}</div>`;
+    ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="f-${bind}" data-structure="${esc(filter)}">Inserir frase</button>
+    <button type="button" class="btn sm ghost" data-act="dictate" data-target="f-${bind}" data-label="${esc(label)}">Ditar</button>
+    <button type="button" class="btn sm ghost" data-act="save-phrase" data-target="f-${bind}" data-where="${esc(where || label)}">Guardar esta frase</button></div>`}</div>`;
+  };
 
   // ----- Achados: lista de órgãos (esquerda) + painel do órgão selecionado (direita) -----
   const patientSex = () => (/^Macho/.test(exam.patient.sex || '') ? 'male' : /^Fêmea/.test(exam.patient.sex || '') ? 'female' : '');
@@ -440,9 +450,16 @@ export async function renderEditor(view, id, settings, profile) {
       }
       insertAtCursor(target, text, { newline: ['f-impression', 'f-differentials'].includes(b.dataset.target) });
     } else if (act === 'save-phrase') {
-      const s = current();
-      if (!s.description.trim()) return toast('Escreva a descrição antes de guardar a frase.', 'error');
-      await saveToLibraryDialog({ text: s.description, structure: s.title || 'Estrutura', modality: exam.type, measures: s.measuresList });
+      if (b.dataset.target) { // campo de texto do laudo (Pergunta clínica, Histórico, Conclusão...)
+        const field = view.querySelector('#' + CSS.escape(b.dataset.target));
+        if (!field || !field.value.trim()) return toast('Escreva o texto antes de guardar a frase.', 'error');
+        const isImpression = b.dataset.target === 'f-impression';
+        await saveToLibraryDialog({ text: field.value, structure: b.dataset.where, modality: exam.type, measures: [], where: `o campo "${b.dataset.where}"`, category: isImpression ? 'Impressão diagnóstica' : 'Minhas frases' });
+      } else {
+        const s = current();
+        if (!s.description.trim()) return toast('Escreva a descrição antes de guardar a frase.', 'error');
+        await saveToLibraryDialog({ text: s.description, structure: s.title || 'Estrutura', modality: exam.type, measures: s.measuresList });
+      }
     } else if (act === 'pick-list') {
       const input = view.querySelector('#' + CSS.escape(b.dataset.target));
       const options = b.dataset.kind === 'species' ? SPECIES : breedsFor(exam.patient.species);
