@@ -23,6 +23,7 @@ import { buildReport } from './report-model.js';
 import { reportToHtml } from './preview.js';
 import { buildDocx } from './docx-export.js';
 import { pdfBlob } from './pdf-export.js';
+import { attachHelp } from './help.js';
 import { ULTRASOUND } from './ultrasound.js';
 import { RADIOGRAPHY } from './radiography.js';
 
@@ -278,6 +279,7 @@ export async function renderEditor(view, id, settings, profile) {
       <div id="step">${steps[step]()}</div>
       <div class="row between no-print"><button class="btn" data-act="prev" ${step === 0 ? 'disabled' : ''}>Voltar</button>
       <button class="btn primary" data-act="next" ${step === STEPS.length - 1 ? 'disabled' : ''}>Avançar</button></div>`;
+    attachHelp(view, 'laudo-' + step);
     if (step === 2) bindImages(view.querySelector('#imgroot'), exam, settings, (structural) => { touch(); if (structural) draw(); });
     // Só volta ao topo ao trocar de etapa; demais alterações mantêm a posição da página.
     window.scrollTo(0, top ? 0 : keepY);

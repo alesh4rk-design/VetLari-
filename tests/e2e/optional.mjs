@@ -51,6 +51,18 @@ await page.fill('#f-patient\\.weight', '350');
 await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('.bgroup:has(.blabel:has-text("Contorno")) .chip');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('laudo mostra peso em g', (await page.locator('.paper .pid').textContent()).includes('Peso: 350 g'));
+// Tutorial por aba
+check('link de ajuda na etapa Paciente', (await page.locator('.help-link').count()) === 1);
+await page.click('.help-link'); await page.waitForSelector('.helplist');
+check('tutorial abre com passos', (await page.locator('.helplist li').count()) >= 3);
+await page.click('.modal [data-x=close]');
+await page.click('[data-step="1"]');
+check('ajuda muda conforme a etapa', (await page.locator('.help-link').count()) === 1);
+await page.click('.help-link');
+check('tutorial dos achados', (await page.textContent('.modal h2')).includes('Achados'));
+await page.click('.modal [data-x=close]');
+await page.goto(base + '#/frases'); await page.waitForSelector('.help-link');
+check('ajuda na aba Frases', true);
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
