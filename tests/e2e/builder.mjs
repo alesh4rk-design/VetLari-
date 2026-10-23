@@ -48,7 +48,7 @@ check('digitar o grau completa a frase', (await desc()).includes('Lama biliar gr
 await organ('Rins');
 await chip('Posição', 'tópicos');
 for (const lado of ['Rim esquerdo', 'Rim direito']) {
-  await chip('Dimensões', 'dimensões preservadas', lado); await chip('Contornos', 'contornos', lado); await chip('Ecotextura', 'homogênea', lado); await chip('Pelve', 'Pelve', lado);
+  await chip('Dimensões', 'dimensões preservadas', lado); await chip('Definição do contorno', 'definidos', lado); await chip('Regularidade do contorno', 'regulares', lado); await chip('Ecotextura', 'homogênea', lado); await chip('Pelve', 'Pelve', lado);
 }
 await page.fill('.mrow:has-text("Rim esquerdo – comprimento") [data-mf="value"]', '4,13');
 await page.fill('.mrow:has-text("Rim direito – comprimento") [data-mf="value"]', '4,47');
