@@ -1,6 +1,10 @@
 // Espécies e raças sugeridas. São apenas sugestões: o campo sempre aceita texto livre.
 import { norm } from './utils.js';
 
+/** Pesos de animais pequenos são mais naturais em gramas; é só o padrão sugerido, a unidade sempre pode ser trocada. */
+const GRAM_SPECIES = ['ave', 'roedor', 'coelho', 'furao', 'reptil', 'silvestre'];
+export const defaultWeightUnit = (species) => (GRAM_SPECIES.includes(speciesKey(species)) ? 'g' : 'kg');
+
 export const SPECIES = ['Cão', 'Gato', 'Ave', 'Roedor', 'Coelho', 'Furão', 'Réptil', 'Equino', 'Bovino', 'Suíno', 'Ovino/Caprino', 'Silvestre'];
 
 /** Chave canônica da espécie, para tratar "Cão", "Canino" e "cachorro" como a mesma espécie. */

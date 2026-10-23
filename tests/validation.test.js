@@ -67,3 +67,9 @@ test('data e hora do exame são opcionais: sem elas o laudo não mostra o campo 
   assert.match(reportFileName(sampleExam({ date: '' }), 'pdf'), /^Laudo_USG_Thor_\d{4}-\d{2}-\d{2}\.pdf$/);
   assert.equal(validateExam(sampleExam({ date: '', time: '' })).errors.length, 0);
 });
+
+test('paciente: peso em gramas aceita valores de animais pequenos', () => {
+  assert.deepEqual(validatePatient({ name: 'A', weight: '350', weightUnit: 'g' }), []);
+  assert.ok(validatePatient({ name: 'A', weight: '350', weightUnit: 'kg' }).length === 0);
+  assert.ok(validatePatient({ name: 'A', weight: '5000', weightUnit: 'kg' }).length);
+});

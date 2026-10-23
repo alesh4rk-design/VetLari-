@@ -1,6 +1,6 @@
 // Cadastro e consulta de pacientes.
 import { uid, esc, todayISO, toast, ageFromBirth } from './utils.js';
-import { SPECIES, breedsFor, optionsHtml } from './animals.js';
+import { SPECIES, breedsFor, optionsHtml, defaultWeightUnit } from './animals.js';
 import { dbAll, dbGet, dbPut, dbDel } from './local-storage.js';
 import { validatePatient, SEXES } from './validation.js';
 import { navigate } from './router.js';
@@ -8,7 +8,7 @@ import { confirmDialog, alertList, pickOption } from './ui.js';
 
 export const listPatients = async () => (await dbAll('patients')).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 export const getPatient = (id) => dbGet('patients', id);
-export const emptyPatient = () => ({ id: uid(), name: '', species: '', breed: '', sex: '', birthDate: '', age: '', weight: '', tutor: '', identifier: '' });
+export const emptyPatient = () => ({ id: uid(), name: '', species: '', breed: '', sex: '', birthDate: '', age: '', weight: '', weightUnit: 'kg', tutor: '', identifier: '' });
 
 export async function upsertPatient(p) {
   const errs = validatePatient(p);
@@ -48,12 +48,15 @@ export async function renderPatientForm(view, id) {
     <div class="field"><label for="p-age">Idade</label><input id="p-age-auto" readonly value="${esc(ageFromBirth(p.birthDate))}" ${p.birthDate ? '' : 'hidden'}>
       <input id="p-age" name="age" value="${esc(p.age)}" placeholder="Ex.: 3 anos" ${p.birthDate && ageFromBirth(p.birthDate) ? 'hidden' : ''}>
       <div class="hint" id="p-age-hint">Com a data de nascimento, a idade é calculada sozinha; sem ela, digite a idade.</div></div>
-    ${f('weight', 'Peso (kg)', 'text', 'inputmode="decimal"')}${f('tutor', 'Nome do tutor')}${f('identifier', 'Identificador interno (opcional)')}</div>
+    ${f('weight', 'Peso', 'text', 'inputmode="decimal"')}<div class="field"><label for="p-weightUnit">Unidade do peso</label><select id="p-weightUnit" name="weightUnit">${['kg', 'g'].map((u) => `<option value="${u}" ${(p.weightUnit || 'kg') === u ? 'selected' : ''}>${u === 'kg' ? 'quilos (kg)' : 'gramas (g)'}</option>`).join('')}</select></div>${f('tutor', 'Nome do tutor')}${f('identifier', 'Identificador interno (opcional)')}</div>
     <div id="perr"></div>
     <div class="row between"><div class="row"><button class="btn primary" type="submit">Salvar paciente</button><a class="btn" href="#/pacientes">Cancelar</a></div>
     ${existing ? '<button class="btn danger" type="button" id="del">Excluir paciente</button>' : ''}</div></form>`;
   view.querySelector('#pf').addEventListener('input', (e) => {
-    if (e.target.id === 'p-species') { view.querySelector('#breeds-list').innerHTML = optionsHtml(breedsFor(e.target.value)); }
+    if (e.target.id === 'p-species') {
+      view.querySelector('#breeds-list').innerHTML = optionsHtml(breedsFor(e.target.value));
+      if (!view.querySelector('#p-weight').value.trim()) view.querySelector('#p-weightUnit').value = defaultWeightUnit(e.target.value);
+    }
     if (e.target.id === 'p-birthDate') {
       const auto = ageFromBirth(e.target.value), a = view.querySelector('#p-age-auto'), m = view.querySelector('#p-age');
       a.value = auto; a.hidden = !auto; m.hidden = !!auto;

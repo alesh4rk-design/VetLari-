@@ -68,7 +68,7 @@ export function newExam(type, template, patient) {
     layout: { docTitle: template.docTitle, conclusionTitle: template.conclusionTitle, notesTitle: template.notesTitle, signature: template.signature !== false },
     imagesPerRow: template.imagesPerRow || 2, intro: template.intro || '', date: '', time: '',
     patientId: p.id || null,
-    patient: { name: p.name || '', species: p.species || '', breed: p.breed || '', sex: p.sex || '', birthDate: p.birthDate || '', age: p.age || '', weight: p.weight || '', tutor: p.tutor || '', identifier: p.identifier || '' },
+    patient: { name: p.name || '', species: p.species || '', breed: p.breed || '', sex: p.sex || '', birthDate: p.birthDate || '', age: p.age || '', weight: p.weight || '', weightUnit: p.weightUnit || 'kg', tutor: p.tutor || '', identifier: p.identifier || '' },
     clinic: '', requestingVet: '', rx: { region: '', projections: '', quality: '' },
     clinical: { indication: '', history: '', question: '', medications: '', operator: '', equipment: '', location: '', limitations: '' },
     sections: template.sections.map((s) => blankSection(s.title, s)),

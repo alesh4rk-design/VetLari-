@@ -18,7 +18,7 @@ export function buildReport(exam, settings = {}) {
 
   // Com data de nascimento, a idade é sempre calculada na data do exame (nunca fica desatualizada).
   const age = ageFromBirth(p.birthDate, exam.date) || (filled(p.age) ? p.age : '');
-  const weight = filled(p.weight) ? `${String(p.weight).replace('.', ',')} kg` : '';
+  const weight = filled(p.weight) ? `${String(p.weight).replace('.', ',')} ${p.weightUnit === 'g' ? 'g' : 'kg'}` : '';
   // Identificação na ordem e com os nomes dos laudos da veterinária (3 colunas no documento).
   // Data e hora são opcionais: só aparecem quando preenchidas (hora sem data aparece como "Hora").
   const when = filled(exam.date) ? `${fmtDateBR(exam.date)}${filled(exam.time) ? ' ' + exam.time : ''}` : '';

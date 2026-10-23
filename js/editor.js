@@ -2,7 +2,7 @@
 import { esc, debounce, download, reportFileName, toast, fmtDateTimeBR, fmtDateBR, MODALITY, uid } from './utils.js';
 import { getPath, setPath, alertList, confirmDialog } from './ui.js';
 import { SEXES } from './validation.js';
-import { SPECIES, breedsFor, optionsHtml } from './animals.js';
+import { SPECIES, breedsFor, optionsHtml, defaultWeightUnit } from './animals.js';
 import { ageFromBirth } from './utils.js';
 import { navigate, setLeaveGuard } from './router.js';
 import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
@@ -224,7 +224,7 @@ export async function renderEditor(view, id, settings, profile) {
       ${comboField('Espécie', 'patient.species', 'species-list', 'species')}${comboField('Raça', 'patient.breed', 'breeds-list', 'breed')}
       <datalist id="species-list">${optionsHtml(SPECIES)}</datalist><datalist id="breeds-list">${optionsHtml(breedsFor(exam.patient.species))}</datalist>
       <div class="field"><label for="f-sex">Sexo</label><select id="f-sex" data-bind="patient.sex" ${locked ? 'disabled' : ''}>${SEXES.map((s) => `<option value="${s}" ${exam.patient.sex === s ? 'selected' : ''}>${s || 'Selecione'}</option>`).join('')}</select></div>
-      ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${ageField()}${field('Peso (kg)', 'patient.weight', { extra: 'inputmode="decimal"' })}
+      ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${ageField()}${field('Peso', 'patient.weight', { extra: 'inputmode="decimal"' })}<div class="field"><label for="f-wunit">Unidade do peso</label><select id="f-wunit" data-bind="patient.weightUnit" ${locked ? 'disabled' : ''}>${['kg', 'g'].map((u) => `<option value="${u}" ${(exam.patient.weightUnit || 'kg') === u ? 'selected' : ''}>${u === 'kg' ? 'quilos (kg)' : 'gramas (g)'}</option>`).join('')}</select></div>
       ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}
       ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame (opcional)', 'date', { type: 'date' })}${field('Hora do exame (opcional)', 'time', { type: 'time' })}</div>
       ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
@@ -487,7 +487,8 @@ export async function renderEditor(view, id, settings, profile) {
     if (t.dataset.bind) {
       setPath(exam, t.dataset.bind, t.dataset.num ? Number(t.value) : t.value);
       if (t.dataset.bind === 'patient.birthDate' || t.dataset.bind === 'date') updateAge();
-      if (t.dataset.bind === 'patient.species') { const bl = view.querySelector('#breeds-list'); if (bl) bl.innerHTML = optionsHtml(breedsFor(t.value)); }
+      if (t.dataset.bind === 'patient.species') { const bl = view.querySelector('#breeds-list'); if (bl) bl.innerHTML = optionsHtml(breedsFor(t.value));
+        if (!String(exam.patient.weight || '').trim()) { exam.patient.weightUnit = defaultWeightUnit(t.value); const wu = view.querySelector('#f-wunit'); if (wu) wu.value = exam.patient.weightUnit; } }
       touch();
     } else if (t.dataset.bx !== undefined) {
       const s = current(); s.build.extras[t.dataset.bx] = t.value; syncBuild(s); touch();
@@ -504,7 +505,7 @@ export async function renderEditor(view, id, settings, profile) {
     const t = e.target;
     if (t.dataset.act === 'pick' && t.value) {
       const p = await getPatient(t.value);
-      if (p) { exam.patientId = p.id; exam.patient = { name: p.name, species: p.species, breed: p.breed, sex: p.sex, birthDate: p.birthDate, age: p.age, weight: p.weight, tutor: p.tutor, identifier: p.identifier }; touch(); draw(); }
+      if (p) { exam.patientId = p.id; exam.patient = { name: p.name, species: p.species, breed: p.breed, sex: p.sex, birthDate: p.birthDate, age: p.age, weight: p.weight, weightUnit: p.weightUnit, tutor: p.tutor, identifier: p.identifier }; touch(); draw(); }
     }
     if (t.dataset.bind === 'imagesPerRow' && step === 2) draw();
   };

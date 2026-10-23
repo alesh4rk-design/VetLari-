@@ -43,6 +43,14 @@ await page.fill('#f-patient\\.name', 'Só Hora'); await page.fill('#f-date', '')
 await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('.bgroup:has(.blabel:has-text("Contorno")) .chip');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('só hora preenchida: aparece como "Hora"', (await page.locator('.paper .pid').textContent()).includes('Hora: 10:58'));
+// Peso em gramas para animais pequenos
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Pipoca'); await page.fill('#f-patient\\.species', 'Roedor');
+check('espécie pequena sugere gramas', (await page.inputValue('#f-wunit')) === 'g');
+await page.fill('#f-patient\\.weight', '350');
+await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('.bgroup:has(.blabel:has-text("Contorno")) .chip');
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+check('laudo mostra peso em g', (await page.locator('.paper .pid').textContent()).includes('Peso: 350 g'));
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
