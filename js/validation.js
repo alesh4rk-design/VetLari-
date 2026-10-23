@@ -17,7 +17,7 @@ export function validatePatient(p) {
   if (p && p.sex && !SEXES.includes(p.sex)) errors.push('Sexo inválido.');
   if (p && p.weight !== '' && p.weight != null) {
     const w = Number(String(p.weight).replace(',', '.'));
-    if (!isFinite(w) || w <= 0 || w > 1500) errors.push('Peso inválido (use kg, ex.: 12,5).');
+    if (!isFinite(w) || w <= 0 || w > (p.weightUnit === 'g' ? 1500000 : 1500)) errors.push(`Peso inválido (use ${p.weightUnit === 'g' ? 'gramas, ex.: 350' : 'kg, ex.: 12,5'}).`);
   }
   if (p && p.birthDate) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(p.birthDate) || isNaN(new Date(p.birthDate))) errors.push('Data de nascimento inválida.');
