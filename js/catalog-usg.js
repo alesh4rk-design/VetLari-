@@ -42,7 +42,7 @@ export const USG_BUILDERS = {
     g('Topografia', 'one', [o('em topografia habitual')]),
     g('Dimensões', 'one', [o('com dimensões preservadas', 'preservadas'), o('com dimensões discretamente aumentadas', 'discretamente aumentadas'), o('com dimensões moderadamente aumentadas', 'moderadamente aumentadas'), o('com dimensões discretamente a moderadamente aumentadas', 'discreta a moderadamente aumentadas')]),
     g('Bordas', 'one', [o('bordas afiladas'), o('bordas arredondadas')]),
-    g('Contorno', 'one', [o('contorno regular')]),
+    g('Contorno', 'one', [o('contorno regular'), o('contorno irregular')]),
     g('Parênquima', 'one', [o('parênquima normoecogênico'), o('parênquima discretamente hipoecogênico'), o('parênquima discretamente hiperecogênico')]),
     g('Ecotextura', 'one', [o('ecotextura homogênea'), o('ecotextura grosseira')]),
     g('Vasos', 'sentence', [o('Vasos com calibre e trajetos preservados')]),
@@ -71,7 +71,7 @@ export const USG_BUILDERS = {
     g('Dimensões', 'one', [o('com dimensões preservadas', 'preservadas'), o('com dimensões moderadamente aumentadas', 'moderadamente aumentadas'),
       o('com dimensões moderadamente aumentadas, medindo {Espessura em corpo esplênico} de espessura em corpo esplênico', 'moderadamente aumentadas, com espessura')]),
     g('Bordos', 'one', [o('bordos afilados'), o('bordos arredondados')]),
-    g('Contorno', 'one', [o('contorno regular')]),
+    g('Contorno', 'one', [o('contorno regular'), o('contorno irregular')]),
     g('Parênquima', 'one', [o('parênquima normoecogênico')]),
     g('Ecotextura', 'one', [o('ecotextura homogênea'),
       o('ecotextura homogênea predominantemente, exceto por formação nodular de contornos definidos, discretamente irregulares, hipoecogênica, heterogênea, medindo {Medidas da formação}, localizada em cauda esplênica e alterando a superfície capsular', 'homogênea, exceto formação nodular (cauda)'),
@@ -111,7 +111,7 @@ export const USG_BUILDERS = {
 
   Pâncreas: { blocks: [{ groups: [
     g('Dimensões', 'one', [o('com dimensões preservadas', 'preservadas'), o('com dimensões preservadas, medindo {Lobo pancreático direito} (lobo pancreático direito)', 'preservadas, com medida do lobo direito')]),
-    g('Contorno', 'one', [o('contorno regular')]),
+    g('Contorno', 'one', [o('contorno regular'), o('contorno irregular')]),
     g('Ecogenicidade', 'one', [o('ecogenicidade habitual')]),
     g('Ecotextura', 'one', [o('ecotextura homogênea')]),
   ] }] },
@@ -122,7 +122,7 @@ export const USG_BUILDERS = {
       g('Dimensões', 'one', [o('com dimensões preservadas ({?Altura do pólo cranial:valor} x {?Altura do pólo caudal:valor} x {?Comprimento} – altura pólo cranial x altura pólo caudal x comprimento)', 'dimensões preservadas'),
         X('não caracterizada (encoberta por alças intestinais no momento do exame)')]),
       g('Formato', 'one', [o('formato preservado')]),
-      g('Contorno', 'one', [o('contorno regular')]),
+      g('Contorno', 'one', [o('contorno regular'), o('contorno irregular')]),
       g('Parênquima', 'one', [o('parênquima normoecogênico')]),
       g('Ecotextura', 'one', [o('ecotextura homogênea')]),
     ] },
@@ -131,7 +131,7 @@ export const USG_BUILDERS = {
   Próstata: { blocks: [{ last: ',', groups: [
     g('Tamanho', 'one', [o('com tamanho normal ({?Comprimento:valor} x {?Altura:valor} x {?Largura} – comprimento x altura x largura)', 'tamanho normal (3 medidas)'),
       o('com tamanho normal ({?Comprimento:valor} x {?Altura} – comprimento x altura)', 'tamanho normal (2 medidas)')]),
-    g('Contorno', 'one', [o('contorno regular')]),
+    g('Contorno', 'one', [o('contorno regular'), o('contorno irregular')]),
     g('Ecotextura e ecogenicidade', 'one', [o('ecotextura e ecogenicidade habituais'), o('ecotextura e ecogenicidade habituais considerando o histórico de castração', 'habituais, considerando castração')]),
   ] }] },
 

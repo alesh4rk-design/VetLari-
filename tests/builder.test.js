@@ -215,3 +215,10 @@ test('Rins: contorno com definição e regularidade escolhidas separadamente', a
   sel = pick({}, 'Definição do contorno', 'indefinidos');
   assert.ok(composeDescription(d, sel, [], {}).includes('**Rim esquerdo** contornos indefinidos.'));
 });
+
+test('contorno: órgãos com "contorno regular" também têm "contorno irregular"', () => {
+  for (const nome of ['Fígado', 'Baço', 'Pâncreas', 'Adrenais', 'Próstata']) {
+    const g = expandBlocks(USG_BUILDERS[nome]).flatMap((b) => b.groups).find((x) => x.label === 'Contorno');
+    assert.deepEqual(g.options.map((o) => o.text), ['contorno regular', 'contorno irregular'], nome);
+  }
+});
