@@ -78,3 +78,22 @@ export function fillPhrase(text, measures = [], extras = {}, opts = {}) {
 }
 
 export const pendingMarkers = (text) => String(text || '').match(MARKER_RE) || [];
+
+/**
+ * Prepara um texto escrito num laudo para virar frase reutilizável: troca valores digitados que coincidem
+ * com medidas da estrutura ("4,13 cm") pelo campo correspondente ("{Comprimento}"). O restante fica como está.
+ */
+export function genericizeText(text, measures = []) {
+  let out = String(text ?? '');
+  const items = (measures || [])
+    .filter((m) => String(m.value || '').trim() && String(m.label || '').trim())
+    .map((m) => ({ label: String(m.label).trim(), needle: `${String(m.value).trim()}${String(m.unit || '').trim() ? ' ' + String(m.unit).trim() : ''}` }))
+    .sort((a, b) => b.needle.length - a.needle.length);
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const done = [];
+  for (const it of items) {
+    const re = new RegExp(`(?<![\\d,.])${esc(it.needle)}(?![\\d])`, 'g');
+    if (re.test(out)) { out = out.replace(re, `{${it.label}}`); done.push(it.label); }
+  }
+  return { text: out, replaced: done };
+}

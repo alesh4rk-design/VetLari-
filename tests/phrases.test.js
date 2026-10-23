@@ -40,3 +40,13 @@ test('revisão: campo pendente de frase é alerta crítico', () => {
   const ok = sampleExam({ impression: 'Texto limpo.' });
   assert.ok(!reviewExam(ok, { name: 'D', crmv: '1' }).critical.some((c) => /pendente/.test(c)));
 });
+
+import { genericizeText } from '../js/phrase-logic.js';
+test('guardar frase: valores digitados viram campos de medida; o resto do texto não muda', () => {
+  const ms = [{ label: 'Comprimento', value: '4,13', unit: 'cm' }, { label: 'Largura', value: '2', unit: 'cm' }, { label: 'Sem valor', value: '', unit: 'cm' }];
+  const r = genericizeText('Rim com dimensões preservadas (4,13 cm), medindo 2 cm de largura e 14,13 cm de outro.', ms);
+  assert.equal(r.text, 'Rim com dimensões preservadas ({Comprimento}), medindo {Largura} de largura e 14,13 cm de outro.');
+  assert.deepEqual(r.replaced.sort(), ['Comprimento', 'Largura']);
+  assert.equal(genericizeText('sem números', ms).text, 'sem números');
+  assert.equal(genericizeText('3,2 x 2,1 cm', [{ label: 'X', value: '3,2', unit: 'cm' }]).text, '3,2 x 2,1 cm'); // valor sem a unidade colada não é trocado
+});

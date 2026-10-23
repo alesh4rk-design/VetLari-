@@ -11,7 +11,7 @@ import { can } from './profiles.js';
 import { openModal, pickOption } from './ui.js';
 import { listPatients, getPatient, upsertPatient } from './patients.js';
 import { listTemplates, getTemplate } from './templates.js';
-import { pickPhrase, insertAtCursor } from './phrase-library.js';
+import { pickPhrase, insertAtCursor, saveToLibraryDialog } from './phrase-library.js';
 import { openDictation } from './voice.js';
 import { fillPhrase } from './phrase-logic.js';
 import { composeDescription, toggleOption, pendingFields, expandBlocks } from './builder-logic.js';
@@ -181,7 +181,8 @@ export async function renderEditor(view, id, settings, profile) {
       ${builderBlock(s)}
       <div class="field"><label>Descrição <span class="muted small">(use **negrito** e __itálico__ se quiser destacar)</span></label><textarea data-sf="description" id="d-${s.id}" rows="4" ${locked ? 'disabled' : ''}>${esc(s.description)}</textarea>
       ${locked ? '' : `<div class="row"><button type="button" class="btn sm ghost" data-act="phrase" data-target="d-${s.id}" data-structure="${esc(s.title)}">Inserir frase</button>
-      <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button></div>`}</div>
+      <button type="button" class="btn sm ghost" data-act="dictate" data-target="d-${s.id}" data-label="${esc(s.title)}">Ditar</button>
+      <button type="button" class="btn sm ghost" data-act="save-phrase">Guardar esta frase</button></div>`}</div>
       ${measureBlock(s)}
       <div class="field"><label>Outras medidas (texto livre, opcional)</label><input data-sf="measures" value="${esc(s.measures)}" ${locked ? 'disabled' : ''}></div>
       <div class="field"><label>Observações (opcional)</label><input data-sf="notes" value="${esc(s.notes)}" ${locked ? 'disabled' : ''}></div>
@@ -438,6 +439,10 @@ export async function renderEditor(view, id, settings, profile) {
         ({ text } = fillPhrase(raw, measures, extras));
       }
       insertAtCursor(target, text, { newline: ['f-impression', 'f-differentials'].includes(b.dataset.target) });
+    } else if (act === 'save-phrase') {
+      const s = current();
+      if (!s.description.trim()) return toast('Escreva a descrição antes de guardar a frase.', 'error');
+      await saveToLibraryDialog({ text: s.description, structure: s.title || 'Estrutura', modality: exam.type, measures: s.measuresList });
     } else if (act === 'pick-list') {
       const input = view.querySelector('#' + CSS.escape(b.dataset.target));
       const options = b.dataset.kind === 'species' ? SPECIES : breedsFor(exam.patient.species);
