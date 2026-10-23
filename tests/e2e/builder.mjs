@@ -38,7 +38,7 @@ check('digitar a medida atualiza a frase na hora', (await desc()).endsWith('norm
 
 // Campo obrigatório pedido ao usuário
 await organ('Vesícula biliar');
-await chip('Repleção e conteúdo', 'repleção adequada'); await chip('Lama biliar', 'Lama biliar');
+await chip('Repleção', 'repleção adequada'); await chip('Conteúdo', 'anecogênico, homogêneo'); await chip('Lama biliar', 'Lama biliar');
 check('campo sem medida aparece para digitar', await page.isVisible('[data-bx="Grau"]'));
 check('enquanto não digita, vira marcador', (await desc()).includes('[PREENCHER: Grau]'));
 await page.fill('[data-bx="Grau"]', 'IV');

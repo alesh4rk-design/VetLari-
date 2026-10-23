@@ -78,7 +78,7 @@ test('montador: alças intestinais por segmento, cláusulas sem medida somem, ob
 });
 test('montador: campo obrigatório sem valor pede digitação e vira marcador até ser preenchido', () => {
   const def = USG_BUILDERS['Vesícula biliar'];
-  const sel = pick(def, { 'Repleção e conteúdo': 0, Parede: 0, 'Lama biliar': 0 });
+  const sel = pick(def, { Repleção: 0, Conteúdo: 0, Parede: 0, 'Lama biliar': 0 });
   assert.deepEqual(pendingFields(def, sel, [], {}).map((p) => p.name), ['Grau']);
   assert.match(composeDescription(def, sel, [], {}), /Lama biliar grau \[PREENCHER: Grau\]\./);
   assert.match(composeDescription(def, sel, [], { Grau: 'IV' }), /Lama biliar grau IV\./);
@@ -106,5 +106,71 @@ test('frases com campos: opcional, cláusulas e modificadores', () => {
   assert.equal(fillPhrase('a ({?A} – a)', []).text, 'a');
   assert.equal(fillPhrase('{X:valor} x {Y}', [M('X', '1,5'), M('Y', '2')]).text, '1,5 x 2 cm');
   assert.equal(fillPhrase('{Comprimento}', [M('Rim direito – comprimento', '4,47')], {}, { prefix: 'Rim direito' }).text, '4,47 cm');
-  assert.equal(fillPhrase('{Comprimento}', [M('Rim direito – comprimento', '4,47')], {}, { prefix: 'Rim esquerdo' }).text, '[PREENCHER: Comprimento]');
+  assert.equal(fillPhrase('{Comprimento}', [M('Rim direito – comprimento', '4,47')], {}, { prefix: 'Rim esquerdo' }).text, '[PREENCHER: Rim esquerdo – Comprimento]');
+});
+
+// ---- Frases dos 4 laudos adicionais (reprodução do estilo da veterinária) ----
+const blk = (def, label) => expandBlocks(def).find((b) => b.label === label);
+const gkey = (def, label, name) => blk(def, label).groups.find((g) => g.label === name).key;
+const on = (def, sel, label, name, i = 0) => toggleOption(def, sel, gkey(def, label, name), i);
+
+test('vesícula biliar: repleção + conteúdo colados + material ecogênico (vírgula antes de "apresentando")', () => {
+  const def = USG_BUILDERS['Vesícula biliar'];
+  let sel = pick(def, { Repleção: 2, Conteúdo: 1, 'Material ecogênico': 2, Parede: 0, 'Vias biliares': 0 });
+  assert.equal(composeDescription(def, sel, [M('Volume', '1,71', 'ml')]), 'com repleção habitual (1,71 ml) por conteúdo anecogênico, apresentando até 25% de material ecogênico não gravidade dependente (em suspensão). Parede ecogênica, regular, sem alterações. Vias biliares não dilatadas no momento do exame.');
+  sel = pick(def, { Repleção: 4, Conteúdo: 0, Parede: 0 });
+  assert.equal(composeDescription(def, sel, [M('Volume', '5,59', 'ml')]), 'com repleção levemente aumentada, com volume de 5,59 ml (considerar paciente em jejum) por conteúdo anecogênico, aparentemente homogêneo. Parede ecogênica, regular, sem alterações.');
+  sel = pick(def, { Repleção: 3, Conteúdo: 0, 'Material ecogênico': 3 });
+  assert.equal(composeDescription(def, sel, [M('Volume', '10,92', 'ml')]), 'com repleção discretamente aumentada (10,92 ml) por conteúdo anecogênico, aparentemente homogêneo, apresentando cerca de até 25% de material ecogênico homogêneo e dependente de gravidade.');
+});
+test('baço: nódulo com medida digitada (campo obrigatório) e frase completa', () => {
+  const def = USG_BUILDERS['Baço'];
+  const sel = pick(def, { Topografia: 0, Dimensões: 1, Bordos: 1, Contorno: 0, Parênquima: 0, Ecotextura: 1, Vasos: 0 });
+  assert.deepEqual(pendingFields(def, sel, [], {}).map((p) => p.key), ['Medidas da formação']);
+  assert.equal(composeDescription(def, sel, [], { 'Medidas da formação': '4,63 x 3,69 cm' }),
+    'em topografia habitual, com dimensões moderadamente aumentadas, bordos arredondados, contorno regular, parênquima normoecogênico e ecotextura homogênea predominantemente, exceto por formação nodular de contornos definidos, discretamente irregulares, hipoecogênica, heterogênea, medindo 4,63 x 3,69 cm, localizada em cauda esplênica e alterando a superfície capsular. Vasos com calibre e trajeto preservados.');
+});
+test('estômago: grande quantidade de gás e peristaltismo diminuído', () => {
+  const def = USG_BUILDERS['Estômago'];
+  const sel = pick(def, { Conteúdo: 4, Parede: 0, 'Peristaltismo e piloro': 1 });
+  assert.equal(composeDescription(def, sel, [M('Espessura da parede', '0,48')]), 'com grande quantidade de conteúdo gasoso. Parede normoecogênica, com preservação da estratificação em camadas, contorno regular e espessura habitual (0,48 cm). Peristaltismo diminuído. Piloro íntegro e sem sinais de obstrução.');
+});
+test('alças: conteúdo mucoso e muito gasoso, espessura aumentada no delgado, cólon líquido com espessura preservada', () => {
+  const def = USG_BUILDERS['Alças intestinais'];
+  const sel = pick(def, { 'Intestino delgado/Conteúdo': 1, 'Intestino delgado/Parede': 1, 'Intestino delgado/Peristaltismo': 0, 'Cólon/Conteúdo': 3, 'Cólon/Parede': 2 });
+  const ms = [M('Duodeno – espessura da parede', '0,53'), M('Jejuno – espessura da parede', '0,41'), M('Cólon descendente – espessura da parede', '0,18'), M('Cólon ascendente – espessura da parede', '0,14')];
+  assert.equal(composeDescription(def, sel, ms), 'Intestino delgado com moderada quantidade de conteúdo mucoso e grande quantidade de conteúdo gasoso. Parede normoecogênica, com preservação da estratificação em camadas, contorno regular e espessura discretamente aumentada (0,53 cm – duodeno; 0,41 cm – jejuno). Peristaltismo preservado. Cólon com discreto conteúdo líquido. Parede normoecogênica, com preservação da estratificação em camadas, contorno regular e espessura preservada (0,18 cm – cólon descendente; 0,14 cm – cólon ascendente).');
+});
+test('testículos: cada lado com a própria localização, medida digitada e aspecto (campos por lado)', () => {
+  const def = USG_BUILDERS['Testículos'];
+  let sel = {};
+  sel = on(def, sel, 'Testículo esquerdo', 'Localização', 0); sel = on(def, sel, 'Testículo esquerdo', 'Medida', 0); sel = on(def, sel, 'Testículo esquerdo', 'Aspecto', 0);
+  sel = on(def, sel, 'Testículo direito', 'Localização', 1); sel = on(def, sel, 'Testículo direito', 'Medida', 0); sel = on(def, sel, 'Testículo direito', 'Aspecto', 1);
+  const need = pendingFields(def, sel, [], {}).map((p) => p.key);
+  assert.deepEqual(need, ['Testículo esquerdo – Medidas do testículo', 'Testículo direito – Medidas do testículo']);
+  const txt = composeDescription(def, sel, [], { 'Testículo esquerdo – Medidas do testículo': '2,01 x 1,49 cm', 'Testículo direito – Medidas do testículo': '1,41 x 0,55 cm' });
+  assert.equal(txt, 'Testículo esquerdo localizado em bolsa escrotal, medindo aprox. 2,01 x 1,49 cm, apresentando contorno regular, ecotextura e ecogenicidade habituais. Testículo direito localizado em subcutâneo de região inguinal direita, medindo aprox. 1,41 x 0,55 cm, apresentando contorno regular, ecotextura homogênea, ecogenicidade diminuída e dimensões diminuídas em relação ao testículo contralateral.');
+});
+test('testículos ausentes (exclusiva) e útero/ovários não caracterizados (OSH)', () => {
+  const t = USG_BUILDERS['Testículos'];
+  assert.equal(composeDescription(t, on(t, {}, '', 'Aspecto', 1)), 'testículos ausentes.');
+  const u = USG_BUILDERS['Útero'];
+  assert.equal(composeDescription(u, on(u, {}, '', 'Descrição', 0)), 'Útero e ovários não caracterizados (paciente com histórico de OSH).');
+});
+test('rim: ecogenicidade aumentada difusamente e ecotextura grosseira', () => {
+  const def = USG_BUILDERS.Rins;
+  let sel = {};
+  for (const [n, i] of [['Dimensões', 0], ['Contornos', 0], ['Corticomedular', 1], ['Ecogenicidade', 4], ['Ecotextura', 1], ['Pelve', 0]]) sel = on(def, sel, 'Rim esquerdo', n, i);
+  assert.equal(composeDescription(def, sel, [M('Rim esquerdo – comprimento', '3,80')]), 'Rim esquerdo com dimensões preservadas (3,80 cm), contornos definidos e regulares, relação corticomedular preservada, definição corticomedular diminuída, ecogenicidade aumentada difusamente e ecotextura grosseira. Pelve normodilatada.');
+});
+test('catálogo: nenhuma opção cola sem opção anterior e o sinal & ida e volta', () => {
+  assert.equal(optionToLine(parseOptionLine('&por conteúdo')), '&por conteúdo');
+  assert.equal(optionToLine(parseOptionLine('!&curto :: texto')), '!&curto :: texto');
+  assert.deepEqual(parseOptionLine('&x'), { text: 'x', glue: true });
+});
+test('impressões: versões e novas frases dos laudos', () => {
+  const texts = USG_IMPRESSIONS.map((i) => i[0]);
+  assert.ok(texts.includes('Testículo direito ectópico.') && texts.includes('Exame sem alterações relevantes dignas de nota.'));
+  assert.ok(USG_IMPRESSIONS.some((i) => i[2] === 2) && USG_IMPRESSIONS.every((i) => (i[2] || 1) <= 2));
+  assert.equal(new Set(texts).size, texts.length);
 });

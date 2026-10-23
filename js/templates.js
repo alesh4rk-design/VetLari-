@@ -32,7 +32,7 @@ const usg = (id, name, sections, extra = {}) => ({
   id, builtin: true, modality: 'usg', name: `${name} (modelo inicial)`,
   docTitle: 'Laudo de Ultrassonografia Veterinária', intro: '',
   conclusionTitle: 'Impressão diagnóstica', notesTitle: 'Observações e recomendações',
-  signature: true, imagesPerRow: 2, sections: sections.map(sec), ...extra, version: 3,
+  signature: true, imagesPerRow: 2, sections: sections.map(sec), ...extra, version: 4,
 });
 
 /**
@@ -57,7 +57,7 @@ export function defaultTemplates() {
       { title: 'Testículos', sex: 'male' },
       { title: 'Útero', sex: 'female', measures: [M('Corpo uterino'), M('Corno uterino esquerdo'), M('Corno uterino direito')] },
       { title: 'Ovários', sex: 'female', measures: [M('Ovário esquerdo'), M('Ovário direito')] },
-      'Linfonodos', 'Líquido livre peritoneal', 'Outros achados',
+      { title: 'Tecido mamário', sex: 'female' }, 'Linfonodos', 'Líquido livre peritoneal', 'Outros achados',
     ]),
     usg('tpl-usg-direcionada', 'Ultrassonografia abdominal direcionada / exame focal', ['Região ou estrutura de interesse', 'Estruturas adjacentes avaliadas', 'Líquido livre (se pesquisado)', 'Outras observações']),
     usg('tpl-usg-urinario', 'Avaliação do trato urinário', ['Rim direito', 'Rim esquerdo', 'Ureteres', 'Bexiga urinária', 'Uretra (se avaliada)']),
@@ -70,7 +70,7 @@ export function defaultTemplates() {
       id: 'tpl-rx-geral', builtin: true, modality: 'rx', name: 'Radiografia (modelo inicial editável)',
       docTitle: 'Laudo de Radiografia Veterinária', intro: '',
       conclusionTitle: 'Impressão diagnóstica', notesTitle: 'Observações complementares',
-      signature: true, imagesPerRow: 2, version: 2,
+      signature: true, imagesPerRow: 2, version: 4,
       sections: ['Estruturas ósseas', 'Articulações', 'Tecidos moles', 'Outras estruturas avaliadas'].map(sec),
     },
   ];

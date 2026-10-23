@@ -38,7 +38,9 @@ function lookup(name, measures, prefix) {
 }
 
 function resolveToken(tok, measures, extras, prefix) {
-  const typed = Object.entries(extras).find(([k]) => norm(k) === norm(tok.name));
+  // Texto digitado: primeiro o específico do bloco ("Testículo esquerdo – Medidas"), depois o geral.
+  const keys = [prefix ? norm(`${prefix} – ${tok.name}`) : null, norm(tok.name)].filter(Boolean);
+  const typed = keys.map((k) => Object.entries(extras).find(([x]) => norm(x) === k)).find(Boolean);
   if (typed && String(typed[1]).trim()) return { value: String(typed[1]).trim() };
   const m = lookup(tok.name, measures, prefix);
   if (!m) return { reason: 'sem medida com esse nome' };
@@ -51,7 +53,8 @@ function resolveToken(tok, measures, extras, prefix) {
 /** extras: { nome: 'texto digitado' }. opts.prefix: nome do bloco (ex.: "Rim esquerdo"). */
 export function fillPhrase(text, measures = [], extras = {}, opts = {}) {
   const missing = [];
-  const note = (tok, reason) => { if (!tok.optional && !missing.some((x) => x.name === tok.name)) missing.push({ name: tok.name, reason }); };
+  const keyOf = (tok) => (opts.prefix ? `${opts.prefix} – ${tok.name}` : tok.name);
+  const note = (tok, reason) => { if (!tok.optional && !missing.some((x) => x.key === keyOf(tok))) missing.push({ name: tok.name, key: keyOf(tok), reason }); };
   const sub = (chunk) => {
     let optionalMissing = false;
     const out = chunk.replace(TOKEN, (_, q, raw, mode) => {
@@ -60,7 +63,7 @@ export function fillPhrase(text, measures = [], extras = {}, opts = {}) {
       if (r.value !== undefined) return r.value;
       if (tok.optional) { optionalMissing = true; return ''; }
       note(tok, r.reason);
-      return `[PREENCHER: ${tok.name}]`;
+      return `[PREENCHER: ${keyOf(tok)}]`;
     });
     return { out, optionalMissing };
   };

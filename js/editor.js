@@ -165,7 +165,7 @@ export async function renderEditor(view, id, settings, profile) {
         return `<div class="bgroup"><div class="blabel">${esc(g.label)}${g.kind === 'many' || g.kind === 'sentences' ? ' <span class="muted">(pode marcar várias)</span>' : ''}</div>
           <div class="chips">${g.options.map((op, i) => `<button type="button" class="chip" data-act="b-opt" data-g="${g.key}" data-o="${i}" aria-pressed="${on.includes(i)}" ${locked ? 'disabled' : ''} title="${esc(op.text)}">${esc(op.label || op.text)}</button>`).join('')}</div></div>`;
       }).join('')}</div>`).join('')}
-      ${need.length ? `<div class="bextras"><div class="small muted">Complete os campos da frase:</div>${need.map((n) => `<div class="field"><label for="bx-${esc(n.name)}">${esc(n.name)}</label><input id="bx-${esc(n.name)}" data-bx="${esc(n.name)}" value="${esc(s.build.extras[n.name] || '')}" ${locked ? 'disabled' : ''}></div>`).join('')}</div>` : ''}
+      ${need.length ? `<div class="bextras"><div class="small muted">Complete os campos da frase:</div>${need.map((n) => `<div class="field"><label for="bx-${esc(n.key)}">${esc(n.key)}</label><input id="bx-${esc(n.key)}" data-bx="${esc(n.key)}" value="${esc(s.build.extras[n.key] || '')}" ${locked ? 'disabled' : ''}></div>`).join('')}</div>` : ''}
       <div id="bnotice" class="alert warn" ${isManual(s) ? '' : 'hidden'}>Você editou o texto manualmente: novas escolhas não o alteram. ${locked ? '' : '<button type="button" class="btn sm" data-act="b-regen">Gerar de novo (substitui o texto)</button>'}</div>
       ${locked ? '' : '<div class="row"><button type="button" class="btn sm ghost" data-act="b-clear">Limpar escolhas</button></div>'}</div>`;
   };

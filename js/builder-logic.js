@@ -60,15 +60,18 @@ export function composeDescription(def, sel = {}, measures = [], extras = {}) {
     const picked = block.groups.map((g) => ({ g, opts: chosen(g, sel) }));
     const excl = picked.flatMap((p) => p.opts).filter((o) => o.excl);
     let fragments = [], sentences = [];
-    if (excl.length) fragments = excl.map((o) => fill(o.text));
+    if (excl.length) fragments = excl.map((o) => ({ text: fill(o.text), glue: false }));
     else {
       for (const { g, opts } of picked) {
-        if (isFragment(g.kind)) fragments.push(...opts.map((o) => fill(o.text)));
+        if (isFragment(g.kind)) fragments.push(...opts.map((o) => ({ text: fill(o.text), glue: !!o.glue })));
         else sentences.push(...opts.map((o) => fill(o.text)));
       }
     }
+    // Opções "coladas" (glue) se ligam à anterior só com espaço (ex.: "repleção adequada por conteúdo...").
+    const segments = [];
+    for (const f of fragments) { if (f.glue && segments.length) segments[segments.length - 1] += ` ${f.text}`; else segments.push(f.text); }
     const parts = [];
-    if (fragments.length) parts.push(`${block.label ? block.label + ' ' : ''}${joinList(fragments, block.last)}.`);
+    if (segments.length) parts.push(`${block.label ? block.label + ' ' : ''}${joinList(segments, block.last)}.`);
     for (const s of sentences) parts.push(`${strip(s)}.`);
     if (parts.length) paragraphs.push(parts.join(' '));
   }
@@ -80,22 +83,22 @@ export function pendingFields(def, sel = {}, measures = [], extras = {}) {
   const found = new Map();
   for (const block of expandBlocks(def)) {
     for (const g of block.groups) for (const o of chosen(g, sel)) {
-      for (const m of fillPhrase(o.text, measures, extras, { prefix: block.label }).missing) if (!found.has(m.name)) found.set(m.name, m);
+      for (const m of fillPhrase(o.text, measures, extras, { prefix: block.label }).missing) if (!found.has(m.key)) found.set(m.key, m);
     }
   }
   return [...found.values()];
 }
 
-/** "texto", "!texto" (exclusiva: substitui as demais do bloco) ou "curto :: texto". */
+/** "texto"; "!texto" (exclusiva: substitui as demais do bloco); "&texto" (cola na anterior, sem vírgula); "curto :: texto". */
 export function parseOptionLine(line) {
   let s = String(line).trim();
   if (!s) return null;
-  const excl = s.startsWith('!');
-  if (excl) s = s.slice(1).trim();
+  const flags = {};
+  while (s[0] === '!' || s[0] === '&') { if (s[0] === '!') flags.excl = true; else flags.glue = true; s = s.slice(1).trim(); }
   const [a, b] = s.split('::').map((x) => x.trim());
-  return b ? { label: a, text: b, ...(excl ? { excl: true } : {}) } : { text: a, ...(excl ? { excl: true } : {}) };
+  return b ? { label: a, text: b, ...flags } : { text: a, ...flags };
 }
-export const optionToLine = (o) => `${o.excl ? '!' : ''}${o.label ? `${o.label} :: ` : ''}${o.text}`;
+export const optionToLine = (o) => `${o.excl ? '!' : ''}${o.glue ? '&' : ''}${o.label ? `${o.label} :: ` : ''}${o.text}`;
 
 export function validateBuilder(def) {
   const errors = [];

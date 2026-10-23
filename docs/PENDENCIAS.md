@@ -9,7 +9,8 @@ Lista viva do que falta. (Peça "o que temos pendente?" para receber o resumo.)
 ## Depende da veterinária (quando ela puder)
 - [ ] Revisar o catálogo de frases carregado dos laudos dela (Meus modelos → duplicar → "Frases deste órgão") e acrescentar as variações que faltam (o catálogo só tem o que apareceu nos 6 laudos enviados: ex.: faltam opções como rins com dimensões aumentadas, útero, felinos).
 - [ ] Decidir sobre pontos de estilo: achados adicionais dos rins saem como frase com ponto final (nos laudos dela vinham após ponto e vírgula); medidas sempre com vírgula decimal.
-- [ ] Mandar laudos de fêmeas, felinos e casos alterados para ampliar o catálogo.
+- [ ] Mandar mais laudos (felinos, outras espécies e casos alterados) para ampliar o catálogo. Já incorporados: 10 laudos de cães (machos e fêmeas).
+- [ ] Conferir padronizações feitas ao carregar o catálogo: "volume e de 5,59 ml" virou "volume de {Volume}"; "preservados no cornos uterinos" virou "nos cornos uterinos"; decimais sempre com vírgula; achados adicionais dos rins como frase com ponto final.
 - [ ] Revisar os modelos iniciais de ultrassonografia (estruturas) e ajustar à rotina dela.
 - [ ] Montar o **ecocardiograma** usando as ferramentas já prontas: um modelo em "Meus modelos", as referências em "Bases → Referências" e as fórmulas em "Bases → Cálculos". O sistema não traz valores nem fórmulas prontos.
 - [ ] Cadastrar e aprovar as **referências científicas** (com DOI/URL verificável) e os **cálculos** que ela usa.

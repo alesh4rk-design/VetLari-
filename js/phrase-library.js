@@ -156,14 +156,20 @@ export async function renderPhraseLibrary(view) {
   });
 }
 
-/** Carrega uma vez as impressões diagnósticas dos laudos da veterinária. Podem ser editadas ou excluídas (não voltam). */
+/**
+ * Carrega as impressões diagnósticas dos laudos da veterinária, por versão: cada versão nova do catálogo
+ * acrescenta só as frases novas, sem recriar as que ela já excluiu nem duplicar as existentes.
+ */
 export async function seedImpressions() {
-  if (await getSetting('seeded-usg-impressions-v1', false)) return;
-  if ((await dbAll('phrases')).length === 0) {
-    for (const [text, structure] of USG_IMPRESSIONS) {
-      const title = text.split(/\.\s/)[0].replace(/\.$/, '').slice(0, 70);
-      await dbPut('phrases', { id: uid(), title, text, category: 'Impressão diagnóstica', modality: 'usg', structure, keywords: '', favorite: false, updatedAt: todayISO(), source: 'laudos da veterinária' });
-    }
+  const legacy = (await getSetting('seeded-usg-impressions-v1', false)) ? 1 : 0;
+  const applied = await getSetting('impressions-seed-version', legacy);
+  const latest = Math.max(...USG_IMPRESSIONS.map((i) => i[2] || 1));
+  if (applied >= latest) return;
+  const have = new Set((await dbAll('phrases')).map((x) => x.text));
+  for (const [text, structure, ver = 1] of USG_IMPRESSIONS) {
+    if (ver <= applied || have.has(text)) continue;
+    const title = text.split(/\.\s/)[0].replace(/\.$/, '').slice(0, 70);
+    await dbPut('phrases', { id: uid(), title, text, category: 'Impressão diagnóstica', modality: 'usg', structure, keywords: '', favorite: false, updatedAt: todayISO(), source: 'laudos da veterinária' });
   }
-  await setSetting('seeded-usg-impressions-v1', true);
+  await setSetting('impressions-seed-version', latest);
 }
