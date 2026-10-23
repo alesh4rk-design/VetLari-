@@ -1,5 +1,6 @@
 // Ponto de entrada: navegação, rotas, tema e tratamento global de erros.
-import { route, start, setLeaveGuard } from './router.js';
+import { route, start, setLeaveGuard, currentPath } from './router.js';
+import { attachHelp, helpKeyForPath } from './help.js';
 import { loadSettings } from './templates.js';
 import { applyTheme, renderSettings } from './settings.js';
 import { renderDashboard } from './dashboard.js';
@@ -45,7 +46,7 @@ const safe = (fn) => async (ctx) => {
   v.onclick = v.oninput = v.onchange = null;
   const fresh = v.cloneNode(false); // descarta listeners da tela anterior
   v.replaceWith(fresh);
-  try { await fn(fresh, ctx); fresh.focus({ preventScroll: true }); }
+  try { await fn(fresh, ctx); attachHelp(fresh, helpKeyForPath(currentPath())); fresh.focus({ preventScroll: true }); }
   catch (err) {
     console.error(err);
     fresh.innerHTML = `<div class="card"><h2>Algo deu errado</h2><p>${esc(err.message || 'Erro inesperado.')}</p><p class="muted small">Se o problema persistir, verifique se o navegador permite armazenamento local (não use a janela anônima).</p><a class="btn" href="#/">Voltar ao início</a></div>`;
