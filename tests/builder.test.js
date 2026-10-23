@@ -222,3 +222,8 @@ test('contorno: órgãos com "contorno regular" também têm "contorno irregular
     assert.deepEqual(g.options.map((o) => o.text), ['contorno regular', 'contorno irregular'], nome);
   }
 });
+
+test('rins: pelve com normodilatada e graus de dilatação', () => {
+  const g = expandBlocks(USG_BUILDERS.Rins).find((b) => b.label === 'Rim direito').groups.find((x) => x.label === 'Pelve');
+  assert.deepEqual(g.options.map((o) => o.text), ['Pelve normodilatada', 'Pelve discretamente dilatada', 'Pelve moderadamente dilatada', 'Pelve acentuadamente dilatada']);
+});
