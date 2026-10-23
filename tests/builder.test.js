@@ -190,3 +190,15 @@ test('destaques: lados e subtítulos saem em negrito e a observação fixa em it
   const txt = composeRaw(est, toggleOption(est, {}, k, 0));
   assert.ok(txt.startsWith('__Obs: Alimento e gás') && txt.endsWith('(jejum e uso de antifisético).__'), txt);
 });
+
+test('Rins: texto padrão sem alterações é o texto da veterinária, com medidas só quando digitadas', async () => {
+  const { USG_BUILDERS } = await import('../js/catalog-usg.js');
+  const { normalSelection, composeDescription } = await import('../js/builder-logic.js');
+  const d = USG_BUILDERS.Rins;
+  const vazio = composeDescription(d, normalSelection(d), [], {});
+  assert.ok(vazio.startsWith('tópicos e simétricos. **Rim esquerdo** com dimensões preservadas, contornos definidos e regulares, relação e definição corticomedular preservada, ecogenicidade mantida e ecotextura homogênea. Pelve normodilatada. **Rim direito**'));
+  assert.ok(vazio.endsWith('**Ureteres** sem alterações sonográficas visíveis em topografia.'));
+  const med = composeDescription(d, normalSelection(d), [{ label: 'Rim esquerdo – comprimento', value: '5,2', unit: 'cm' }], {});
+  assert.ok(med.includes('dimensões preservadas (5,2 cm)'));
+  assert.deepEqual(normalSelection({ blocks: [{ groups: [{ label: 'x', kind: 'one', options: [{ text: 'a' }] }] }] }), {});
+});

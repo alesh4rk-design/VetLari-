@@ -14,7 +14,7 @@ import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor, saveToLibraryDialog } from './phrase-library.js';
 import { openDictation } from './voice.js';
 import { fillPhrase } from './phrase-logic.js';
-import { composeDescription, toggleOption, pendingFields, expandBlocks } from './builder-logic.js';
+import { composeDescription, toggleOption, pendingFields, expandBlocks, normalSelection } from './builder-logic.js';
 import { listReferences, referenceCard } from './references.js';
 import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
@@ -178,7 +178,7 @@ export async function renderEditor(view, id, settings, profile) {
       }).join('')}</div>`).join('')}
       ${need.length ? `<div class="bextras"><div class="small muted">Complete os campos da frase:</div>${need.map((n) => `<div class="field"><label for="bx-${esc(n.key)}">${esc(n.key)}</label><input id="bx-${esc(n.key)}" data-bx="${esc(n.key)}" value="${esc(s.build.extras[n.key] || '')}" ${locked ? 'disabled' : ''}></div>`).join('')}</div>` : ''}
       <div id="bnotice" class="alert warn" ${isManual(s) ? '' : 'hidden'}>Você editou o texto manualmente: novas escolhas não o alteram. ${locked ? '' : '<button type="button" class="btn sm" data-act="b-regen">Gerar de novo (substitui o texto)</button>'}</div>
-      ${locked ? '' : '<div class="row"><button type="button" class="btn sm ghost" data-act="b-clear">Limpar escolhas</button></div>'}</div>`;
+      ${locked ? '' : `<div class="row">${Object.keys(normalSelection(s.build.def)).length ? '<button type="button" class="btn sm" data-act="b-normal">Texto padrão (sem alterações)</button>' : ''}<button type="button" class="btn sm ghost" data-act="b-clear">Limpar escolhas</button></div>`}</div>`;
   };
 
   const organPanel = () => {
@@ -414,6 +414,11 @@ export async function renderEditor(view, id, settings, profile) {
       selSec = vis[(i + 1) % vis.length].id; refreshFindings(); view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' });
     } else if (act === 'b-opt') {
       const s = current(); s.build.sel = toggleOption(s.build.def, s.build.sel, b.dataset.g, Number(b.dataset.o)); syncBuild(s); touch(); refreshFindings();
+    } else if (act === 'b-normal') {
+      const s = current();
+      if (isManual(s) && !(await confirmDialog('Aplicar o texto padrão? O texto que você editou à mão será substituído.', { ok: 'Substituir' }))) return;
+      s.build.sel = normalSelection(s.build.def); s.build.extras = {}; if (!s.status) s.status = 'normal';
+      syncBuild(s, true); touch(); refreshFindings();
     } else if (act === 'b-clear') { const s = current(); s.build.sel = {}; s.build.extras = {}; syncBuild(s); touch(); refreshFindings(); }
     else if (act === 'b-regen') {
       const s = current();

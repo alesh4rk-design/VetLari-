@@ -54,6 +54,16 @@ export function toggleOption(def, sel, groupKey, optIndex) {
   return { ...sel, [groupKey]: next };
 }
 
+/** Seleção do "texto padrão sem alterações" do órgão: as opções marcadas com `n` no catálogo/modelo. Vazia se o órgão não tiver. */
+export function normalSelection(def) {
+  const sel = {};
+  for (const g of expandBlocks(def).flatMap((b) => b.groups)) {
+    const idx = g.options.map((o, i) => (o.n ? i : -1)).filter((i) => i >= 0);
+    if (idx.length) sel[g.key] = isSingle(g.kind) ? [idx[0]] : idx;
+  }
+  return sel;
+}
+
 /** Texto final. Retorna '' quando nada foi marcado. */
 export function composeDescription(def, sel = {}, measures = [], extras = {}) {
   const paragraphs = [];
