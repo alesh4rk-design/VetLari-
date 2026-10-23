@@ -20,10 +20,11 @@ export function buildReport(exam, settings = {}) {
   const age = ageFromBirth(p.birthDate, exam.date) || (filled(p.age) ? p.age : '');
   const weight = filled(p.weight) ? `${String(p.weight).replace('.', ',')} kg` : '';
   // Identificação na ordem e com os nomes dos laudos da veterinária (3 colunas no documento).
-  const when = exam.time ? `${fmtDateBR(exam.date)} ${exam.time}` : fmtDateBR(exam.date);
+  // Data e hora são opcionais: só aparecem quando preenchidas (hora sem data aparece como "Hora").
+  const when = filled(exam.date) ? `${fmtDateBR(exam.date)}${filled(exam.time) ? ' ' + exam.time : ''}` : '';
   const patientRows = [
     ['Paciente', p.name], ['Espécie', p.species], ['Raça', p.breed], ['Sexo', p.sex], ['Idade', age], ['Responsável', p.tutor],
-    ['Data', when], ['Solicitante', exam.requestingVet], ['Clínica/Hospital', exam.clinic],
+    ['Data', when], ['Hora', filled(exam.date) ? '' : exam.time], ['Solicitante', exam.requestingVet], ['Clínica/Hospital', exam.clinic],
     ['Peso', weight], ['Identificador', p.identifier],
     ['Operador', (exam.clinical || {}).operator], ['Equipamento', (exam.clinical || {}).equipment], ['Local', (exam.clinical || {}).location],
   ].filter(([, v]) => filled(v)).map(([k, v]) => [k, String(v).trim()]);
@@ -91,7 +92,7 @@ export function buildReport(exam, settings = {}) {
     statusNote: STATUS_NOTE[exam.status] || '',
     font: settings.font === 'serif' ? 'serif' : 'sans',
     fontSize: Number(settings.fontSize) || 11,
-    patientRows, blocks, idShort: String(p.name || '').trim(), dateText: fmtDateBR(exam.date),
+    patientRows, blocks, idShort: String(p.name || '').trim(), dateText: filled(exam.date) ? fmtDateBR(exam.date) : '',
     images: { perRow: Math.min(4, Math.max(1, Number(exam.imagesPerRow) || 2)), items: images },
     signature: tpl.signature === false ? null : {
       name: prof.name || '', crmv: filled(prof.crmv) ? `CRMV-${prof.uf || ''} ${prof.crmv}` : '',

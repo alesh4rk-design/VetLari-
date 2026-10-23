@@ -38,7 +38,7 @@ export async function buildDocx(report, lib) {
   // Cabeçalho: logotipos só na primeira página; nas seguintes, uma linha de identificação.
   const hasLogos = !!(report.logo || report.logo2);
   const firstHeader = new Header({ children: hasLogos ? [await logosTable(16)] : report.headerLines.length ? report.headerLines.map((l) => new Paragraph({ children: [run(l, { size: 18, color: '444444' })] })) : [new Paragraph('')] });
-  const nextHeader = new Header({ children: [new Paragraph({ children: [run(`${report.idShort} — ${report.dateText} — ${report.title}`, { size: 15, color: '777777' })] })] });
+  const nextHeader = new Header({ children: [new Paragraph({ children: [run([report.idShort, report.dateText, report.title].filter(Boolean).join(' — '), { size: 15, color: '777777' })] })] });
 
   const footer = new Footer({
     children: [new Paragraph({

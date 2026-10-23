@@ -42,7 +42,7 @@ export async function deleteExamFlow(exam, profile) {
   let ok;
   if (exam.status === 'final') {
     const m = openModal(`<h2>Excluir laudo finalizado</h2>
-      <p>Você vai excluir o laudo <strong>finalizado</strong> de <strong>${esc(name)}</strong> (${fmtDateBR(exam.date)}, versão ${exam.version}), com todas as imagens. <strong>Não há como desfazer.</strong> Se precisar guardar uma cópia, baixe o Word/PDF ou faça um backup antes.</p>
+      <p>Você vai excluir o laudo <strong>finalizado</strong> de <strong>${esc(name)}</strong> (${exam.date ? fmtDateBR(exam.date) + ', ' : ''}versão ${exam.version}), com todas as imagens. <strong>Não há como desfazer.</strong> Se precisar guardar uma cópia, baixe o Word/PDF ou faça um backup antes.</p>
       ${children ? `<div class="alert warn">Existem ${children} versão(ões) criada(s) a partir deste laudo. Elas não serão excluídas.</div>` : ''}
       <div class="field"><label for="delc">Para confirmar, digite EXCLUIR</label><input id="delc" autocomplete="off" autofocus></div>
       <div class="row end"><button class="btn" data-x="no">Cancelar</button><button class="btn danger" data-x="yes" disabled>Excluir definitivamente</button></div>`, { label: 'Excluir laudo finalizado' });
@@ -50,7 +50,7 @@ export async function deleteExamFlow(exam, profile) {
     m.el.addEventListener('click', (ev) => { const x = ev.target.closest('[data-x]'); if (x && !x.disabled) m.close(x.dataset.x === 'yes'); });
     ok = (await m.closed) === true;
   } else {
-    ok = await confirmDialog(`Excluir o exame de ${name} (${fmtDateBR(exam.date)})? O conteúdo e as imagens serão apagados e não poderão ser recuperados.`, { ok: 'Excluir', danger: true });
+    ok = await confirmDialog(`Excluir o exame de ${name}${exam.date ? ' (' + fmtDateBR(exam.date) + ')' : ''}? O conteúdo e as imagens serão apagados e não poderão ser recuperados.`, { ok: 'Excluir', danger: true });
   }
   if (!ok) return false;
   try { await logDeletion(exam, profile); await deleteExam(exam.id); toast('Exame excluído.', 'success'); return true; }
