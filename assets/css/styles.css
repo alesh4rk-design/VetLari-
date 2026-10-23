@@ -131,3 +131,7 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .builder .bgroup { margin-bottom: 8px; } .builder .blabel { font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
 .builder .chip { white-space: normal; text-align: left; min-height: 36px; line-height: 1.25; }
 .builder .bextras { margin-top: 8px; }
+
+.app-version { font-size: .7rem; color: var(--muted); padding: 4px 12px 0; }
+#update-banner { position: fixed; left: 12px; right: 12px; bottom: 84px; z-index: 90; background: var(--panel2); border: 1px solid var(--accent); border-radius: 12px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; justify-content: space-between; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+@media (min-width: 821px) { #update-banner { left: auto; right: 16px; bottom: 16px; max-width: 420px; } }
