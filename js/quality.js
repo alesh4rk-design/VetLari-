@@ -2,6 +2,7 @@
 // apenas aponta pendências para a profissional corrigir ou justificar.
 import { validateExam } from './validation.js';
 import { isNumericValue } from './utils.js';
+import { pendingMarkers } from './phrase-logic.js';
 import { matchReferences, checkMeasure, rangeText, isOutdated } from './reference-logic.js';
 
 export const STRUCTURE_STATUS = {
@@ -67,6 +68,12 @@ export function reviewExam(exam, profile = {}, refs = []) {
   if (!filled(c.indication)) info.push('Indicação clínica não informada.');
   if (!filled(c.limitations)) info.push('Técnica e limitações do exame não informadas.');
   if (!filled(exam.requestingVet) && !filled(exam.clinic)) info.push('Solicitante/clínica não informados.');
+
+  // Campos de frases prontas que ficaram sem preenchimento.
+  const spots = [['Introdução', exam.intro], ['Impressão diagnóstica', exam.impression], ['Diagnósticos diferenciais', exam.differentials], ['Observações', exam.notes], ['Adendo', exam.addendum],
+    ...Object.entries(exam.clinical || {}).map(([k, v]) => [`Exame (${k})`, v]), ...Object.entries(exam.rx || {}).map(([k, v]) => [`Técnica (${k})`, v]),
+    ...secs.flatMap((s) => [[`${s.title || 'Estrutura'} — descrição`, s.description], [`${s.title || 'Estrutura'} — observações`, s.notes]])];
+  for (const [where, text] of spots) for (const mk of pendingMarkers(text)) critical.push(`${where}: campo pendente ${mk}. Preencha ou remova antes de finalizar.`);
 
   if (!filled(profile.name)) critical.push('Identificação profissional ausente: preencha seu nome em Configurações.');
   if (!filled(profile.crmv)) critical.push('CRMV da profissional ausente: preencha em Configurações.');

@@ -11,6 +11,7 @@ import { listPatients, getPatient, upsertPatient } from './patients.js';
 import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor } from './phrase-library.js';
 import { openDictation } from './voice.js';
+import { fillPhrase } from './phrase-logic.js';
 import { listReferences, referenceCard } from './references.js';
 import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
@@ -271,6 +272,19 @@ export async function renderEditor(view, id, settings, profile) {
     mo.el.addEventListener('click', (ev) => { if (ev.target.closest('[data-x=close]')) mo.close(null); });
   }
 
+  /** Pergunta os campos da frase que não vieram de medidas. Retorna null se cancelar; vazio deixa o marcador. */
+  function askMissing(missing) {
+    const mo = openModal(`<h2>Completar a frase</h2><p class="muted small">Estes campos não têm medida correspondente. Preencha ou deixe pendente: o campo pendente aparece como [PREENCHER: …] e bloqueia a finalização até ser resolvido.</p>
+      ${missing.map((m, i) => `<div class="field"><label for="mx-${i}">${esc(m.name)} <span class="muted small">(${esc(m.reason)})</span></label><input id="mx-${i}" data-name="${esc(m.name)}"></div>`).join('')}
+      <div class="row end"><button class="btn" data-x="cancel">Cancelar</button><button class="btn primary" data-x="ok">Inserir</button></div>`, { label: 'Completar a frase' });
+    mo.el.addEventListener('click', (ev) => {
+      const x = ev.target.closest('[data-x]'); if (!x) return;
+      if (x.dataset.x === 'cancel') return mo.close(null);
+      mo.close(Object.fromEntries([...mo.el.querySelectorAll('[data-name]')].map((i) => [i.dataset.name, i.value])));
+    });
+    return mo.closed.then((v) => (v === undefined ? null : v));
+  }
+
   const secOf = (el) => exam.sections.find((x) => x.id === el.closest('[data-sec]').dataset.sec);
 
   view.onclick = async (e) => {
@@ -304,8 +318,17 @@ export async function renderEditor(view, id, settings, profile) {
     } else if (act === 'm-refs') showReferences(secOf(b));
     else if (act === 'phrase') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
-      const text = await pickPhrase({ modality: exam.type, structure: b.dataset.structure });
-      if (text && target) insertAtCursor(target, text);
+      const sec = b.closest('[data-sec]') ? exam.sections.find((x) => x.id === b.closest('[data-sec]').dataset.sec) : null;
+      const measures = sec ? sec.measuresList : [];
+      const raw = await pickPhrase({ modality: exam.type, structure: b.dataset.structure, measures });
+      if (!raw || !target) return;
+      let { text, missing } = fillPhrase(raw, measures);
+      if (missing.length) {
+        const extras = await askMissing(missing);
+        if (extras === null) return; // cancelou: nada é inserido
+        ({ text } = fillPhrase(raw, measures, extras));
+      }
+      insertAtCursor(target, text);
     } else if (act === 'dictate') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
       const text = await openDictation({ label: b.dataset.label });

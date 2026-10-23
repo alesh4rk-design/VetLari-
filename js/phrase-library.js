@@ -4,6 +4,7 @@ import { uid, esc, fmtDateBR, download, toast, todayISO } from './utils.js';
 import { dbAll, dbPut, dbDel } from './local-storage.js';
 import { validatePhrase, validatePhraseImport } from './validation.js';
 import { openModal, confirmDialog, alertList } from './ui.js';
+import { fillPhrase, placeholders } from './phrase-logic.js';
 
 const MOD_LABEL = { all: 'Todas', usg: 'Ultrassonografia', rx: 'Radiografia' };
 
@@ -40,7 +41,8 @@ function phraseForm(p) {
     <div class="grid g2"><div class="field"><label for="pf-cat">Categoria</label><input id="pf-cat" name="category" value="${esc(p.category)}" maxlength="80"></div>
     <div class="field"><label for="pf-mod">Modalidade</label><select id="pf-mod" name="modality">${Object.entries(MOD_LABEL).map(([k, v]) => `<option value="${k}" ${p.modality === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
     <div class="field"><label for="pf-str">Estrutura anatômica relacionada</label><input id="pf-str" name="structure" value="${esc(p.structure)}" maxlength="80" placeholder="Ex.: Fígado"></div>
-    <div class="field"><label for="pf-text">Texto completo *</label><textarea id="pf-text" name="text" rows="6" maxlength="5000">${esc(p.text)}</textarea></div>
+    <div class="field"><label for="pf-text">Texto completo *</label><textarea id="pf-text" name="text" rows="6" maxlength="5000">${esc(p.text)}</textarea>
+      <div class="hint">Campos automáticos: escreva o nome de uma medida entre chaves. Ex.: <code>medindo {Comprimento}</code> vira "medindo 5,2 cm" com o valor e a unidade da medida de mesmo nome na estrutura. Campos sem valor ficam como [PREENCHER: nome].</div></div>
     <div class="field"><label for="pf-kw">Palavras-chave (separadas por vírgula)</label><input id="pf-kw" name="keywords" value="${esc(p.keywords)}"></div>
     <label class="check"><input type="checkbox" name="favorite" ${p.favorite ? 'checked' : ''}> Favorita</label>
     <div id="pf-err"></div>
@@ -65,7 +67,7 @@ function phraseForm(p) {
 const blankPhrase = (over = {}) => ({ id: uid(), title: '', category: '', modality: 'all', structure: '', text: '', keywords: '', favorite: false, ...over });
 
 /** Seletor usado no editor: devolve o texto escolhido (ou null). */
-export async function pickPhrase({ modality, structure = '' }) {
+export async function pickPhrase({ modality, structure = '', measures = [] }) {
   const all = await listPhrases();
   const m = openModal(`<h2>Inserir frase</h2>
     <div class="field"><label for="pk-q">Pesquisar</label><input id="pk-q" type="search" autofocus></div>
@@ -77,7 +79,8 @@ export async function pickPhrase({ modality, structure = '' }) {
     const res = filterPhrases(all, { q: m.el.querySelector('#pk-q').value, modality, structure: strict ? structure : '' })
       .sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
     m.el.querySelector('#pk-list').innerHTML = res.length ? res.map((p) => `<div class="phrase"><strong>${p.favorite ? '★ ' : ''}${esc(p.title)}</strong>
-      <span class="muted small"> ${esc(p.category)}</span><div class="txt">${esc(p.text)}</div>
+      <span class="muted small"> ${esc(p.category)}</span><div class="txt">${esc(placeholders(p.text).length ? fillPhrase(p.text, measures).text : p.text)}</div>
+      ${placeholders(p.text).length ? '<div class="small muted">Prévia preenchida com as medidas desta estrutura.</div>' : ''}
       <button class="btn sm primary" data-use="${p.id}">Inserir</button></div>`).join('')
       : `<div class="empty">${all.length ? 'Nenhuma frase encontrada.' : 'Sua biblioteca está vazia. Crie frases em "Biblioteca de frases".'}</div>`;
   };

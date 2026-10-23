@@ -39,6 +39,7 @@ Sistema web gratuito para elaboração de **laudos veterinários de ultrassonogr
 - **Imagens do laudo**: cada imagem pode ser incluída ou não no documento.
 - **Instalável e offline (PWA)**: depois da primeira visita o sistema abre sem internet; no celular pode ser adicionado à tela inicial.
 
+- **Frases prontas com campos**: na Biblioteca de frases, escreva `{Comprimento}` onde entra uma medida (ex.: "medindo {Comprimento}"). Ao inserir a frase numa estrutura, o sistema preenche com o valor e a unidade da medida de mesmo nome (inclusive medidas calculadas) e mostra a prévia já preenchida. Campo sem medida, ou medida sem unidade, é perguntado; se ficar pendente vira `[PREENCHER: nome]`, que a revisão aponta como alerta crítico. O sistema nunca escolhe a frase nem preenche nada por suposição.
 - **Bases técnicas** (menu "Bases"): a veterinária cadastra **referências** (fonte, DOI/URL, espécie, população, método, unidade, intervalo, limitações, data de revisão) e **cálculos** (fórmula, variáveis e unidades). Nada vem pronto.
   - Referência nasce como *rascunho*; só passa a ser usada depois de **aprovada** por veterinária (exige DOI/URL se for científica). Importar JSON sempre cria rascunhos.
   - O sistema só aplica referências da **mesma espécie** e nunca converte unidades. Ele informa a posição do valor frente ao intervalo cadastrado (abaixo/dentro/acima) como alerta informativo, **sem dizer "normal" ou "anormal"**. Sem referência aprovada, informa que não há.
