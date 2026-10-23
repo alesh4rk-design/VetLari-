@@ -442,6 +442,52 @@ addOptions('Próstata', 'Ecotextura e ecogenicidade', [o('ecotextura levemente h
 addOptions('Ovários', 'Descrição', [X('sem evidências de alterações sonográficas em topografia')]);
 addOptions('Outros achados', 'Achado', [o('Presença de discreto aumento da ecogenicidade dos tecidos mesentéricos focalmente em abdômen cranial porção média para lado esquerdo (considerar discreto processo inflamatório devido a pós-operatório recente de lobectomia hepática)', 'ecogenicidade mesentérica aumentada (pós-operatório de lobectomia)')]);
 
+// Lote 6 (laudos de setembro/outubro/2026, Camev Barra e Hamadulu; inclui felinos).
+addOptions('Vesícula urinária', 'Repleção', [o('com repleção líquida acentuada', 'repleção acentuada')]);
+addOptions('Vesícula urinária', 'Conteúdo', [o('conteúdo anecogênico, aparentemente heterogêneo, apresentando acentuada quantidade de imagens puntiformes ecogênicas em suspensão (celularidade/debris/cristais) e discretas microlitíases depositadas em parede dorsal, medindo a maior {Medida da maior microlitíase}', 'heterogêneo, celularidade/debris/cristais e microlitíases')]);
+addGroup('Vesícula urinária', 0, g('Uretra proximal', 'sentence', [
+  o('Uretra proximal moderadamente dilatada ({Uretra proximal}), com presença de microlitíases móveis no momento do exame em porção mais cranial, medindo a maior {Medida das microlitíases}, e em porção mais caudal da uretra proximal visualizou-se aglomerado de microlitíases/cristais medindo {Medida do aglomerado} de comprimento e imóvel no momento do exame', 'moderadamente dilatada, com microlitíases')]));
+addOptions('Rins', 'Posição', [o('tópicos e assimétricos (esq.: {Rim esquerdo – comprimento}, dir.: {Rim direito – comprimento})', 'assimétricos, com as duas medidas')]);
+addOptions('Rins', 'Definição do contorno', [o('contornos pouco definidos', 'pouco definidos')]);
+addOptions('Rins', 'Ecogenicidade', [o('ecogenicidade diminuída')]);
+addOptions('Rins', 'Achados adicionais', [o('Presença de aumento da ecogenicidade da gordura retroperitoneal', 'aumento da ecogenicidade da gordura retroperitoneal'), o('Não há sinais de litíases e hidronefrose', 'sem litíases e hidronefrose')]);
+addOptions('Rins', 'Pelve', [o('Pelve levemente dilatada ({?Pelve})', 'levemente dilatada')]);
+addOptions('Rins', 'Ureteres', [
+  o('**Ureter esquerdo** sutilmente dilatado ({Ureter esquerdo})', 'ureter esquerdo sutilmente dilatado'),
+  o('**Ureter direito** com dilatação em 1/3 proximal, medindo {Ureter direito} de diâmetro, após isso o ureter afina ficando mornodilatado, sem evidências de litíases no momento do exame', 'ureter direito dilatado em 1/3 proximal')]);
+addOptions('Fígado', 'Dimensões', [o('com dimensões aumentadas', 'aumentadas'), o('com dimensões discretamente aumentadas em relação aos limites do gradil costal', 'discretamente aumentadas (gradil costal)')]);
+addOptions('Fígado', 'Ecotextura', [o('ecotextura heterogênea e ecogenicidade aumentada', 'heterogênea e ecogenicidade aumentada')]);
+addOptions('Vesícula biliar', 'Material ecogênico', [
+  o('apresentando até 25% de material ecogênico e gravidade dependente (lama biliar)', 'até 25% gravidade dependente (lama)'),
+  o('apresentando cerca de 26 a 50% de material ecogênico gravidade dependente (lama biliar grau II)', '26 a 50% (lama grau II)'),
+  o('apresentando moderada quantidade de lama biliar', 'moderada quantidade de lama biliar'),
+  o('apresentando até 25% de material ecogênico parcialmente depositado em fundo e parcialmente em suspensão', 'até 25%, depositado e em suspensão'),
+  o('apresentando moderada quantidade de conteúdo hiperecogênico, denso e homogêneo depositado predominantemente, ocupando de 51 a 75% do lúmen (lama biliar grau III), além de fragmentos de muco em permeio', '51 a 75% denso (lama grau III, muco)')]);
+addOptions('Baço', 'Topografia', [X('não caracterizado (paciente com histórico de esplenectomia)')]);
+addOptions('Baço', 'Dimensões', [
+  o('com dimensões discretamente a moderadamente aumentadas', 'discreta a moderadamente aumentadas')]);
+addOptions('Baço', 'Bordos', [o('bordas abauladas', 'abauladas')]);
+addOptions('Baço', 'Ecotextura', [
+  o('ecotextura homogênea; presença de imagem cística medindo {Medidas da imagem cística}', 'homogênea, imagem cística'),
+  o('ecotextura homogênea; presença de imagens arredondadas, hiperecogênicas, homogêneas, medindo entre {Medidas das imagens}, localizadas em face visceral, adjacente aos vasos do hilo esplênico', 'homogênea, imagens em face visceral junto ao hilo')]);
+addOptions('Estômago', 'Conteúdo', [
+  o('com moderada quantidade de conteúdo alimentar e gasoso; presença de estruturas arredondadas, hiperecogênicas, produtoras de sombra acústica posterior, medindo aproximadamente {Medida da maior estrutura} o maior (imagens a esclarecer, não podendo descartar corpos estranhos gástricos)', 'alimentar e gasoso, estruturas com sombra (não descarta corpo estranho)'),
+  o('com moderada quantidade de conteúdo alimentar e gasoso; estrutura aparentemente de superfície hiperecogênica, formando sombra acústica posterior suja, medindo pelo menos {Medida da estrutura} de extensão', 'alimentar e gasoso, estrutura de superfície hiperecogênica')]);
+addOptions('Estômago', 'Peristaltismo e piloro', [o('Peristaltismo diminuído. Piloro íntegro e sem sinais de obstrução', 'peristaltismo diminuído (repetido)')]);
+addOptions('Alças intestinais', 'Parede', [
+  o(`${ESTRAT}, contorno regular e espessura preservada predominantemente, exceto por duodeno com espessura moderadamente aumentada ${DUODENO_JEJUNO}`, 'duodeno moderadamente aumentado'),
+  o(`${ESTRAT}, contorno regular e espessura preservada predominantemente, exceto por duodeno apresentando região com espessura levemente aumentada ${DUODENO_JEJUNO}`, 'duodeno com região levemente aumentada')], 0);
+addOptions('Pâncreas', 'Dimensões', [o('com dimensões preservadas, medindo {Lobo pancreático esquerdo} (lobo pancreático esquerdo)', 'preservadas, lobo esquerdo')]);
+addOptions('Adrenais', 'Dimensões', []);
+addOptions('Adrenais', 'Achado adicional', [o('presença de imagem nodular de contornos definidos, regulares, hiperecogênica e homogênea, medindo aproximadamente {Medida da imagem nodular}, localizada em corpo', 'imagem nodular em corpo')]);
+addOptions('Útero', 'Descrição', [
+  o('Dimensões preservadas ({?Corpo uterino} – corpo; {?Corno uterino esquerdo} – corno esquerdo; {?Corno uterino direito} – corno direito), de paredes espessadas e irregulares, apresentando pequenas estruturas císticas difusas preenchidas por conteúdo anecogênico', 'dimensões preservadas, paredes espessadas e irregulares, estruturas císticas'),
+  o('Com diâmetro dentro da normalidade ({?Corno uterino esquerdo} – corno esquerdo), contorno regular, ecotextura e ecogenicidade habituais', 'diâmetro dentro da normalidade (corno esquerdo)')]);
+addOptions('Ovários', 'Cistos', [o('apresentando pequenos cistos/folículos bilateralmente, medindo aproximadamente {Medida dos cistos}, ecogenicidade e ecotextura habituais', 'pequenos cistos/folículos bilaterais')]);
+addOptions('Outros achados', 'Achado', [
+  o('Comentários: tecido mamário hiperplásico focalmente e com discreta ectasia de ductos mamários. Presença de dois nódulos em mamilo torácico cranial esquerdo e nódulo entre a mama abdominal caudal e a inguinal esquerda, medindo entre {Medidas dos nódulos}', 'comentários: tecido mamário e nódulos mamários'),
+  o('Presença de descontinuidade da parede abdominal em abdômen médio, região de cicatriz cirúrgica, medindo {Medida da descontinuidade}, tendo como conteúdo em subcutâneo omento/gordura. Houve redução do conteúdo no momento do exame', 'descontinuidade em cicatriz cirúrgica (abdômen médio)')]);
+
 /** Impressões diagnósticas usadas nos laudos da veterinária (biblioteca de frases, para inserir com um toque). */
 const REC = 'Sugere-se correlacionar com exames laboratoriais complementares, caso o clínico julgue necessário.';
 export const USG_IMPRESSIONS = [
@@ -529,6 +575,11 @@ export const USG_IMPRESSIONS = [
   ['Acentuada esplenomegalia podendo estar relacionada a processo inflamatório/infeccioso/hematopoiese extramedular e nódulo sugestivo de hiperplasia nodular benigna. Sugere-se acompanhamento ultrassonográfico, caso o clínico julgue necessário.', 'Baço', 3],
   ['Hepatopatia/moderada esteatose hepática.', 'Fígado', 3],
   ['Discreto a moderado processo congestivo venoso hepático (podendo estar relacionado com alteração cardíaca/torácica e/ou hipertensão).', 'Fígado', 3],
+  ['Estômago com esvaziamento gástrico lento, moderada quantidade de alimento e gás, além de estrutura podendo estar relacionado com alimento/petisco, não podendo descartar corpo estranho gástrico. Sugere-se acompanhamento ultrassonográfico com preparo prévio (jejum e uso de antifisético), caso o clínico julgue necessário.', 'Estômago', 3],
+  ['Duodenopatia discreta.', 'Alças intestinais', 3], ['Duodenopatia.', 'Alças intestinais', 3],
+  ['Hepatopatia difusa leve/esteatose hepática.', 'Fígado', 3], ['Discreta infiltração gordurosa hepática/esteatose hepática.', 'Fígado', 3],
+  ['Moderada esplenomegalia com sugestivos mielolipomas.', 'Baço', 3],
+  ['Nódulo em adrenal direita sugestivo de hiperplasia nodular benigna. Sugere-se acompanhamento ultrassonográfico, caso o clínico julgue necessário.', 'Adrenais', 3],
   ['Sugestiva necrose gordurosa nodular do peritônio/mesentério. Considerar achado incidental benigno. Sugere-se acompanhamento ultrassonográfico, caso o clínico julgue necessário.', 'Outros achados', 3],
 ];
 
