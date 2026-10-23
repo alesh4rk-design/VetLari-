@@ -25,7 +25,9 @@ test('exame: campos vazios bloqueiam finalização', () => {
 test('exame: inconsistências de data', () => {
   assert.ok(validateExam(sampleExam({ date: '2019-01-01' })).errors.some((e) => /nascimento/.test(e)));
   assert.ok(validateExam(sampleExam({ date: '2999-01-01' })).warnings.some((w) => /futuro/.test(w)));
-  assert.ok(validateExam(sampleExam({ date: '' })).errors.length);
+  assert.deepEqual(validateExam(sampleExam({ date: '' })).errors, []); // data é opcional
+  assert.ok(validateExam(sampleExam({ date: '2026-13-45' })).errors.some((e) => /inválida/.test(e)));
+  assert.ok(validateExam(sampleExam({ time: '25h' })).errors.some((e) => /hora/.test(e)));
 });
 test('exame: avisos de imagem sem legenda e impressão vazia', () => {
   const r = validateExam(sampleExam({ impression: '' }));
@@ -49,4 +51,19 @@ test('backup: estrutura', () => {
   assert.ok(validateBackup({ app: 'outro', stores: {} }));
   assert.ok(validateBackup({ app: 'vetlaudo', stores: { exams: 'x' } }));
   assert.equal(validateBackup({ app: 'vetlaudo', stores: { exams: [] } }), null);
+});
+
+test('data e hora do exame são opcionais: sem elas o laudo não mostra o campo e o nome do arquivo usa o dia de hoje', async () => {
+  const { buildReport } = await import('../js/report-model.js');
+  const { reportFileName } = await import('../js/utils.js');
+  const { sampleSettings } = await import('./helpers.js');
+  const semData = buildReport(sampleExam({ date: '', time: '' }), sampleSettings);
+  assert.ok(!semData.patientRows.some(([k]) => k === 'Data' || k === 'Hora'));
+  assert.equal(semData.dateText, '');
+  const soHora = buildReport(sampleExam({ date: '', time: '10:58' }), sampleSettings);
+  assert.deepEqual(soHora.patientRows.find(([k]) => k === 'Hora'), ['Hora', '10:58']);
+  const soData = buildReport(sampleExam({ date: '2026-10-10', time: '' }), sampleSettings);
+  assert.deepEqual(soData.patientRows.find(([k]) => k === 'Data'), ['Data', '10/10/2026']);
+  assert.match(reportFileName(sampleExam({ date: '' }), 'pdf'), /^Laudo_USG_Thor_\d{4}-\d{2}-\d{2}\.pdf$/);
+  assert.equal(validateExam(sampleExam({ date: '', time: '' })).errors.length, 0);
 });

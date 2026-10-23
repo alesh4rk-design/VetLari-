@@ -34,12 +34,16 @@ export function validateExam(exam) {
   const warnings = [];
   if (!exam) return { errors: ['Exame inexistente.'], warnings };
   if (!hasText(exam.patient && exam.patient.name)) errors.push('Informe o nome do animal.');
-  if (!exam.date || !/^\d{4}-\d{2}-\d{2}$/.test(exam.date) || isNaN(new Date(exam.date))) errors.push('Informe uma data de exame válida.');
-  else {
-    if (exam.date > todayISO()) warnings.push('A data do exame está no futuro.');
-    const bd = exam.patient && exam.patient.birthDate;
-    if (bd && bd > exam.date) errors.push('A data de nascimento é posterior à data do exame.');
+  // Data e hora do exame são opcionais; só são conferidas quando preenchidas.
+  if (hasText(exam.date)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(exam.date) || isNaN(new Date(exam.date))) errors.push('A data do exame é inválida.');
+    else {
+      if (exam.date > todayISO()) warnings.push('A data do exame está no futuro.');
+      const bd = exam.patient && exam.patient.birthDate;
+      if (bd && bd > exam.date) errors.push('A data de nascimento é posterior à data do exame.');
+    }
   }
+  if (hasText(exam.time) && !/^\d{2}:\d{2}$/.test(exam.time)) errors.push('A hora do exame é inválida.');
   const secs = exam.sections || [];
   const anySection = secs.some((s) => hasText(s.description) || hasText(s.measures) || hasText(s.notes));
   if (!anySection && !hasText(exam.impression)) errors.push('Preencha ao menos um achado ou a impressão diagnóstica.');

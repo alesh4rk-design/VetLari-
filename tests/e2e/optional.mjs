@@ -1,0 +1,51 @@
+// E2E: data e hora do exame são opcionais (podem ficar em branco e o laudo é finalizado normalmente).
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
+const require = createRequire(import.meta.url);
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const base = process.argv[2] || 'http://localhost:8080/';
+const results = [];
+const check = (name, ok, extra = '') => { results.push([name, ok]); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name} ${extra}`); };
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1280, height: 900 } });
+const page = await ctx.newPage();
+const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+const tmp = mkdtempSync(join(tmpdir(), 'opt-'));
+
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+check('data e hora vêm preenchidas por conveniência', (await page.inputValue('#f-date')) !== '' && (await page.inputValue('#f-time')) !== '');
+check('os rótulos indicam que são opcionais (sem asterisco)', (await page.textContent('label[for="f-date"]')).includes('opcional') && (await page.textContent('label[for="f-time"]')).includes('opcional'));
+await page.fill('#f-patient\\.name', 'Paciente Sem Data');
+await page.fill('#f-date', ''); await page.fill('#f-time', '');
+await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")');
+await page.click('.bgroup:has(.blabel:has-text("Contorno")) .chip');
+await page.click('[data-step="3"]'); await page.fill('#f-impression', 'Conclusão de teste.');
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+check('sem data/hora não há alerta crítico de data', !(await page.textContent('.alert.error').catch(() => '')).includes('data'));
+check('prévia não mostra data nem hora', !(await page.locator('.paper .pid').textContent()).includes('Data:') && !(await page.locator('.paper .pid').textContent()).includes('Hora:'));
+await page.click('[data-act="final"]');
+for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
+await page.fill('#just', 'Teste sem data.'); await page.click('.modal [data-x="ok"]');
+await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
+check('laudo finalizado sem data e sem hora', true);
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+const [dp] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="pdf"]')]);
+const pdf = join(tmp, dp.suggestedFilename()); await dp.saveAs(pdf);
+const txt = execFileSync('pdftotext', ['-layout', pdf, '-']).toString();
+check('PDF sem o campo Data', !/\bData:/.test(txt) && txt.includes('Paciente: Paciente Sem Data'));
+check('nome do arquivo usa o dia de hoje quando não há data do exame', /^Laudo_USG_Paciente_Sem_Data_\d{4}-\d{2}-\d{2}\.pdf$/.test(dp.suggestedFilename()), dp.suggestedFilename());
+// Só a hora
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Só Hora'); await page.fill('#f-date', ''); await page.fill('#f-time', '10:58');
+await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('.bgroup:has(.blabel:has-text("Contorno")) .chip');
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+check('só hora preenchida: aparece como "Hora"', (await page.locator('.paper .pid').textContent()).includes('Hora: 10:58'));
+// Data inválida continua sendo conferida
+check('sem erros de console', errors.length === 0, errors.join(' | '));
+await browser.close();
+const failed = results.filter(([, ok]) => !ok).length;
+console.log(`\n${results.length - failed}/${results.length} passaram`);
+process.exit(failed ? 1 : 0);

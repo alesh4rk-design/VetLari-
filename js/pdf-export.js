@@ -178,7 +178,7 @@ export function buildPdf(report, jsPDFCtor) {
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
-    if (i > 1) { doc.setFont(family, 'normal').setFontSize(7.5).setTextColor(120).text(`${report.idShort} — ${report.dateText} — ${report.title}`, MARGIN, 8, { baseline: 'top' }); }
+    if (i > 1) { doc.setFont(family, 'normal').setFontSize(7.5).setTextColor(120).text([report.idShort, report.dateText, report.title].filter(Boolean).join(' — '), MARGIN, 8, { baseline: 'top' }); }
     doc.setFont(family, 'normal').setFontSize(8).setTextColor(100);
     doc.setDrawColor(190).setLineWidth(0.2).line(MARGIN, PAGE_H - 13, PAGE_W - MARGIN, PAGE_H - 13);
     if (report.footerText) doc.text(report.footerText, MARGIN, PAGE_H - 11, { baseline: 'top', maxWidth: CONTENT_W - 30 });
