@@ -3,7 +3,7 @@ import { listExams, renderExamBrowser } from './exams.js';
 import { navigate } from './router.js';
 import { esc } from './utils.js';
 
-export async function renderDashboard(view) {
+export async function renderDashboard(view, profile) {
   const all = await listExams();
   const drafts = all.filter((e) => e.status !== 'final');
   const finals = all.filter((e) => e.status === 'final');
@@ -18,5 +18,5 @@ export async function renderDashboard(view) {
     ${stale.length ? `<div class="alert warn" role="alert"><strong>${stale.length} rascunho(s) parado(s) há mais de 3 dias e ainda sem finalização:</strong><ul>${stale.slice(0, 5).map((e) => `<li><a href="#/laudo/${e.id}">${esc(e.patient.name || 'Sem nome')}</a></li>`).join('')}</ul></div>` : ''}
     <h2>Exames recentes</h2><div id="recent"></div>`;
   view.querySelector('#qs').addEventListener('submit', (e) => { e.preventDefault(); navigate(`/laudos?q=${encodeURIComponent(view.querySelector('#qq').value)}`); });
-  await renderExamBrowser(view.querySelector('#recent'), { compact: true, limit: 8 });
+  await renderExamBrowser(view.querySelector('#recent'), { compact: true, limit: 8, profile, onDeleted: () => renderDashboard(view, profile) });
 }

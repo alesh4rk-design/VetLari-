@@ -147,3 +147,11 @@ test('medida preenchida a partir do modelo aparece no laudo com nome e unidade',
   const r = buildReport(sampleExam({ sections: [{ ...s, status: 'normal' }] }), sampleSettings);
   assert.match(JSON.stringify(r.blocks), /Espessura da parede: 0,31 cm/);
 });
+
+import { canDelete } from '../js/exams.js';
+test('exclusão: auxiliar exclui rascunho mas não laudo finalizado; veterinária exclui ambos', () => {
+  const vet = { role: 'vet' }, aux = { role: 'assistant' };
+  assert.equal(canDelete({ status: 'draft' }, aux), true); assert.equal(canDelete({ status: 'preliminary' }, aux), true);
+  assert.equal(canDelete({ status: 'final' }, aux), false);
+  assert.equal(canDelete({ status: 'final' }, vet), true); assert.equal(canDelete({ status: 'draft' }, null), false);
+});

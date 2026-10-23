@@ -1,6 +1,9 @@
 // Dados de exames/laudos (criação, versões, finalização) e navegador com filtros/pesquisa.
 import { uid, esc, todayISO, fmtDateBR, fmtDateTimeBR, MODALITY } from './utils.js';
-import { dbAll, dbGet, dbPut, dbDel } from './local-storage.js';
+import { dbAll, dbGet, dbPut, dbDel, getSetting, setSetting } from './local-storage.js';
+import { openModal, confirmDialog } from './ui.js';
+import { can } from './profiles.js';
+import { toast } from './utils.js';
 
 export const STATUS_LABEL = { draft: 'Rascunho', preliminary: 'Preliminar', final: 'Finalizado' };
 
@@ -17,6 +20,40 @@ export function normalizeExam(e) {
 export const getExam = async (id) => normalizeExam(await dbGet('exams', id));
 export const listExams = async () => (await dbAll('exams')).map(normalizeExam).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 export const deleteExam = (id) => dbDel('exams', id);
+
+
+/** Permissões: rascunhos e preliminares podem ser excluídos por quem edita; laudos finalizados só por médico(a)-veterinário(a). */
+export const canDelete = (exam, profile) => can(profile, exam.status === 'final' ? 'deleteFinal' : 'edit');
+
+/** Registro mínimo da exclusão (sem nome de paciente ou tutor, para não reter dados pessoais). */
+async function logDeletion(exam, profile) {
+  const log = await getSetting('deleted-log', []);
+  log.push({ examId: exam.id, type: exam.type, date: exam.date, status: exam.status, version: exam.version, by: profile ? profile.name : '', at: Date.now() });
+  await setSetting('deleted-log', log.slice(-200));
+}
+
+/** Pergunta e exclui. Em laudo finalizado, exige digitar EXCLUIR. Retorna true se excluiu. */
+export async function deleteExamFlow(exam, profile) {
+  if (!canDelete(exam, profile)) { toast('Seu perfil não pode excluir este exame.', 'error'); return false; }
+  const name = (exam.patient && exam.patient.name) || 'sem nome';
+  const children = (await listExams()).filter((x) => x.originId === exam.id).length;
+  let ok;
+  if (exam.status === 'final') {
+    const m = openModal(`<h2>Excluir laudo finalizado</h2>
+      <p>Você vai excluir o laudo <strong>finalizado</strong> de <strong>${esc(name)}</strong> (${fmtDateBR(exam.date)}, versão ${exam.version}), com todas as imagens. <strong>Não há como desfazer.</strong> Se precisar guardar uma cópia, baixe o Word/PDF ou faça um backup antes.</p>
+      ${children ? `<div class="alert warn">Existem ${children} versão(ões) criada(s) a partir deste laudo. Elas não serão excluídas.</div>` : ''}
+      <div class="field"><label for="delc">Para confirmar, digite EXCLUIR</label><input id="delc" autocomplete="off" autofocus></div>
+      <div class="row end"><button class="btn" data-x="no">Cancelar</button><button class="btn danger" data-x="yes" disabled>Excluir definitivamente</button></div>`, { label: 'Excluir laudo finalizado' });
+    m.el.addEventListener('input', () => { m.el.querySelector('[data-x=yes]').disabled = m.el.querySelector('#delc').value.trim() !== 'EXCLUIR'; });
+    m.el.addEventListener('click', (ev) => { const x = ev.target.closest('[data-x]'); if (x && !x.disabled) m.close(x.dataset.x === 'yes'); });
+    ok = (await m.closed) === true;
+  } else {
+    ok = await confirmDialog(`Excluir o exame de ${name} (${fmtDateBR(exam.date)})? O conteúdo e as imagens serão apagados e não poderão ser recuperados.`, { ok: 'Excluir', danger: true });
+  }
+  if (!ok) return false;
+  try { await logDeletion(exam, profile); await deleteExam(exam.id); toast('Exame excluído.', 'success'); return true; }
+  catch { toast('Não foi possível excluir o exame.', 'error'); return false; }
+}
 
 export function saveExam(exam) {
   exam.updatedAt = Date.now();
@@ -121,19 +158,20 @@ export function filterExams(all, f = {}) {
   });
 }
 
-export function examRow(e) {
+export function examRow(e, profile) {
   const stale = e.status !== 'final' && Date.now() - e.updatedAt > 3 * 86400000;
   const rev = e.revisionKind ? ` · ${REVISION_LABEL[e.revisionKind]}` : '';
   return `<li><div><strong>${esc(e.patient.name || 'Sem nome')}</strong>
     <span class="badge mod">${MODALITY[e.type].code}</span>
     <span class="badge ${e.status}">${STATUS_LABEL[e.status]} v${e.version}${rev}</span>${stale ? ' <span class="badge draft">Revisão pendente</span>' : ''}
     <div class="muted small">${fmtDateBR(e.date)}${e.patient.tutor ? ' · Tutor: ' + esc(e.patient.tutor) : ''}${e.clinic ? ' · ' + esc(e.clinic) : ''} · atualizado ${fmtDateTimeBR(e.updatedAt)}</div></div>
-    <div class="row"><a class="btn sm primary" href="#/laudo/${e.id}">${e.status === 'final' ? 'Abrir' : 'Continuar'}</a></div></li>`;
+    <div class="row"><a class="btn sm primary" href="#/laudo/${e.id}">${e.status === 'final' ? 'Abrir' : 'Editar'}</a>
+    ${canDelete(e, profile) ? `<button class="btn sm danger" data-act="del-exam" data-id="${e.id}" aria-label="Excluir exame de ${esc(e.patient.name || 'sem nome')}">Excluir</button>` : ''}</div></li>`;
 }
 
 /** Lista com filtros. opts.compact = versão do painel inicial. */
-export async function renderExamBrowser(container, { compact = false, limit = 0, initial = {} } = {}) {
-  const all = await listExams();
+export async function renderExamBrowser(container, { compact = false, limit = 0, initial = {}, profile = null, onDeleted = null } = {}) {
+  let all = await listExams();
   const f = { ...initial };
   const field = (id, label, type = 'text', v = '') => `<div class="field"><label for="${id}">${label}</label><input id="${id}" data-f="${id}" type="${type}" value="${esc(v)}"></div>`;
   container.innerHTML = `<div class="card"><div class="grid ${compact ? 'g4 keep2' : 'g3'}">
@@ -148,10 +186,15 @@ export async function renderExamBrowser(container, { compact = false, limit = 0,
     const total = res.length;
     if (limit) res = res.slice(0, limit);
     container.querySelector('#exlist').innerHTML = res.length
-      ? `<ul class="list">${res.map(examRow).join('')}</ul>${limit && total > limit ? '<p class="small muted">Mostrando os mais recentes. <a href="#/laudos">Ver todos</a></p>' : ''}`
+      ? `<ul class="list">${res.map((x) => examRow(x, profile)).join('')}</ul>${limit && total > limit ? '<p class="small muted">Mostrando os mais recentes. <a href="#/laudos">Ver todos</a></p>' : ''}`
       : `<div class="empty">${all.length ? 'Nenhum laudo corresponde aos filtros.' : 'Nenhum laudo ainda. Clique em "Novo laudo" para começar.'}</div>`;
   };
   container.addEventListener('input', (e) => { if (e.target.dataset.f) { f[e.target.dataset.f] = e.target.value; draw(); } });
+  container.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-act="del-exam"]'); if (!b) return;
+    const exam = all.find((x) => x.id === b.dataset.id);
+    if (exam && await deleteExamFlow(exam, profile)) { all = await listExams(); draw(); if (onDeleted) onDeleted(); }
+  });
   draw();
   return all;
 }

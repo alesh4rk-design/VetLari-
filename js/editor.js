@@ -3,7 +3,7 @@ import { esc, debounce, download, reportFileName, toast, fmtDateTimeBR, fmtDateB
 import { getPath, setPath, alertList, confirmDialog } from './ui.js';
 import { SEXES } from './validation.js';
 import { navigate, setLeaveGuard } from './router.js';
-import { getExam, listExams, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
+import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
 import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, FINAL_CHECKLIST, sectionHasContent } from './quality.js';
 import { can } from './profiles.js';
 import { openModal } from './ui.js';
@@ -221,7 +221,7 @@ export async function renderEditor(view, id, settings, profile) {
             : '<span class="muted small">Retificações e adendos exigem perfil de médico(a)-veterinário(a).</span>')
           : `${exam.status === 'draft' ? '<button class="btn" data-act="prelim">Marcar como preliminar</button>' : '<button class="btn" data-act="undraft">Voltar para rascunho</button>'}
              <button class="btn" data-act="final" ${canFinalize ? '' : 'disabled'}>Finalizar laudo</button>
-             <button class="btn danger" data-act="discard">Descartar rascunho</button>
+             <button class="btn danger" data-act="discard">Excluir exame</button>
              ${canFinalize ? '' : '<span class="muted small">Seu perfil (auxiliar) não pode finalizar nem assinar laudos.</span>'}`}</div></div>
         ${reportToHtml(report)}
         <details class="card no-print"><summary>Histórico do laudo (${exam.history.length})</summary><ul class="list">${hist}</ul></details>`;
@@ -233,7 +233,8 @@ export async function renderEditor(view, id, settings, profile) {
     const histLast = exam.history[exam.history.length - 1];
     view.innerHTML = `<div class="page-head"><div><h1>${MODALITY[exam.type].label} <span class="badge ${exam.status}">${STATUS_LABEL[exam.status]} · v${exam.version}${exam.revisionKind ? ' · ' + REVISION_LABEL[exam.revisionKind] : ''}</span></h1>
       <div class="muted small">${esc(exam.patient.name || 'Paciente sem nome')} · última ação: ${esc(histLast.action)} (${fmtDateTimeBR(histLast.ts)})</div></div>
-      <a class="btn sm" href="#/laudo/${exam.id}/nova-versao-estrutura">Novo laudo com esta estrutura</a></div>
+      <div class="row"><a class="btn sm" href="#/laudo/${exam.id}/nova-versao-estrutura">Novo laudo com esta estrutura</a>
+      ${canDelete(exam, profile) ? '<button class="btn sm danger" data-act="del-exam">Excluir exame</button>' : ''}</div></div>
       ${related.length ? `<details class="card"><summary>Outros exames deste paciente (${related.length})</summary><ul class="list">${related.map((x) => `<li><span>${MODALITY[x.type].code} · ${fmtDateBR(x.date)} · v${x.version} · ${STATUS_LABEL[x.status]}</span><span class="row"><a class="btn sm" href="#/laudo/${x.id}">Abrir</a><a class="btn sm" href="#/comparar/${x.id}/${exam.id}">Comparar</a></span></li>`).join('')}</ul></details>` : ''}
       ${locked ? '<div class="alert info">Laudo finalizado: o conteúdo está protegido contra alterações. Para corrigir, use "Retificar" ou "Adicionar adendo" na etapa de revisão: uma nova versão é criada e a original permanece preservada.</div>' : ''}
       <div class="savebar"><span id="savestate" class="status ${state}" role="status">${STATUS_TEXT[state]}</span>
@@ -423,8 +424,8 @@ export async function renderEditor(view, id, settings, profile) {
       await setStatus(exam, act === 'prelim' ? 'preliminary' : 'draft', actor); dirty = false; draw();
     } else if (act === 'final') { if (canFinalize) finalizeDialog(); }
     else if (act === 'revise') { if (canRevise) revisionDialog(b.dataset.kind); }
-    else if (act === 'discard' && await confirmDialog('Descartar este rascunho? O conteúdo será apagado e não poderá ser recuperado.', { ok: 'Descartar', danger: true })) {
-      autosave.cancel(); dirty = false; await deleteExam(exam.id); navigate('/');
+    else if (act === 'discard' || act === 'del-exam') {
+      if (await deleteExamFlow(exam, profile)) { autosave.cancel(); dirty = false; failed = false; navigate('/'); }
     }
   };
 

@@ -66,8 +66,7 @@ async function compare(v, a, b) {
 
 async function viewExams(v, { query }) {
   v.innerHTML = '<div class="page-head"><h1>Meus laudos</h1></div><div id="b"></div>';
-  const all = await renderExamBrowser(v.querySelector('#b'), { initial: { q: query.q || '' } });
-  void all;
+  await renderExamBrowser(v.querySelector('#b'), { initial: { q: query.q || '' }, profile });
 }
 
 async function boot() {
@@ -87,7 +86,7 @@ async function boot() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { /* sem offline: segue normalmente */ });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   document.addEventListener('route', (e) => drawNav(e.detail.path));
-  route('/', safe((v) => renderDashboard(v)));
+  route('/', safe((v) => renderDashboard(v, profile)));
   route('/novo', safe((v, { query }) => renderNewExam(v, query)));
   route('/laudo/:id', safe((v, { params }) => renderEditor(v, params.id, settings, profile)));
   route('/laudo/:id/nova-versao-estrutura', safe((v, { params }) => startFromPrevious(v, params.id)));
