@@ -6,6 +6,8 @@ import { renderDashboard } from './dashboard.js';
 import { renderPatientList, renderPatientForm } from './patients.js';
 import { renderPhraseLibrary } from './phrase-library.js';
 import { renderTemplateList, renderTemplateForm } from './template-editor.js';
+import { renderReferences } from './references.js';
+import { renderCalculations } from './calculations.js';
 import { renderNewExam, renderEditor, startFromPrevious } from './editor.js';
 import { renderExamBrowser, getExam } from './exams.js';
 import { buildReport } from './report-model.js';
@@ -20,7 +22,7 @@ import { fmtDateBR } from './utils.js';
 
 const NAV = [
   ['/', '🏠', 'Início'], ['/novo', '➕', 'Novo laudo'], ['/laudos', '📄', 'Laudos'], ['/pacientes', '🐾', 'Pacientes'],
-  ['/frases', '💬', 'Frases'], ['/modelos', '🧩', 'Modelos'], ['/config', '⚙️', 'Config.'],
+  ['/frases', '💬', 'Frases'], ['/modelos', '🧩', 'Modelos'], ['/referencias', '📚', 'Bases'], ['/config', '⚙️', 'Config.'],
 ];
 
 let settings;
@@ -30,7 +32,7 @@ const view = () => document.getElementById('view');
 function drawNav(path) {
   document.getElementById('nav').innerHTML = `<div class="brand">Vet<span>Laudo</span></div>` +
     NAV.map(([href, ico, label]) => {
-      const active = href === '/' ? path === '/' : path.startsWith(href) || (href === '/laudos' && path.startsWith('/laudo/'));
+      const active = href === '/' ? path === '/' : path.startsWith(href) || (href === '/laudos' && path.startsWith('/laudo/')) || (href === '/referencias' && path.startsWith('/calculos'));
       return `<a href="#${href}" ${active ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${ico}</span><span>${label}</span></a>`;
     }).join('') + `<div class="spacer"></div><a href="#/perfis" class="profile-link" title="Trocar perfil"><span class="ico" aria-hidden="true">👤</span><span>${esc(profile ? profile.name : 'Perfil')}</span></a>`;
 }
@@ -94,6 +96,8 @@ async function boot() {
   route('/paciente/:id', safe((v, { params }) => renderPatientForm(v, params.id)));
   route('/frases', safe((v) => renderPhraseLibrary(v)));
   route('/modelos', safe((v) => renderTemplateList(v)));
+  route('/referencias', safe((v) => renderReferences(v, profile)));
+  route('/calculos', safe((v) => renderCalculations(v)));
   route('/modelo/:id', safe((v, { params }) => renderTemplateForm(v, params.id)));
   route('/config', safe((v) => renderSettings(v, settings, (s) => { settings = s; })));
   route('/perfis', () => { location.reload(); });

@@ -18,6 +18,7 @@ Sistema web gratuito para elaboração de **laudos veterinários de ultrassonogr
 | 2 | Perfis por aparelho, modelo clínico (status por estrutura, medidas com unidade), estados do laudo, checklist de finalização, retificação/adendo, auditoria local, comparação de medidas, modelos iniciais de ultrassonografia | **Pronta e testada** |
 | 3 | Ditado por voz (com revisão), visualizador de imagens com zoom e anotações, escolha das imagens do laudo, PWA instalável/offline | **Pronta e testada** (voz real e celular ainda não testados) |
 | 3b | DICOM básico no navegador | Pendente (estudo de viabilidade) |
+| 3c | Bases técnicas: referências e cálculos cadastrados pela veterinária | **Pronta e testada** |
 | 4 | Ecocardiograma (módulo próprio), base de referências científicas aprovada pela veterinária | Pendente (depende da veterinária) |
 | 5 | IA opcional de redação (desligada por padrão) | Pendente (decisão de custo/privacidade) |
 | 6 | Validação clínica e de segurança com profissionais | Pendente |
@@ -38,8 +39,15 @@ Sistema web gratuito para elaboração de **laudos veterinários de ultrassonogr
 - **Imagens do laudo**: cada imagem pode ser incluída ou não no documento.
 - **Instalável e offline (PWA)**: depois da primeira visita o sistema abre sem internet; no celular pode ser adicionado à tela inicial.
 
+- **Frases prontas com campos**: na Biblioteca de frases, escreva `{Comprimento}` onde entra uma medida (ex.: "medindo {Comprimento}"). Ao inserir a frase numa estrutura, o sistema preenche com o valor e a unidade da medida de mesmo nome (inclusive medidas calculadas) e mostra a prévia já preenchida. Campo sem medida, ou medida sem unidade, é perguntado; se ficar pendente vira `[PREENCHER: nome]`, que a revisão aponta como alerta crítico. O sistema nunca escolhe a frase nem preenche nada por suposição.
+- **Bases técnicas** (menu "Bases"): a veterinária cadastra **referências** (fonte, DOI/URL, espécie, população, método, unidade, intervalo, limitações, data de revisão) e **cálculos** (fórmula, variáveis e unidades). Nada vem pronto.
+  - Referência nasce como *rascunho*; só passa a ser usada depois de **aprovada** por veterinária (exige DOI/URL se for científica). Importar JSON sempre cria rascunhos.
+  - O sistema só aplica referências da **mesma espécie** e nunca converte unidades. Ele informa a posição do valor frente ao intervalo cadastrado (abaixo/dentro/acima) como alerta informativo, **sem dizer "normal" ou "anormal"**. Sem referência aprovada, informa que não há.
+  - Cálculos usam um interpretador próprio e seguro (sem `eval`). O resultado entra no laudo como medida **calculada**, identificada e bloqueada para edição.
+  - Com isso a veterinária pode montar o próprio módulo de ecocardiograma (modelo + referências + cálculos), sem valores inventados pelo sistema.
+
 ### Ainda NÃO implementado
-Login e nuvem, IA, análise de imagens, DICOM/PACS, ecocardiograma, base de referências, assinatura com certificado digital, pinça/zoom com dois dedos no visualizador (use os botões +/−).
+Login e nuvem, IA, análise de imagens, DICOM/PACS, assinatura com certificado digital, pinça/zoom com dois dedos no visualizador (use os botões +/−).
 
 ## Como executar
 Precisa apenas de um servidor de arquivos estáticos (módulos ES não funcionam abrindo o arquivo direto com `file://`):

@@ -1,6 +1,9 @@
 // Controle de qualidade do laudo: regras determinísticas (sem IA). Nunca altera o conteúdo clínico;
 // apenas aponta pendências para a profissional corrigir ou justificar.
 import { validateExam } from './validation.js';
+import { isNumericValue } from './utils.js';
+import { pendingMarkers } from './phrase-logic.js';
+import { matchReferences, checkMeasure, rangeText, isOutdated } from './reference-logic.js';
 
 export const STRUCTURE_STATUS = {
   '': 'Não informado',
@@ -13,15 +16,14 @@ export const STRUCTURE_STATUS = {
 export const MEASURE_UNITS = ['mm', 'cm', 'm', 'mL', 'cm³', 'cm/s', 'm/s', 'mmHg', 'g', 'kg'];
 
 const filled = (v) => String(v ?? '').trim().length > 0;
-/** Aceita "5", "5,2", "5.2" e dimensões como "3,2 x 2,1". O valor digitado é preservado como texto. */
-export const isNumericValue = (v) => /^\d+([.,]\d+)?(\s*[x×]\s*\d+([.,]\d+)?)*$/.test(String(v).trim());
+export { isNumericValue };
 
 export function sectionHasContent(s) {
   return filled(s.description) || filled(s.notes) || filled(s.measures) || (s.measuresList || []).some((m) => filled(m.value) || filled(m.label));
 }
 
 /** Retorna { critical: [...], info: [...] }. Alertas críticos exigem correção ou justificativa para finalizar. */
-export function reviewExam(exam, profile = {}) {
+export function reviewExam(exam, profile = {}, refs = []) {
   const base = validateExam(exam);
   const critical = [...base.errors];
   const info = [...base.warnings];
@@ -45,12 +47,33 @@ export function reviewExam(exam, profile = {}) {
     if (status === 'alterado' && !filled(s.description)) info.push(`${name}: marcada como "Alterado" sem descrição do achado.`);
     if (!status && sectionHasContent(s)) info.push(`${name}: há texto, mas o status da avaliação está como "Não informado".`);
   }
+  // Referências cadastradas e aprovadas pela veterinária (informativo; nunca conclui "normal"/"anormal").
+  const species = exam.patient && exam.patient.species;
+  const POS = { abaixo: 'abaixo do mínimo', acima: 'acima do máximo' };
+  for (const s of secs) {
+    for (const m of s.measuresList || []) {
+      if (!filled(m.value)) continue;
+      for (const r of matchReferences(refs, { species, structure: s.title, label: m.label })) {
+        const where = `${s.title || 'Estrutura'} — ${m.label || 'medida'}`;
+        const res = checkMeasure(m, r);
+        if (res.status === 'unidade_diferente') info.push(`${where}: a unidade difere da referência "${r.title}" (${r.unit}); nenhuma conversão ou comparação foi feita.`);
+        else if (POS[res.status]) info.push(`${where}: ${m.value} ${m.unit} está ${POS[res.status]} do intervalo publicado em "${r.title}" (${rangeText(r)}, ${r.species}). Confira o contexto clínico; a interpretação é sua.`);
+        if (isOutdated(r)) info.push(`A referência "${r.title}" está sem revisão há mais de 5 anos ou sem data de revisão.`);
+      }
+    }
+  }
   if (secs.length && secs.every((s) => !s.status)) info.push('Nenhuma estrutura teve o status da avaliação informado.');
 
   const c = exam.clinical || {};
   if (!filled(c.indication)) info.push('Indicação clínica não informada.');
   if (!filled(c.limitations)) info.push('Técnica e limitações do exame não informadas.');
   if (!filled(exam.requestingVet) && !filled(exam.clinic)) info.push('Solicitante/clínica não informados.');
+
+  // Campos de frases prontas que ficaram sem preenchimento.
+  const spots = [['Introdução', exam.intro], ['Impressão diagnóstica', exam.impression], ['Diagnósticos diferenciais', exam.differentials], ['Observações', exam.notes], ['Adendo', exam.addendum],
+    ...Object.entries(exam.clinical || {}).map(([k, v]) => [`Exame (${k})`, v]), ...Object.entries(exam.rx || {}).map(([k, v]) => [`Técnica (${k})`, v]),
+    ...secs.flatMap((s) => [[`${s.title || 'Estrutura'} — descrição`, s.description], [`${s.title || 'Estrutura'} — observações`, s.notes]])];
+  for (const [where, text] of spots) for (const mk of pendingMarkers(text)) critical.push(`${where}: campo pendente ${mk}. Preencha ou remova antes de finalizar.`);
 
   if (!filled(profile.name)) critical.push('Identificação profissional ausente: preencha seu nome em Configurações.');
   if (!filled(profile.crmv)) critical.push('CRMV da profissional ausente: preencha em Configurações.');

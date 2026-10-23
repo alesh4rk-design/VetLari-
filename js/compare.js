@@ -1,7 +1,7 @@
 // Comparação de medidas entre exames do mesmo paciente. Só calcula diferença quando os dados são
 // realmente comparáveis (mesma estrutura, mesma medida, mesma unidade, valores simples). Nunca
 // declara crescimento, redução ou evolução: apresenta números e a razão quando não comparáveis.
-import { isNumericValue } from './quality.js';
+import { isNumericValue } from './utils.js';
 
 const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const num = (v) => Number(String(v).trim().replace(',', '.'));

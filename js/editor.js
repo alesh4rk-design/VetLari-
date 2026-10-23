@@ -11,6 +11,10 @@ import { listPatients, getPatient, upsertPatient } from './patients.js';
 import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor } from './phrase-library.js';
 import { openDictation } from './voice.js';
+import { fillPhrase } from './phrase-logic.js';
+import { listReferences, referenceCard } from './references.js';
+import { listCalculations, openCalculator } from './calculations.js';
+import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
 import { imagesStepHtml, bindImages, moveItem } from './image-manager.js';
 import { buildReport } from './report-model.js';
 import { reportToHtml } from './preview.js';
@@ -55,6 +59,7 @@ export async function renderEditor(view, id, settings, profile) {
   if (!exam) { view.innerHTML = '<div class="card empty">Laudo não encontrado.</div>'; return; }
   const mod = MODS[exam.type];
   const patients = await listPatients();
+  const [refs, calcs] = await Promise.all([listReferences(), listCalculations()]);
   const related = (await listExams()).filter((x) => x.id !== exam.id && x.patient.name && x.patient.name.trim().toLowerCase() === (exam.patient.name || '').trim().toLowerCase());
   const locked = exam.status === 'final';
   const prof = settings.professional;
@@ -96,11 +101,13 @@ export async function renderEditor(view, id, settings, profile) {
     Object.entries(STRUCTURE_STATUS).map(([k, v]) => `<option value="${k}" ${(s.status || '') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
   const measureRows = (s) => `<div class="field"><label>Medidas (valor e unidade)</label>
     ${(s.measuresList || []).map((m) => `<div class="mrow" data-mrow="${m.id}">
-      <input data-mf="label" data-mid="${m.id}" placeholder="Ex.: comprimento" aria-label="Nome da medida" value="${esc(m.label)}" ${locked ? 'disabled' : ''} class="m-label">
-      <input data-mf="value" data-mid="${m.id}" placeholder="Valor" inputmode="decimal" aria-label="Valor da medida" value="${esc(m.value)}" ${locked ? 'disabled' : ''} class="m-small">
-      <input data-mf="unit" data-mid="${m.id}" list="units" placeholder="Unidade" aria-label="Unidade da medida" value="${esc(m.unit)}" ${locked ? 'disabled' : ''} class="m-small">
-      ${locked ? '' : `<button type="button" class="iconbtn danger" data-act="m-del" data-mid="${m.id}" aria-label="Excluir medida">✕</button>`}</div>`).join('')}
-    ${locked ? '' : '<button type="button" class="btn sm" data-act="m-add">Adicionar medida</button>'}</div>`;
+      <input data-mf="label" data-mid="${m.id}" placeholder="Ex.: comprimento" aria-label="Nome da medida" value="${esc(m.label)}" ${locked || m.calculated ? 'disabled' : ''} class="m-label">
+      <input data-mf="value" data-mid="${m.id}" placeholder="Valor" inputmode="decimal" aria-label="Valor da medida" value="${esc(m.value)}" ${locked || m.calculated ? 'disabled' : ''} class="m-small">
+      <input data-mf="unit" data-mid="${m.id}" list="units" placeholder="Unidade" aria-label="Unidade da medida" value="${esc(m.unit)}" ${locked || m.calculated ? 'disabled' : ''} class="m-small">
+      ${locked ? '' : `<button type="button" class="iconbtn danger" data-act="m-del" data-mid="${m.id}" aria-label="Excluir medida">✕</button>`}
+      ${m.calculated ? `<div class="small muted" style="flex:1 1 100%">Calculado: ${esc(m.calcName)} (${esc(m.formula)}) a partir de ${esc(Object.entries(m.inputs || {}).map(([k, v]) => `${k}=${v}`).join('; '))}</div>` : ''}</div>`).join('')}
+    <div class="row">${locked ? '' : '<button type="button" class="btn sm" data-act="m-add">Adicionar medida</button><button type="button" class="btn sm" data-act="m-calc">Calcular</button>'}
+    <button type="button" class="btn sm ghost" data-act="m-refs">Ver referências</button></div></div>`;
 
   const steps = {
     0: () => `<div class="card"><h2>Paciente</h2>
@@ -139,7 +146,7 @@ export async function renderEditor(view, id, settings, profile) {
       ${area(exam.layout.notesTitle || 'Observações e recomendações', 'notes', 4)}
       ${exam.revisionKind === 'addendum' ? area('Texto do adendo', 'addendum', 4) : ''}</div>`,
     4: () => {
-      const { critical, info } = reviewExam(exam, actor);
+      const { critical, info } = reviewExam(exam, actor, refs);
       const report = buildReport(exam, settings);
       const hist = [...exam.history].reverse().map((h) => `<li><span><strong>${esc(h.action)}</strong>${h.detail ? `<div class="muted small">${esc(h.detail)}</div>` : ''}</span>
         <span class="muted small">${esc(h.actor ? h.actor.name : '—')} · ${fmtDateTimeBR(h.ts)} · v${h.version}</span></li>`).join('');
@@ -191,7 +198,7 @@ export async function renderEditor(view, id, settings, profile) {
 
   /** Janela de finalização: checklist de conferência + justificativa quando houver pendências. */
   function finalizeDialog() {
-    const { critical } = reviewExam(exam, actor);
+    const { critical } = reviewExam(exam, actor, refs);
     const m = openModal(`<h2>Finalizar laudo</h2>
       <p class="muted small">Confirme cada item. Itens não marcados ou alertas críticos exigem uma justificativa, que ficará registrada no histórico. Esta ação cria a versão emitida: depois dela, só é possível retificar ou fazer adendo em nova versão.</p>
       ${alertList('Alertas críticos em aberto:', critical, 'error')}
@@ -246,6 +253,38 @@ export async function renderEditor(view, id, settings, profile) {
     });
   }
 
+  const POS = { abaixo: 'abaixo do mínimo publicado', acima: 'acima do máximo publicado', dentro: 'dentro do intervalo publicado', unidade_diferente: 'unidade diferente da referência: sem comparação', sem_comparacao: 'valor composto: sem comparação', sem_intervalo: '' };
+  function showReferences(section) {
+    const species = exam.patient.species;
+    const rows = (section.measuresList || []).filter((m) => m.label || m.value);
+    const blocks = [];
+    if (!String(species || '').trim()) blocks.push('<div class="alert warn">Informe a espécie do paciente (etapa Paciente) para consultar referências. O sistema não usa valores de outras espécies.</div>');
+    else if (!rows.length) {
+      const hit = matchReferences(refs, { species, structure: section.title, label: '' });
+      blocks.push(hit.length ? hit.map(referenceCard).join('') : `<p class="muted">Nenhuma referência aprovada para ${esc(species)} / ${esc(section.title)}.</p>`);
+    } else for (const mm of rows) {
+      const hit = matchReferences(refs, { species, structure: section.title, label: mm.label });
+      blocks.push(`<h3>${esc(mm.label || 'Medida')}: ${esc(mm.value)} ${esc(mm.unit)}</h3>` + (hit.length
+        ? hit.map((r) => { const st = checkMeasure(mm, r).status; return referenceCard(r) + (POS[st] ? `<p class="small"><strong>Posição frente ao intervalo cadastrado:</strong> ${POS[st]} (${esc(rangeText(r))}). A interpretação clínica é sua.</p>` : ''); }).join('')
+        : `<p class="muted">Nenhuma referência aprovada para ${esc(species)} / ${esc(section.title)} / ${esc(mm.label || 'esta medida')}. O sistema não cria nem sugere valores.</p>`));
+    }
+    const mo = openModal(`<h2>Referências — ${esc(section.title)}</h2>${blocks.join('')}<div class="row end"><button class="btn" data-x="close">Fechar</button></div>`, { wide: true, label: 'Referências' });
+    mo.el.addEventListener('click', (ev) => { if (ev.target.closest('[data-x=close]')) mo.close(null); });
+  }
+
+  /** Pergunta os campos da frase que não vieram de medidas. Retorna null se cancelar; vazio deixa o marcador. */
+  function askMissing(missing) {
+    const mo = openModal(`<h2>Completar a frase</h2><p class="muted small">Estes campos não têm medida correspondente. Preencha ou deixe pendente: o campo pendente aparece como [PREENCHER: …] e bloqueia a finalização até ser resolvido.</p>
+      ${missing.map((m, i) => `<div class="field"><label for="mx-${i}">${esc(m.name)} <span class="muted small">(${esc(m.reason)})</span></label><input id="mx-${i}" data-name="${esc(m.name)}"></div>`).join('')}
+      <div class="row end"><button class="btn" data-x="cancel">Cancelar</button><button class="btn primary" data-x="ok">Inserir</button></div>`, { label: 'Completar a frase' });
+    mo.el.addEventListener('click', (ev) => {
+      const x = ev.target.closest('[data-x]'); if (!x) return;
+      if (x.dataset.x === 'cancel') return mo.close(null);
+      mo.close(Object.fromEntries([...mo.el.querySelectorAll('[data-name]')].map((i) => [i.dataset.name, i.value])));
+    });
+    return mo.closed.then((v) => (v === undefined ? null : v));
+  }
+
   const secOf = (el) => exam.sections.find((x) => x.id === el.closest('[data-sec]').dataset.sec);
 
   view.onclick = async (e) => {
@@ -272,10 +311,24 @@ export async function renderEditor(view, id, settings, profile) {
       exam.sections.push(blankSection(title)); touch(); draw();
     } else if (act === 'm-add') { secOf(b).measuresList.push({ id: uid(), label: '', value: '', unit: '' }); touch(); draw(); }
     else if (act === 'm-del') { const s = secOf(b); s.measuresList = s.measuresList.filter((m) => m.id !== b.dataset.mid); touch(); draw(); }
+    else if (act === 'm-calc') {
+      const s = secOf(b);
+      const res = await openCalculator(s, calcs);
+      if (res) { s.measuresList.push(res); touch(); draw(); }
+    } else if (act === 'm-refs') showReferences(secOf(b));
     else if (act === 'phrase') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
-      const text = await pickPhrase({ modality: exam.type, structure: b.dataset.structure });
-      if (text && target) insertAtCursor(target, text);
+      const sec = b.closest('[data-sec]') ? exam.sections.find((x) => x.id === b.closest('[data-sec]').dataset.sec) : null;
+      const measures = sec ? sec.measuresList : [];
+      const raw = await pickPhrase({ modality: exam.type, structure: b.dataset.structure, measures });
+      if (!raw || !target) return;
+      let { text, missing } = fillPhrase(raw, measures);
+      if (missing.length) {
+        const extras = await askMissing(missing);
+        if (extras === null) return; // cancelou: nada é inserido
+        ({ text } = fillPhrase(raw, measures, extras));
+      }
+      insertAtCursor(target, text);
     } else if (act === 'dictate') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
       const text = await openDictation({ label: b.dataset.label });

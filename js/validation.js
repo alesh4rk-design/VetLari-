@@ -1,5 +1,6 @@
 // Validação de dados. Funções puras (testáveis em Node).
 import { todayISO } from './utils.js';
+import { placeholderErrors } from './phrase-logic.js';
 
 export const SEXES = ['', 'Macho', 'Fêmea', 'Macho castrado', 'Fêmea castrada', 'Não informado'];
 export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -71,6 +72,7 @@ export function validatePhrase(p) {
   if (!p || !hasText(p.text)) errors.push('Informe o texto da frase.');
   if (p && String(p.title || '').length > 120) errors.push('O nome da frase excede 120 caracteres.');
   if (p && String(p.text || '').length > 5000) errors.push('O texto da frase excede 5000 caracteres.');
+  if (p) errors.push(...placeholderErrors(p.text));
   return errors;
 }
 
@@ -80,7 +82,7 @@ export function validatePhraseImport(data) {
   return { ok: true, phrases, skipped: data.length - phrases.length };
 }
 
-export const BACKUP_STORES = ['patients', 'exams', 'phrases', 'templates', 'settings'];
+export const BACKUP_STORES = ['patients', 'exams', 'phrases', 'templates', 'settings', 'references', 'calculations'];
 
 export function validateBackup(b) {
   if (!b || typeof b !== 'object') return 'Arquivo de backup inválido.';

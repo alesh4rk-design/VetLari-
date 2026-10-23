@@ -117,3 +117,9 @@ export function formatBytes(n) {
   if (n < 1048576) return `${(n / 1024).toFixed(0)} KB`;
   return `${(n / 1048576).toFixed(1)} MB`;
 }
+
+/** Normaliza texto para comparação (minúsculas, sem acentos). */
+export const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+/** Aceita "5", "5,2", "5.2" e dimensões como "3,2 x 2,1". O valor digitado é preservado como texto. */
+export const isNumericValue = (v) => /^\d+([.,]\d+)?(\s*[x×]\s*\d+([.,]\d+)?)*$/.test(String(v).trim());
