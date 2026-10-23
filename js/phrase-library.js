@@ -2,10 +2,18 @@
 // Nenhuma frase é fornecida de fábrica: o conteúdo clínico é criado ou aprovado pela veterinária.
 import { uid, esc, fmtDateBR, download, toast, todayISO } from './utils.js';
 import { dbAll, dbPut, dbDel, getSetting, setSetting } from './local-storage.js';
-import { USG_IMPRESSIONS } from './catalog-usg.js';
+import { USG_BUILDERS, USG_IMPRESSIONS } from './catalog-usg.js';
 import { validatePhrase, validatePhraseImport } from './validation.js';
-import { openModal, confirmDialog, alertList } from './ui.js';
+import { openModal, confirmDialog, alertList, pickOption } from './ui.js';
+import { defaultTemplates } from './templates.js';
 import { fillPhrase, placeholders, genericizeText } from './phrase-logic.js';
+
+/** Estruturas sugeridas: as dos modelos padrão e do catálogo, mais as já usadas nas frases salvas (o campo aceita texto livre). */
+const structureOptions = (extra = []) => {
+  const fromTemplates = defaultTemplates().flatMap((t) => (t.sections || []).map((x) => (typeof x === 'string' ? x : x.title)));
+  const all = [...Object.keys(USG_BUILDERS), ...fromTemplates, ...extra].map((x) => String(x || '').trim()).filter(Boolean);
+  return [...new Map(all.map((x) => [x.toLowerCase(), x])).values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+};
 
 const MOD_LABEL = { all: 'Todas', usg: 'Ultrassonografia', rx: 'Radiografia' };
 
@@ -37,12 +45,13 @@ export function insertAtCursor(el, text, { newline = false } = {}) {
   el.focus();
 }
 
-function phraseForm(p) {
+function phraseForm(p, structures = []) {
   const m = openModal(`<h2>${p.id ? 'Editar frase' : 'Nova frase'}</h2><form id="pf" novalidate>
     <div class="field"><label for="pf-title">Nome curto *</label><input id="pf-title" name="title" value="${esc(p.title)}" maxlength="120" autofocus></div>
     <div class="grid g2"><div class="field"><label for="pf-cat">Categoria</label><input id="pf-cat" name="category" value="${esc(p.category)}" maxlength="80"></div>
     <div class="field"><label for="pf-mod">Modalidade</label><select id="pf-mod" name="modality">${Object.entries(MOD_LABEL).map(([k, v]) => `<option value="${k}" ${p.modality === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div>
-    <div class="field"><label for="pf-str">Estrutura anatômica relacionada</label><input id="pf-str" name="structure" value="${esc(p.structure)}" maxlength="80" placeholder="Ex.: Fígado"></div>
+    <div class="field"><label for="pf-str">Estrutura anatômica relacionada</label><div class="row" style="flex-wrap:nowrap"><input id="pf-str" name="structure" value="${esc(p.structure)}" maxlength="80" list="pf-str-list" autocomplete="off" placeholder="Escolha na lista ou digite" style="flex:1;min-width:0">
+      <button type="button" class="btn sm" id="pf-str-pick">Lista</button></div><datalist id="pf-str-list">${structureOptions(structures).map((o) => `<option value="${esc(o)}">`).join('')}</datalist></div>
     <div class="field"><label for="pf-text">Texto completo *</label><textarea id="pf-text" name="text" rows="6" maxlength="5000">${esc(p.text)}</textarea>
       <div class="hint">Campos automáticos: escreva o nome de uma medida entre chaves. Ex.: <code>medindo {Comprimento}</code> vira "medindo 5,2 cm" com o valor e a unidade da medida de mesmo nome na estrutura. Campos sem valor ficam como [PREENCHER: nome].</div></div>
     <div class="field"><label for="pf-kw">Palavras-chave (separadas por vírgula)</label><input id="pf-kw" name="keywords" value="${esc(p.keywords)}"></div>
@@ -52,6 +61,10 @@ function phraseForm(p) {
   return new Promise((resolve) => {
     const form = m.el.querySelector('#pf');
     m.el.querySelector('[data-x=cancel]').onclick = () => m.close(null);
+    m.el.querySelector('#pf-str-pick').onclick = async () => {
+      const chosen = await pickOption({ title: 'Estrutura anatômica', options: structureOptions(structures) });
+      if (chosen) m.el.querySelector('#pf-str').value = chosen;
+    };
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
@@ -132,8 +145,8 @@ export async function renderPhraseLibrary(view) {
   view.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const p = all.find((x) => x.id === b.dataset.id);
-    if (b.dataset.act === 'new') { if (await phraseForm(blankPhrase())) { all = await listPhrases(); draw(); } }
-    if (b.dataset.act === 'edit') { if (await phraseForm({ ...p })) { all = await listPhrases(); draw(); } }
+    if (b.dataset.act === 'new') { if (await phraseForm(blankPhrase(), all.map((x) => x.structure))) { all = await listPhrases(); draw(); } }
+    if (b.dataset.act === 'edit') { if (await phraseForm({ ...p }, all.map((x) => x.structure))) { all = await listPhrases(); draw(); } }
     if (b.dataset.act === 'fav') { await dbPut('phrases', { ...p, favorite: !p.favorite, updatedAt: todayISO() }); all = await listPhrases(); draw(); }
     if (b.dataset.act === 'del' && await confirmDialog(`Excluir a frase "${p.title}"?`, { ok: 'Excluir', danger: true })) {
       await dbDel('phrases', p.id); all = await listPhrases(); draw(); toast('Frase excluída.');
