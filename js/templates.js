@@ -33,7 +33,7 @@ const usg = (id, name, sections, extra = {}) => ({
   id, builtin: true, modality: 'usg', name: `${name} (modelo inicial)`,
   docTitle: 'Relatório Ultrassonográfico', intro: '',
   conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações e recomendações',
-  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 13,
+  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 14,
 });
 
 /**
@@ -60,6 +60,7 @@ export function defaultTemplates() {
       { title: 'Ovários', sex: 'female', measures: [M('Ovário esquerdo'), M('Ovário direito')] },
       { title: 'Tecido mamário', sex: 'female' }, 'Linfonodos', 'Líquido livre peritoneal', 'Outros achados',
     ], { docTitle: 'Relatório Ultrassonográfico Abdominal' }),
+    usg('tpl-usg-cervical', 'Ultrassonografia cervical', ['Glândulas tireoides', 'Glândulas salivares submandibulares', 'Linfonodos mandibulares e retrofaríngeos', 'Esôfago, traqueia e laringe', 'Outros achados'], { docTitle: 'Relatório Ultrassonográfico Cervical', notesTitle: 'Comentários' }),
     usg('tpl-usg-direcionada', 'Ultrassonografia abdominal direcionada / exame focal', ['Região ou estrutura de interesse', 'Estruturas adjacentes avaliadas', 'Líquido livre (se pesquisado)', 'Outras observações'], { docTitle: 'Relatório Ultrassonográfico Abdominal Direcionado' }),
     usg('tpl-usg-urinario', 'Avaliação do trato urinário', ['Rim direito', 'Rim esquerdo', 'Ureteres', 'Bexiga urinária', 'Uretra (se avaliada)'], { docTitle: 'Relatório Ultrassonográfico do Trato Urinário' }),
     usg('tpl-usg-hepatobiliar', 'Avaliação hepatobiliar', ['Fígado', 'Vesícula biliar', 'Vias biliares', 'Vasos hepáticos e portais avaliados'], { docTitle: 'Relatório Ultrassonográfico Hepatobiliar' }),
@@ -71,7 +72,7 @@ export function defaultTemplates() {
       id: 'tpl-rx-geral', builtin: true, modality: 'rx', name: 'Radiografia (modelo inicial editável)',
       docTitle: 'Relatório Radiográfico', intro: '',
       conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações complementares',
-      signature: true, imagesPerRow: 3, version: 13,
+      signature: true, imagesPerRow: 3, version: 14,
       sections: ['Estruturas ósseas', 'Articulações', 'Tecidos moles', 'Outras estruturas avaliadas'].map(sec),
     },
   ];
