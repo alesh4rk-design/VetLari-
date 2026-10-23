@@ -219,13 +219,13 @@ test('Rins: contorno com definição e regularidade escolhidas separadamente', a
 test('contorno: órgãos com "contorno regular" também têm "contorno irregular"', () => {
   for (const nome of ['Fígado', 'Baço', 'Pâncreas', 'Adrenais', 'Próstata']) {
     const g = expandBlocks(USG_BUILDERS[nome]).flatMap((b) => b.groups).find((x) => x.label === 'Contorno');
-    assert.deepEqual(g.options.map((o) => o.text), ['contorno regular', 'contorno irregular'], nome);
+    assert.deepEqual(g.options.map((o) => o.text).slice(0, 2), ['contorno regular', 'contorno irregular'], nome);
   }
 });
 
 test('rins: pelve com normodilatada e graus de dilatação', () => {
   const g = expandBlocks(USG_BUILDERS.Rins).find((b) => b.label === 'Rim direito').groups.find((x) => x.label === 'Pelve');
-  assert.deepEqual(g.options.map((o) => o.text), ['Pelve normodilatada', 'Pelve discretamente dilatada', 'Pelve moderadamente dilatada', 'Pelve acentuadamente dilatada']);
+  assert.deepEqual(g.options.map((o) => o.text), ['Pelve normodilatada', 'Pelve discretamente dilatada ({?Pelve})', 'Pelve moderadamente dilatada ({?Pelve})', 'Pelve acentuadamente dilatada ({?Pelve})']);
 });
 
 test('laudos de outubro/2026: novas opções geram o texto da veterinária', () => {
@@ -243,4 +243,19 @@ test('laudos de outubro/2026: novas opções geram o texto da veterinária', () 
   sel = pickBy(rins, 'Rim esquerdo', 'Regularidade do contorno', 'levemente irregulares', pickBy(rins, 'Rim esquerdo', 'Definição do contorno', 'definidos'));
   assert.ok(composeDescription(rins, sel, [], {}).includes('contornos definidos e levemente irregulares'));
   assert.ok(USG_IMPRESSIONS.some((i) => i[0] === 'Hiperplasia prostática benigna cística.' && i[2] === 3));
+});
+
+test('laudos de outubro/2026 (lote 2): pelve com medida, ducto pancreático e baço não caracterizado', () => {
+  const rins = USG_BUILDERS.Rins;
+  const grp = (def, label, group) => expandBlocks(def).find((b) => b.label === label).groups.find((x) => x.label === group);
+  const pel = grp(rins, 'Rim esquerdo', 'Pelve');
+  const sel = toggleOption(rins, {}, pel.key, 1);
+  assert.ok(composeDescription(rins, sel, [{ label: 'Rim esquerdo – pelve', value: '0,20', unit: 'cm' }], {}).includes('Pelve discretamente dilatada (0,20 cm).'));
+  assert.ok(composeDescription(rins, sel, [], {}).includes('Pelve discretamente dilatada.'));
+  const panc = USG_BUILDERS.Pâncreas;
+  const dg = grp(panc, '', 'Ducto pancreático');
+  assert.ok(composeDescription(panc, toggleOption(panc, {}, dg.key, 0), [], { 'Ducto pancreático': '0,19 cm' }).includes('Ducto pancreático discretamente dilatado (0,19 cm).'));
+  const bc = USG_BUILDERS.Baço;
+  const top = grp(bc, '', 'Topografia');
+  assert.equal(composeDescription(bc, toggleOption(bc, {}, top.key, top.options.findIndex((o) => o.excl)), [], {}), 'não caracterizado (paciente com histórico de esplenectomia).');
 });

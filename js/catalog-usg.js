@@ -33,7 +33,7 @@ export const USG_BUILDERS = {
       g('Ecotextura', 'one', [N(o('ecotextura homogênea')), o('ecotextura grosseira')]),
       g('Achados adicionais', 'sentences', [o('Presença de fino halo ecogênico em medular interna (sinal de medular)', 'halo em medular interna'),
         o('Presença de discretos pontos hiperecogênicos em região de recessos pélvicos', 'pontos hiperecogênicos'), o('Presença de área ecogênica em medular interna', 'área ecogênica')]),
-      g('Pelve', 'sentence', [N(o('Pelve normodilatada')), o('Pelve discretamente dilatada', 'discretamente dilatada'), o('Pelve moderadamente dilatada', 'moderadamente dilatada'), o('Pelve acentuadamente dilatada', 'acentuadamente dilatada')]),
+      g('Pelve', 'sentence', [N(o('Pelve normodilatada')), o('Pelve discretamente dilatada ({?Pelve})', 'discretamente dilatada'), o('Pelve moderadamente dilatada ({?Pelve})', 'moderadamente dilatada'), o('Pelve acentuadamente dilatada ({?Pelve})', 'acentuadamente dilatada')]),
     ] },
     { groups: [g('Ureteres', 'sentence', [N(o('**Ureteres** sem alterações sonográficas visíveis em topografia', 'Ureteres sem alterações'))])] },
   ] },
@@ -226,6 +226,65 @@ addOptions('Ovários', 'Descrição', [o('tópicos, simétricos, formato arredon
 addOptions('Ovários', 'Contorno e ecogenicidade', [o('contorno regular, ecogenicidade e ecotextura habituais', 'ecogenicidade e ecotextura habituais')]);
 addOptions('Outros achados', 'Achado', [o('Presença de descontinuidade da parede abdominal em região inguinal direita, medindo {Medida da descontinuidade}, tendo como conteúdo em subcutâneo alças intestinais de jejuno, omento/gordura e discreto conteúdo líquido associado; houve discreta redução do conteúdo no momento do exame', 'descontinuidade inguinal direita (hérnia)')]);
 
+// Lote 2 (outros 10 laudos de outubro/2026).
+addOptions('Rins', 'Posição', [o('tópicos e assimétricos')]);
+addOptions('Rins', 'Dimensões', [o('com dimensões levemente diminuídas ({?Comprimento})', 'dimensões levemente diminuídas'), o('com dimensões diminuídas ({?Comprimento})', 'dimensões diminuídas'),
+  o('com dimensões preservadas, porém próximo ao limite superior ({?Comprimento})', 'preservadas, próximo ao limite superior')]);
+addOptions('Rins', 'Definição do contorno', [o('contornos irregulares', 'irregulares (sem definição)')]);
+addOptions('Rins', 'Regularidade do contorno', [CS('e discretamente irregulares', 'contornos discretamente irregulares', 'discretamente irregulares')]);
+addOptions('Rins', 'Corticomedular', [o('perda da relação e definição corticomedular', 'perda da relação e definição'),
+  o('alteração da relação corticomedular, definição corticomedular moderadamente diminuída', 'alteração da relação, definição moderadamente diminuída')]);
+addOptions('Rins', 'Ecogenicidade', [o('ecogenicidade de cortical aumentada', 'cortical aumentada'), o('ecogenicidade discretamente aumentada difusamente', 'discretamente aumentada difusamente')]);
+addOptions('Rins', 'Ecotextura', [o('ecotextura heterogênea')]);
+addOptions('Rins', 'Achados adicionais', [o('Presença de cisto simples cortical, medindo {Medida do cisto}', 'cisto simples cortical'), o('Presença de cisto simples medular, medindo {Medida do cisto}', 'cisto simples medular'),
+  o('Presença de pequenas estruturas arredondadas, hiperecogênicas, inseridas em recessos pélvicos e pelve renal, medindo até {Medida das estruturas}, produtoras de fraca sombra acústica posterior', 'estruturas hiperecogênicas em recessos pélvicos (sombra)'),
+  o('Presença de discretas imagens arredondadas hiperecogênicas, medindo entre {Medidas das imagens}, localizadas em região de recessos pélvicos', 'imagens hiperecogênicas em recessos pélvicos')]);
+addOptions('Fígado', 'Parênquima', [o('parênquima hiperecogênico')]);
+addOptions('Fígado', 'Ecotextura', [o('ecotextura heterogênea'),
+  o('ecotextura heterogênea, apresentando imagens nodulares de contornos moderadamente definidos, irregulares, hipoecogênicas e hiperecogênicas, discretamente heterogêneas, medindo entre {Medidas das imagens nodulares}, localizadas difusamente pelo parênquima, mais evidente em lobo lateral esquerdo', 'heterogênea, com imagens nodulares difusas')]);
+addOptions('Fígado', 'Vasos', [o('Vasos com calibre discretamente aumentado e trajeto preservado', 'calibre discretamente aumentado')]);
+addOptions('Vesícula urinária', 'Conteúdo', [o('conteúdo anecogênico, aparentemente heterogêneo, apresentando acentuada quantidade de imagens arredondadas, hiperecogênicas, produtoras de sombra acústica posterior, medindo entre {Medidas das imagens}, depositadas em parede dorsal e moderada quantidade de imagens ecogênicas e hiperecogênicas em suspensão', 'heterogêneo, imagens depositadas e em suspensão')]);
+addOptions('Vesícula urinária', 'Parede', [o('Parede normoecogênica, homogênea, irregular e moderadamente espessada ({?Espessura da parede})', 'irregular e moderadamente espessada')]);
+addOptions('Vesícula biliar', 'Repleção', [o('com repleção aumentada ({?Volume})', 'repleção aumentada'),
+  X('parede fina e mucosa regular, repleta por conteúdo anecogênico (bile) e discreta quantidade de pontos hiperecogênicos em suspensão e depositados na região do colo. Não existem evidências de alterações em vias biliares intra ou extra hepáticas')]);
+addOptions('Vesícula biliar', 'Conteúdo', [C('por conteúdo anecogênico, aparentemente heterogêneo', 'anecogênico, heterogêneo'),
+  C('por conteúdo acentuadamente ecogênico e hiperecogênico, ocupando mais de {Ocupação do lúmen} do lúmen, gravidade dependente, heterogêneo, com pequenas imagens anecogênicas em permeio (fragmentos de muco)', 'acentuadamente ecogênico (fragmentos de muco)')]);
+addOptions('Vesícula biliar', 'Material ecogênico', [
+  o('apresentando menos de 25% de material ecogênico gravidade dependente (depositado em fundo) e discretas imagens puntiformes hiperecogênicas depositadas e aderida a parede, medindo entre {Medidas das imagens}', 'menos de 25% e imagens puntiformes aderidas'),
+  o('apresentando discreta quantidade de material ecogênico gravidade dependente ocupando até 25% do lúmen e também localizado em ducto cístico', 'discreta quantidade, também em ducto cístico'),
+  o('apresentando cerca de mais de 75% de material ecogênico, parcialmente gravidade dependente e parcialmente em suspensão, além de imagens puntiformes hiperecogênicas em permeio', 'mais de 75%, com imagens puntiformes')]);
+addOptions('Vesícula biliar', 'Parede', [o('Parede ecogênica, discretamente irregular, discretamente espessada, medindo {Espessura da parede}', 'discretamente irregular e espessada')]);
+addOptions('Vesícula biliar', 'Ducto cístico', [o('Ducto cístico discretamente dilatado ({Ducto cístico})', 'discretamente dilatado')]);
+addOptions('Baço', 'Topografia', [X('não caracterizado (paciente com histórico de esplenectomia)')]);
+addOptions('Baço', 'Dimensões', [o('com dimensões discretamente a moderadamente aumentadas, medindo {Espessura em corpo esplênico} de espessura em corpo esplênico', 'discreta a moderadamente aumentadas, com espessura')]);
+addOptions('Baço', 'Ecotextura', [o('ecotextura homogênea; presença de imagens arredondadas, hiperecogênicas, homogêneas, medindo {Medidas das imagens}, localizadas adjacente aos vasos do hilo esplênico', 'homogênea, imagens adjacentes aos vasos do hilo')]);
+addOptions('Estômago', 'Conteúdo', [o('com discreta a moderada quantidade de conteúdo líquido e gasoso; presença de duas estruturas de superfícies hiperecogênicas, produtoras de sombra acústica posterior, medindo entre {Medidas das estruturas} (comeu petisco/alimento antes do exame)', 'líquido e gasoso, estruturas hiperecogênicas (petisco)')]);
+addOptions('Estômago', 'Parede', [
+  o('Parede normoecogênica, com alteração da estratificação em camadas, pelo discreto espessamento da muscular e submucosa, contorno regular e espessura habitual ({?Espessura da parede})', 'discreto espessamento da muscular e submucosa'),
+  o(`${ESTRAT}, contorno discretamente irregular e espessura discretamente aumentada ({?Espessura da parede})`, 'contorno discretamente irregular, espessura discretamente aumentada')]);
+const DDI = '({?Duodeno – espessura da parede} – duodeno; {?Jejuno – espessura da parede} – jejuno; {?Íleo – espessura da parede} – íleo)';
+addOptions('Alças intestinais', 'Parede', [
+  o(`Parede normoecogênica, com alteração da estratificação em camadas, pelo espessamento da muscular, contorno irregular e espessura moderadamente aumentada ${DDI}`, 'espessamento da muscular, moderadamente aumentada'),
+  o(`${ESTRAT}, contorno regular e espessura aumentada ${DUODENO_JEJUNO}`, 'espessura aumentada'),
+  o(`${ESTRAT} predominantemente, exceto por segmentos jejunais com discreta evidência da submucosa, contorno regular e espessura preservada predominantemente, exceto por segmentos jejunais apresentando evidência das placas de Peyer ${DDI}`, 'evidência da submucosa e placas de Peyer')], 0);
+addOptions('Alças intestinais', 'Parede', [o(`${ESTRAT}, contorno discretamente irregular e espessura aumentada ({?Cólon descendente – espessura da parede} – cólon descendente; {?Cólon transverso – espessura da parede} – cólon transverso; {?Cólon ascendente – espessura da parede} – cólon ascendente)`, 'contorno discretamente irregular, espessura aumentada')], 1);
+addOptions('Pâncreas', 'Dimensões', [o('lobo pancreático esquerdo com dimensões preservadas, medindo {Lobo pancreático esquerdo}', 'lobo esquerdo, dimensões preservadas'),
+  o('com dimensões preservadas a discretamente aumentadas, medindo {Lobo pancreático direito} (lobo pancreático direito)', 'preservadas a discretamente aumentadas')]);
+addOptions('Pâncreas', 'Contorno', [o('contorno levemente irregular')]);
+addOptions('Pâncreas', 'Ecogenicidade', [o('ecogenicidade mantida'), o('ecogenicidade levemente diminuída')]);
+addGroup('Pâncreas', 0, g('Ducto pancreático', 'sentence', [o('Ducto pancreático discretamente dilatado ({?Ducto pancreático})', 'discretamente dilatado')]));
+addOptions('Adrenais', 'Dimensões', [o('com dimensões aumentadas ({?Altura do pólo cranial:valor} x {?Altura do pólo caudal:valor} x {?Comprimento} – altura pólo cranial x altura pólo caudal x comprimento)', 'dimensões aumentadas')]);
+addOptions('Adrenais', 'Formato', [o('formato arredondado')]);
+addOptions('Adrenais', 'Contorno', [o('contorno levemente irregular')]);
+addOptions('Adrenais', 'Ecotextura', [o('ecotextura heterogênea'), o('ecotextura discretamente heterogênea'), o('ecotextura grosseira')]);
+addGroup('Adrenais', 1, g('Achado adicional', 'one', [o('presença de ponto hiperecogênico, medindo {Medida do ponto}', 'ponto hiperecogênico')]));
+addOptions('Próstata', 'Tamanho', [X('não caracterizada (localização intrapélvica)')]);
+addOptions('Próstata', 'Ecotextura e ecogenicidade', [o('ecotextura grosseira e ecogenicidade habitual considerando o histórico de castração', 'ecotextura grosseira, ecogenicidade habitual (castração)')]);
+addOptions('Testículos', 'Aspecto', [o('simétricos, contornos regulares, linhas mediastinais bem definidas, ecogenicidade e ecotextura preservadas', 'simétricos, linhas mediastinais definidas')], 0);
+addOptions('Linfonodos', 'Avaliação', [o('Linfonodos: discreto aumento de linfonodos cólicos/ileocecais medindo entre {Medidas dos linfonodos}, ecotextura homogênea e ecogenicidade discretamente diminuída. Mesentério adjacente com ecogenicidade levemente aumentada', 'discreto aumento de linfonodos cólicos/ileocecais')]);
+addOptions('Outros achados', 'Achado', [o('Presença de discreto aumento da ecogenicidade dos tecidos mesentéricos difusamente', 'aumento da ecogenicidade mesentérica'),
+  o('Presença de estrutura ovalada, hiperecogênica na periferia, medindo {Medidas da estrutura}, localizada em peritônio/mesentério, em abdômen cranial', 'estrutura ovalada em peritônio/mesentério')]);
+
 /** Impressões diagnósticas usadas nos laudos da veterinária (biblioteca de frases, para inserir com um toque). */
 const REC = 'Sugere-se correlacionar com exames laboratoriais complementares, caso o clínico julgue necessário.';
 export const USG_IMPRESSIONS = [
@@ -266,6 +325,21 @@ export const USG_IMPRESSIONS = [
   ['Testículo esquerdo ectópico.', 'Testículos', 3], ['Testículos ectópicos bilateralmente.', 'Testículos', 3],
   ['Hiperplasia prostática benigna cística.', 'Próstata', 3],
   ['Hérnia inguinal direita com discreto processo inflamatório associado.', 'Outros achados', 3],
+  [`Imagens em rins sugestivas de nefropatia crônica bilateral associada a microlitíases. ${REC}`, 'Rins', 3],
+  [`Nefropatia com sinais de cronicidade bilateralmente associada a microlitíases. ${REC}`, 'Rins', 3],
+  ['Achados ultrassonográficos compatíveis com processo inflamatório intestinal, sendo a doença inflamatória intestinal (DII) um diagnóstico diferencial.', 'Alças intestinais', 3],
+  ['Achado em estômago pode estar relacionado a um processo inflamatório (gastrite/gastropatia).', 'Estômago', 3], ['Gastrite leve.', 'Estômago', 3],
+  ['Discretos cristais em vesícula biliar.', 'Vesícula biliar', 3], ['Hepatopatia leve/discreta infiltração gordurosa hepática.', 'Fígado', 3],
+  ['Lama biliar grau {Grau} associada a discretos cristais/microlitíases.', 'Vesícula biliar', 3], ['Lama biliar grau IV com cristais/microlitíases associadas.', 'Vesícula biliar', 3],
+  ['Acentuada lama biliar e lama biliar densa (grau IV) associada a colecistite e podendo estar relacionada a mucocele biliar em estágios iniciais.', 'Vesícula biliar', 3],
+  ['Colangite leve.', 'Vesícula biliar', 3], ['Enterite leve.', 'Alças intestinais', 3], ['Enterocolite.', 'Alças intestinais', 3],
+  ['Discreta linfonodomegalia inflamatória/infecciosa.', 'Linfonodos', 3], ['Discreta a moderada esplenomegalia.', 'Baço', 3],
+  ['Discreta reatividade mesentérica difusa.', 'Outros achados', 3], ['Pancreatopatia leve.', 'Pâncreas', 3], ['Adrenopatia bilateral.', 'Adrenais', 3], ['Adrenopatia esquerda.', 'Adrenais', 3],
+  ['Sugestivo ponto de mineralização em adrenal direita.', 'Adrenais', 3],
+  ['Hepatopatia crônica com formações nodulares difusas, podendo estar relacionadas com hiperplasia nodular benigna/processo regenerativo, não podendo descartar processo neoplásico. Sugere-se acompanhamento ultrassonográfico, caso o clínico julgue necessário.', 'Fígado', 3],
+  ['Alteração hepática pode estar relacionada a infiltração gordurosa, hepatopatia esteroidal, endocrinopatia, hepatopatia crônica.', 'Fígado', 3], ['Discreto processo congestivo venoso hepático.', 'Fígado', 3],
+  ['Cistite crônica com litíases/microlitíases e celularidade/debris/cristais.', 'Vesícula urinária', 3], ['Sugestivos mielolipomas esplênicos.', 'Baço', 3],
+  ['Sugestiva necrose gordurosa nodular do peritônio/mesentério. Considerar achado incidental benigno. Sugere-se acompanhamento ultrassonográfico, caso o clínico julgue necessário.', 'Outros achados', 3],
 ];
 
 export const AFTER_CONCLUSION_NOTE = 'A interpretação do resultado deste exame e a conclusão diagnóstica são atos médicos, estes dependem da análise conjunta dos dados clínicos e demais exames do paciente - Consulte o médico veterinário responsável';
