@@ -1,7 +1,7 @@
 // Service worker do VetLaudo: permite abrir o sistema sem internet depois da primeira visita.
-// Estratégia: rede primeiro (com limite de 4 s) e cache como reserva, para que atualizações cheguem
-// sem precisar limpar nada. Os dados clínicos NÃO passam por aqui: ficam no IndexedDB do aparelho.
-const CACHE = 'vetlaudo-v5';
+// Estratégia: rede primeiro (revalidando sempre, ignorando o cache do navegador, com limite de 4 s)
+// e cache como reserva, para que atualizações cheguem sem precisar limpar nada. Os dados clínicos NÃO passam por aqui: ficam no IndexedDB do aparelho.
+const CACHE = 'vetlaudo-2026.10.23-8'; // mesma versão de js/version.js
 const PRECACHE = [
   './',
   'index.html',
@@ -50,11 +50,13 @@ const PRECACHE = [
   "js/ultrasound.js",
   "js/utils.js",
   "js/validation.js",
+  "js/version.js",
   "js/voice.js",
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  // 'reload' ignora o cache do navegador: a nova versão sempre baixa arquivos novos.
+  event.waitUntil(caches.open(CACHE).then((c) => Promise.all(PRECACHE.map((u) => fetch(new Request(u, { cache: 'reload' })).then((r) => { if (!r.ok) throw new Error(u); return c.put(u, r); })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -70,7 +72,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    const network = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; });
+    const network = fetch(req, { cache: 'no-cache' }).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; });
     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000));
     try { return await Promise.race([network, timeout]); }
     catch {

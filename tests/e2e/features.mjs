@@ -101,6 +101,7 @@ await page.goto(base + '#/laudos'); await page.waitForSelector('#exlist');
 check('dados locais acessíveis offline', (await page.locator('#exlist li').count()) >= 1);
 await ctx.setOffline(false);
 
+check('versão aparece no menu', /^v\d{4}\.\d{2}\.\d{2}-\d+$/.test((await page.textContent('.app-version')).trim()));
 check('sem erros de console', errors.filter((e) => !/net::ERR_INTERNET_DISCONNECTED|Failed to load resource/.test(e)).length === 0, errors.join(' | '));
 await browser.close();
 const failed = results.filter(([, ok]) => !ok).length;

@@ -13,6 +13,7 @@ import { renderExamBrowser, getExam } from './exams.js';
 import { buildReport } from './report-model.js';
 import { reportToHtml } from './preview.js';
 import { esc, toast } from './utils.js';
+import { APP_VERSION } from './version.js';
 import { loadRegistry, getActive, chosenThisSession } from './profiles.js';
 import { renderProfilePicker } from './profile-ui.js';
 import { useDatabase } from './local-storage.js';
@@ -34,7 +35,7 @@ function drawNav(path) {
     NAV.map(([href, ico, label]) => {
       const active = href === '/' ? path === '/' : path.startsWith(href) || (href === '/laudos' && path.startsWith('/laudo/')) || (href === '/referencias' && path.startsWith('/calculos'));
       return `<a href="#${href}" ${active ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${ico}</span><span>${label}</span></a>`;
-    }).join('') + `<div class="spacer"></div><a href="#/perfis" class="profile-link" title="Trocar perfil"><span class="ico" aria-hidden="true">👤</span><span>${esc(profile ? profile.name : 'Perfil')}</span></a>`;
+    }).join('') + `<div class="spacer"></div><a href="#/perfis" class="profile-link" title="Trocar perfil"><span class="ico" aria-hidden="true">👤</span><span>${esc(profile ? profile.name : 'Perfil')}</span></a><div class="app-version" title="Versão do sistema">v${esc(APP_VERSION)}</div>`;
 }
 
 /** Executa uma tela capturando erros para nunca deixar a página em branco. */
@@ -69,6 +70,23 @@ async function viewExams(v, { query }) {
   await renderExamBrowser(v.querySelector('#b'), { initial: { q: query.q || '' }, profile });
 }
 
+/** Registra o modo offline e avisa quando uma versão nova é instalada (sem recarregar sozinho, para não interromper o trabalho). */
+function registerServiceWorker() {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('service-worker.js').then((reg) => {
+    reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+  }).catch(() => { /* sem offline: segue normalmente */ });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || document.getElementById('update-banner')) return;
+    const bar = document.createElement('div');
+    bar.id = 'update-banner'; bar.setAttribute('role', 'status');
+    bar.innerHTML = '<span>Nova versão do VetLaudo instalada.</span> <button class="btn sm primary" id="update-now">Atualizar agora</button>';
+    document.body.appendChild(bar);
+    document.getElementById('update-now').onclick = () => location.reload();
+  });
+}
+
 async function boot() {
   const reg = loadRegistry();
   const needPicker = location.hash === '#/perfis' || (reg.profiles.length > 1 && !chosenThisSession());
@@ -83,7 +101,7 @@ async function boot() {
   if (!settings.professional.name) { settings.professional.name = profile.name; await saveSettings(settings); }
   applyTheme(settings.theme);
   await seedImpressions().catch(() => { /* sem armazenamento: segue sem frases iniciais */ });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => { /* sem offline: segue normalmente */ });
+  if ('serviceWorker' in navigator) registerServiceWorker();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   document.addEventListener('route', (e) => drawNav(e.detail.path));
   route('/', safe((v) => renderDashboard(v, profile)));
