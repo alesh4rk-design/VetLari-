@@ -4,6 +4,7 @@
 // Convenções: {?Medida} = medida opcional; {Campo} = obrigatório; {Medida:valor} = só o número.
 
 const o = (text, label) => (label ? { text, label } : { text });
+const N = (opt) => ({ ...opt, n: true }); // faz parte do "texto padrão sem alterações" do órgão (botão do editor)
 const X = (text) => ({ text, excl: true }); // exclusiva: substitui as outras opções do bloco
 const C = (text, label) => ({ text, ...(label ? { label } : {}), glue: true }); // cola na anterior só com espaço (sem vírgula)
 const g = (label, kind, options) => ({ label, kind, options });
@@ -19,20 +20,20 @@ export const USG_BUILDERS = {
   ] }] },
 
   Rins: { blocks: [
-    { groups: [g('Posição', 'sentence', [o('tópicos e simétricos')])] },
+    { groups: [g('Posição', 'sentence', [N(o('tópicos e simétricos'))])] },
     { labels: ['Rim esquerdo', 'Rim direito'], groups: [
-      g('Dimensões', 'one', [o('com dimensões preservadas ({?Comprimento})', 'dimensões preservadas')]),
-      g('Contornos', 'one', [o('contornos definidos e regulares')]),
-      g('Corticomedular', 'one', [o('relação e definição corticomedular preservada', 'relação e definição preservadas'), o('relação corticomedular preservada, definição corticomedular diminuída', 'definição diminuída')]),
-      g('Ecogenicidade', 'one', [o('ecogenicidade mantida'), o('ecogenicidade mantida predominantemente, exceto pelo aumento da ecogenicidade da junção corticomedular', 'mantida, exceto junção'),
+      g('Dimensões', 'one', [N(o('com dimensões preservadas ({?Comprimento})', 'dimensões preservadas'))]),
+      g('Contornos', 'one', [N(o('contornos definidos e regulares'))]),
+      g('Corticomedular', 'one', [N(o('relação e definição corticomedular preservada', 'relação e definição preservadas')), o('relação corticomedular preservada, definição corticomedular diminuída', 'definição diminuída')]),
+      g('Ecogenicidade', 'one', [N(o('ecogenicidade mantida')), o('ecogenicidade mantida predominantemente, exceto pelo aumento da ecogenicidade da junção corticomedular', 'mantida, exceto junção'),
         o('ecogenicidade mantida predominantemente, exceto pelo aumento da ecogenicidade da junção corticomedular e fino halo ecogênico em medular interna (sinal de medular)', 'mantida, exceto junção e halo'),
         o('ecogenicidade aumentada sobre a cortical', 'aumentada sobre a cortical'), o('ecogenicidade aumentada difusamente', 'aumentada difusamente')]),
-      g('Ecotextura', 'one', [o('ecotextura homogênea'), o('ecotextura grosseira')]),
+      g('Ecotextura', 'one', [N(o('ecotextura homogênea')), o('ecotextura grosseira')]),
       g('Achados adicionais', 'sentences', [o('Presença de fino halo ecogênico em medular interna (sinal de medular)', 'halo em medular interna'),
         o('Presença de discretos pontos hiperecogênicos em região de recessos pélvicos', 'pontos hiperecogênicos'), o('Presença de área ecogênica em medular interna', 'área ecogênica')]),
-      g('Pelve', 'sentence', [o('Pelve normodilatada')]),
+      g('Pelve', 'sentence', [N(o('Pelve normodilatada'))]),
     ] },
-    { groups: [g('Ureteres', 'sentence', [o('**Ureteres** sem alterações sonográficas visíveis em topografia', 'Ureteres sem alterações')])] },
+    { groups: [g('Ureteres', 'sentence', [N(o('**Ureteres** sem alterações sonográficas visíveis em topografia', 'Ureteres sem alterações'))])] },
   ] },
 
   Fígado: { blocks: [{ groups: [

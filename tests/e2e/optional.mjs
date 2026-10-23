@@ -63,6 +63,13 @@ check('tutorial dos achados', (await page.textContent('.modal h2')).includes('Ac
 await page.click('.modal [data-x=close]');
 await page.goto(base + '#/frases'); await page.waitForSelector('.help-link');
 check('ajuda na aba Frases', true);
+// Texto padrão sem alterações (Rins)
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Padrao Rins'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Rins")');
+await page.click('[data-act="b-normal"]');
+const dtxt = await page.inputValue('[data-sec] textarea[id^="d-"]');
+check('texto padrão dos rins', dtxt.includes('tópicos e simétricos.') && dtxt.includes('**Rim direito** com dimensões preservadas') && dtxt.includes('Ureteres** sem alterações'));
+check('status vira Normal', (await page.locator('.segbtn[aria-pressed="true"]').textContent()).includes('Normal'));
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
