@@ -50,7 +50,7 @@ export function buildReport(exam, settings = {}) {
   for (const s of exam.sections || []) {
     const items = [];
     if (filled(s.description)) items.push({ label: '', text: s.description.trim() });
-    const rows = (s.measuresList || []).filter((m) => filled(m.value)).map((m) => `${filled(m.label) ? m.label.trim() + ': ' : ''}${m.value.trim()}${filled(m.unit) ? ' ' + m.unit.trim() : ''}`);
+    const rows = (s.measuresList || []).filter((m) => filled(m.value)).map((m) => `${filled(m.label) ? m.label.trim() + ': ' : ''}${m.value.trim()}${filled(m.unit) ? ' ' + m.unit.trim() : ''}${m.calculated ? ` (calculado: ${m.calcName})` : ''}`);
     if (filled(s.measures)) rows.push(s.measures.trim());
     if (rows.length) items.push({ label: 'Medidas', text: rows.join('; ') });
     if (filled(s.notes)) items.push({ label: 'Observações', text: s.notes.trim() });

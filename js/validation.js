@@ -80,7 +80,7 @@ export function validatePhraseImport(data) {
   return { ok: true, phrases, skipped: data.length - phrases.length };
 }
 
-export const BACKUP_STORES = ['patients', 'exams', 'phrases', 'templates', 'settings'];
+export const BACKUP_STORES = ['patients', 'exams', 'phrases', 'templates', 'settings', 'references', 'calculations'];
 
 export function validateBackup(b) {
   if (!b || typeof b !== 'object') return 'Arquivo de backup inválido.';

@@ -8,8 +8,8 @@ Lista viva do que falta. (Peça "o que temos pendente?" para receber o resumo.)
 
 ## Depende da veterinária (quando ela puder)
 - [ ] Revisar os modelos iniciais de ultrassonografia (estruturas) e ajustar à rotina dela.
-- [ ] Definir o módulo de **ecocardiograma** (estruturas, medidas e cálculos, referências). Não será inventado.
-- [ ] Cadastrar as **referências científicas** que ela aprova (com fonte verificável). O sistema não traz valores de referência prontos.
+- [ ] Montar o **ecocardiograma** usando as ferramentas já prontas: um modelo em "Meus modelos", as referências em "Bases → Referências" e as fórmulas em "Bases → Cálculos". O sistema não traz valores nem fórmulas prontos.
+- [ ] Cadastrar e aprovar as **referências científicas** (com DOI/URL verificável) e os **cálculos** que ela usa.
 - [ ] Testar com casos fictícios e dizer o que atrapalha o fluxo.
 
 ## Desenvolvimento
