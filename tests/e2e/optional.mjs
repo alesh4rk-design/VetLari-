@@ -70,6 +70,8 @@ await page.click('[data-act="b-normal"]');
 const dtxt = await page.inputValue('[data-sec] textarea[id^="d-"]');
 check('texto padrão dos rins', dtxt.includes('tópicos e simétricos.') && dtxt.includes('**Rim direito** com dimensões preservadas') && dtxt.includes('Ureteres** sem alterações'));
 check('status vira Normal', (await page.locator('.segbtn[aria-pressed="true"]').textContent()).includes('Normal'));
+check('nome do órgão aparece antes da descrição', (await page.textContent('.descprefix strong')).trim() === 'Rins:');
+check('dimensões diminuídas e aumentadas disponíveis', (await page.locator('.chip:has-text("dimensões diminuídas")').count()) >= 1 && (await page.locator('.chip:has-text("dimensões aumentadas")').count()) >= 1);
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
