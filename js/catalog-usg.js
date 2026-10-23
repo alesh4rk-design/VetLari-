@@ -6,6 +6,7 @@
 const o = (text, label) => (label ? { text, label } : { text });
 const N = (opt) => ({ ...opt, n: true }); // faz parte do "texto padrão sem alterações" do órgão (botão do editor)
 const X = (text) => ({ text, excl: true }); // exclusiva: substitui as outras opções do bloco
+const CS = (text, solo, label) => ({ text, solo, ...(label ? { label } : {}), glue: true }); // cola na anterior; sem anterior, usa `solo`
 const C = (text, label) => ({ text, ...(label ? { label } : {}), glue: true }); // cola na anterior só com espaço (sem vírgula)
 const g = (label, kind, options) => ({ label, kind, options });
 const OBS = '__Obs: Alimento e gás podem formar artefato de imagem impedindo a visibilização de todo conteúdo gástrico e intestinal, em caso de suspeita de corpo estranho é necessário acompanhamento do paciente com preparo prévio adequado (jejum e uso de antifisético)__';
@@ -23,7 +24,8 @@ export const USG_BUILDERS = {
     { groups: [g('Posição', 'sentence', [N(o('tópicos e simétricos'))])] },
     { labels: ['Rim esquerdo', 'Rim direito'], groups: [
       g('Dimensões', 'one', [N(o('com dimensões preservadas ({?Comprimento})', 'dimensões preservadas'))]),
-      g('Contornos', 'one', [N(o('contornos definidos e regulares'))]),
+      g('Definição do contorno', 'one', [N(o('contornos definidos', 'definidos')), o('contornos indefinidos', 'indefinidos')]),
+      g('Regularidade do contorno', 'one', [N(CS('e regulares', 'contornos regulares', 'regulares')), CS('e irregulares', 'contornos irregulares', 'irregulares')]),
       g('Corticomedular', 'one', [N(o('relação e definição corticomedular preservada', 'relação e definição preservadas')), o('relação corticomedular preservada, definição corticomedular diminuída', 'definição diminuída')]),
       g('Ecogenicidade', 'one', [N(o('ecogenicidade mantida')), o('ecogenicidade mantida predominantemente, exceto pelo aumento da ecogenicidade da junção corticomedular', 'mantida, exceto junção'),
         o('ecogenicidade mantida predominantemente, exceto pelo aumento da ecogenicidade da junção corticomedular e fino halo ecogênico em medular interna (sinal de medular)', 'mantida, exceto junção e halo'),

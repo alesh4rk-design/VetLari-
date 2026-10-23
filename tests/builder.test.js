@@ -46,7 +46,7 @@ test('montador: rins com dois lados, medidas por lado e achados adicionais', () 
   let sel = pick(def, { Posição: 0 });
   for (const lado of ['Rim esquerdo', 'Rim direito']) {
     const g = (n) => expandBlocks(def).find((b) => b.label === lado).groups.find((x) => x.label === n).key;
-    for (const n of ['Dimensões', 'Contornos', 'Corticomedular', 'Ecogenicidade', 'Ecotextura', 'Pelve']) sel = toggleOption(def, sel, g(n), 0);
+    for (const n of ['Dimensões', 'Definição do contorno', 'Regularidade do contorno', 'Corticomedular', 'Ecogenicidade', 'Ecotextura', 'Pelve']) sel = toggleOption(def, sel, g(n), 0);
   }
   sel = toggleOption(def, sel, expandBlocks(def).find((b) => b.label === 'Rim esquerdo').groups.find((x) => x.label === 'Achados adicionais').key, 1);
   sel = toggleOption(def, sel, expandBlocks(def).find((b) => b.groups[0].label === 'Ureteres').groups[0].key, 0);
@@ -163,7 +163,7 @@ test('testículos ausentes (exclusiva) e útero/ovários não caracterizados (OS
 test('rim: ecogenicidade aumentada difusamente e ecotextura grosseira', () => {
   const def = USG_BUILDERS.Rins;
   let sel = {};
-  for (const [n, i] of [['Dimensões', 0], ['Contornos', 0], ['Corticomedular', 1], ['Ecogenicidade', 4], ['Ecotextura', 1], ['Pelve', 0]]) sel = on(def, sel, 'Rim esquerdo', n, i);
+  for (const [n, i] of [['Dimensões', 0], ['Definição do contorno', 0], ['Regularidade do contorno', 0], ['Corticomedular', 1], ['Ecogenicidade', 4], ['Ecotextura', 1], ['Pelve', 0]]) sel = on(def, sel, 'Rim esquerdo', n, i);
   assert.equal(composeDescription(def, sel, [M('Rim esquerdo – comprimento', '3,80')]), 'Rim esquerdo com dimensões preservadas (3,80 cm), contornos definidos e regulares, relação corticomedular preservada, definição corticomedular diminuída, ecogenicidade aumentada difusamente e ecotextura grosseira. Pelve normodilatada.');
 });
 test('catálogo: nenhuma opção cola sem opção anterior e o sinal & ida e volta', () => {
@@ -201,4 +201,17 @@ test('Rins: texto padrão sem alterações é o texto da veterinária, com medid
   const med = composeDescription(d, normalSelection(d), [{ label: 'Rim esquerdo – comprimento', value: '5,2', unit: 'cm' }], {});
   assert.ok(med.includes('dimensões preservadas (5,2 cm)'));
   assert.deepEqual(normalSelection({ blocks: [{ groups: [{ label: 'x', kind: 'one', options: [{ text: 'a' }] }] }] }), {});
+});
+
+test('Rins: contorno com definição e regularidade escolhidas separadamente', async () => {
+  const { USG_BUILDERS } = await import('../js/catalog-usg.js');
+  const { toggleOption, composeDescription } = await import('../js/builder-logic.js');
+  const d = USG_BUILDERS.Rins;
+  const pick = (sel, group, label) => { const g = expandBlocks(d).find((b) => b.label === 'Rim esquerdo').groups.find((x) => x.label === group); return toggleOption(d, sel, g.key, g.options.findIndex((o) => o.label === label)); };
+  let sel = pick(pick({}, 'Definição do contorno', 'definidos'), 'Regularidade do contorno', 'irregulares');
+  assert.ok(composeDescription(d, sel, [], {}).includes('**Rim esquerdo** contornos definidos e irregulares.'));
+  sel = pick({}, 'Regularidade do contorno', 'irregulares');
+  assert.ok(composeDescription(d, sel, [], {}).includes('**Rim esquerdo** contornos irregulares.'));
+  sel = pick({}, 'Definição do contorno', 'indefinidos');
+  assert.ok(composeDescription(d, sel, [], {}).includes('**Rim esquerdo** contornos indefinidos.'));
 });

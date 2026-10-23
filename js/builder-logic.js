@@ -75,13 +75,13 @@ export function composeDescription(def, sel = {}, measures = [], extras = {}) {
     if (excl.length) fragments = excl.map((o) => ({ text: fill(o.text), glue: false }));
     else {
       for (const { g, opts } of picked) {
-        if (isFragment(g.kind)) fragments.push(...opts.map((o) => ({ text: fill(o.text), glue: !!o.glue })));
+        if (isFragment(g.kind)) fragments.push(...opts.map((o) => ({ text: fill(o.text), glue: !!o.glue, solo: o.solo ? fill(o.solo) : '' })));
         else sentences.push(...opts.map((o) => fill(o.text)));
       }
     }
     // Opções "coladas" (glue) se ligam à anterior só com espaço (ex.: "repleção adequada por conteúdo...").
     const segments = [];
-    for (const f of fragments) { if (f.glue && segments.length) segments[segments.length - 1] += ` ${f.text}`; else segments.push(f.text); }
+    for (const f of fragments) { if (f.glue && segments.length) segments[segments.length - 1] += ` ${f.text}`; else segments.push(f.glue && f.solo ? f.solo : f.text); }
     const parts = [];
     if (segments.length) parts.push(`${block.label ? `**${block.label}** ` : ''}${joinList(segments, block.last)}.`);
     for (const s of sentences) parts.push(closeSentence(s));
