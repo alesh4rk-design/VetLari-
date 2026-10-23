@@ -33,7 +33,7 @@ const usg = (id, name, sections, extra = {}) => ({
   id, builtin: true, modality: 'usg', name: `${name} (modelo inicial)`,
   docTitle: 'Relatório Ultrassonográfico', intro: '',
   conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações e recomendações',
-  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 14,
+  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 15,
 });
 
 /**
@@ -72,7 +72,7 @@ export function defaultTemplates() {
       id: 'tpl-rx-geral', builtin: true, modality: 'rx', name: 'Radiografia (modelo inicial editável)',
       docTitle: 'Relatório Radiográfico', intro: '',
       conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações complementares',
-      signature: true, imagesPerRow: 3, version: 14,
+      signature: true, imagesPerRow: 3, version: 15,
       sections: ['Estruturas ósseas', 'Articulações', 'Tecidos moles', 'Outras estruturas avaliadas'].map(sec),
     },
   ];

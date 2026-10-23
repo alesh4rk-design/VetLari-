@@ -407,6 +407,41 @@ USG_BUILDERS['Glândulas salivares submandibulares'] = { blocks: [{ groups: [
 USG_BUILDERS['Linfonodos mandibulares e retrofaríngeos'] = { blocks: [{ groups: [g('Aspecto', 'sentence', [o('com dimensões preservadas, normoecogênicos e homogêneos', 'dimensões preservadas, normoecogênicos')])] }] };
 USG_BUILDERS['Esôfago, traqueia e laringe'] = { blocks: [{ groups: [g('Aspecto', 'sentence', [o('dentro dos padrões de normalidade')])] }] };
 
+// Lote 5 (laudos de setembro/outubro/2026, Camev Barra e Hamadulu).
+addOptions('Vesícula urinária', 'Conteúdo', [o('conteúdo anecogênico, aparentemente heterogêneo, apresentando acentuada quantidade de imagens ecogênicas puntiformes e filamentos em suspensão e depositados em parede dorsal', 'heterogêneo, puntiformes e filamentos')]);
+addOptions('Rins', 'Corticomedular', [o('relação corticomedular preservada, perda da definição corticomedular', 'relação preservada, perda da definição'),
+  o('relação corticomedular preservada, definição corticomedular levemente diminuída', 'definição levemente diminuída')]);
+addOptions('Rins', 'Ecogenicidade', [o('ecogenicidade mantida, exceto por banda hiperecogênica em medular interna (sinal de banda medular)', 'mantida, exceto banda hiperecogênica'),
+  o('ecogenicidade aumentada difusamente; presença de halo espesso ecogênico em medular interna (sinal de medular)', 'aumentada difusamente, halo espesso')]);
+addOptions('Rins', 'Ecotextura', [o('ecotextura levemente grosseira')]);
+addOptions('Rins', 'Achados adicionais', [o('Presença de discretos cristais em região de recessos pélvicos', 'cristais em recessos pélvicos')]);
+addOptions('Fígado', 'Dimensões', [o('com dimensões preservadas aparentemente, considerando o histórico de lobectomia parcial', 'preservadas (lobectomia parcial)')]);
+addOptions('Fígado', 'Parênquima', [o('parênquima moderadamente hiperecogênico'), o('parênquima acentuadamente hiperecogênico')]);
+addOptions('Fígado', 'Ecotextura', [o('ecotextura heterogênea, apresentando formação nodular de contornos moderadamente definidos, irregulares, heterogênea, predominantemente hiperecogênica e com áreas císticas em permeio, medindo {Medidas da formação}', 'heterogênea, formação nodular com áreas císticas')]);
+addOptions('Vesícula biliar', 'Repleção', [X('não caracterizada (paciente com histórico de lobectomia)')]);
+addOptions('Vesícula biliar', 'Material ecogênico', [
+  o('apresentando cerca de 26 a 50% de lama biliar heterogênea e gravidade dependente', '26 a 50% lama heterogênea'),
+  o('apresentando até 25% de lama biliar em suspensão', 'até 25% lama em suspensão'),
+  o('apresentando cerca de 26 a 50% de material ecogênico, gravidade dependente (lama biliar)', '26 a 50% gravidade dependente (lama)'),
+  o('apresentando discreta quantidade de material ecogênico, gravidade dependente e em suspensão ocupando até 25% do lúmen', 'discreta quantidade, dependente e em suspensão, até 25%'),
+  o('apresentando mais de 75% de lama biliar, ocupando todo o lúmen e com fragmentos de muco em permeio (lama biliar grau IV)', 'mais de 75%, lama grau IV com muco')]);
+addOptions('Vesícula biliar', 'Parede', [o('Parede ecogênica, regular, sem alterações predominantemente, exceto por discretos pequenos cistos/mucos que se projetam para o lúmen', 'pequenos cistos/mucos para o lúmen')]);
+addOptions('Baço', 'Dimensões', [o('com dimensões acentuadamente aumentadas', 'acentuadamente aumentadas')]);
+addOptions('Baço', 'Ecotextura', [
+  o('ecotextura grosseira; presença de imagem nodular de contornos moderadamente definidos, regulares, hipoecogênica, homogênea, medindo {Medidas da imagem nodular}, localizada em corpo esplênico', 'grosseira, imagem nodular em corpo'),
+  o('ecotextura homogênea; presença de três imagens nodulares de contornos definidos, discretamente irregulares, hipoecogênicas e homogêneas, medindo {Medidas das imagens nodulares}', 'homogênea, três imagens nodulares')]);
+addOptions('Estômago', 'Conteúdo', [o('com moderada quantidade de conteúdo alimentar e gasoso, não podendo descartar corpo estranho gástrico', 'alimentar e gasoso, não descarta corpo estranho'), o('com discreta quantidade de conteúdo alimentar e gasoso', 'alimentar e gasoso (discreta)')]);
+addOptions('Alças intestinais', 'Conteúdo', [o('com moderada quantidade de conteúdo mucoso e gasoso; presença de discretos segmentos jejunais com discreta quantidade de conteúdo líquido', 'mucoso e gasoso, discretos segmentos jejunais líquidos')], 0);
+addOptions('Alças intestinais', 'Parede', [
+  o(`${ESTRAT}, contorno regular e espessura preservada em duodeno e aumentada em segmentos jejunais ${DUODENO_JEJUNO}`, 'preservada em duodeno, aumentada em jejuno'),
+  o(`${ESTRAT}, contorno regular e espessura discretamente aumentada, podendo estar relacionado à variação individual associada ao porte do paciente ${DUODENO_JEJUNO}`, 'discretamente aumentada (variação individual/porte)')], 0);
+addOptions('Alças intestinais', 'Conteúdo', [o('com moderada quantidade de conteúdo fecal não denso', 'fecal não denso (moderada)')], 1);
+addOptions('Adrenais', 'Topografia', [X('não caracterizadas (encobertas por alças intestinais no momento do exame)')]);
+addOptions('Próstata', 'Tamanho', [o('com dimensões discretamente aumentadas ({?Comprimento:valor} x {?Altura:valor} x {?Largura} – comprimento x altura x largura)', 'dimensões discretamente aumentadas')]);
+addOptions('Próstata', 'Ecotextura e ecogenicidade', [o('ecotextura levemente heterogênea e ecogenicidade habituais', 'ecotextura levemente heterogênea')]);
+addOptions('Ovários', 'Descrição', [X('sem evidências de alterações sonográficas em topografia')]);
+addOptions('Outros achados', 'Achado', [o('Presença de discreto aumento da ecogenicidade dos tecidos mesentéricos focalmente em abdômen cranial porção média para lado esquerdo (considerar discreto processo inflamatório devido a pós-operatório recente de lobectomia hepática)', 'ecogenicidade mesentérica aumentada (pós-operatório de lobectomia)')]);
+
 /** Impressões diagnósticas usadas nos laudos da veterinária (biblioteca de frases, para inserir com um toque). */
 const REC = 'Sugere-se correlacionar com exames laboratoriais complementares, caso o clínico julgue necessário.';
 export const USG_IMPRESSIONS = [
@@ -490,6 +525,10 @@ export const USG_IMPRESSIONS = [
   ['Gastrite.', 'Estômago', 3], ['Enterite/enteropatia leve.', 'Alças intestinais', 3],
   ['Sugestivo alimento/legumes em cavidade gástrica.', 'Estômago', 3],
   ['Formação subcutânea de aspecto adiposo, com características ultrassonográficas atípicas para um lipoma simples. Recomenda-se avaliação citológica e/ou histopatológica para caracterização definitiva.', 'Outros achados', 3],
+  ['Estômago sem alterações sonográficas.', 'Estômago', 3], ['Acentuada quantidade de sedimento/cristais/muco em vesícula urinária.', 'Vesícula urinária', 3], ['Prostatopatia.', 'Próstata', 3],
+  ['Acentuada esplenomegalia podendo estar relacionada a processo inflamatório/infeccioso/hematopoiese extramedular e nódulo sugestivo de hiperplasia nodular benigna. Sugere-se acompanhamento ultrassonográfico, caso o clínico julgue necessário.', 'Baço', 3],
+  ['Hepatopatia/moderada esteatose hepática.', 'Fígado', 3],
+  ['Discreto a moderado processo congestivo venoso hepático (podendo estar relacionado com alteração cardíaca/torácica e/ou hipertensão).', 'Fígado', 3],
   ['Sugestiva necrose gordurosa nodular do peritônio/mesentério. Considerar achado incidental benigno. Sugere-se acompanhamento ultrassonográfico, caso o clínico julgue necessário.', 'Outros achados', 3],
 ];
 
