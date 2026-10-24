@@ -287,3 +287,18 @@ test('catálogo: nenhum grupo tem opções repetidas e o modelo cervical usa os 
   const txt = composeDescription(d, { '0.0.0': [0], '0.0.1': [0] }, [], { 'Volume total': '0,740' });
   assert.ok(txt.startsWith('em topografia habitual, com formato anatômico') && txt.includes('volume total de 0,740 cm3.'));
 });
+
+test('texto editado à mão: medidas e escolhas continuam sendo aplicadas no texto dela', async () => {
+  const { patchManualText } = await import('../js/builder-logic.js');
+  const oldA = '**Rim esquerdo** com dimensões preservadas (4,5 cm), contornos definidos e regulares.';
+  const manual = '**Rim esquerdo** com dimensões preservadas (4,5 cm), contornos definidos e regulares. Observei também discreta pielectasia.';
+  // medida alterada
+  assert.equal(patchManualText(manual, oldA, oldA.replace('4,5', '4,8')), manual.replace('4,5', '4,8'));
+  // opção trocada
+  assert.equal(patchManualText(manual, oldA, oldA.replace('preservadas', 'aumentadas')), manual.replace('preservadas', 'aumentadas'));
+  // opção acrescentada
+  const add = '**Rim esquerdo** com dimensões preservadas (4,5 cm), contornos definidos e regulares, ecotextura homogênea.';
+  assert.equal(patchManualText(manual, oldA, add), '**Rim esquerdo** com dimensões preservadas (4,5 cm), contornos definidos e regulares, ecotextura homogênea. Observei também discreta pielectasia.');
+  // trecho que ela reescreveu: não há como aplicar com segurança
+  assert.equal(patchManualText('Texto completamente reescrito por ela.', oldA, oldA.replace('4,5', '4,8')), null);
+});

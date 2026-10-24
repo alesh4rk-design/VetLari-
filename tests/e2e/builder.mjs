@@ -68,8 +68,9 @@ check('adrenais: medidas compostas e lado não caracterizado', adr.includes('**A
 await organ('Fígado');
 await chip('Dimensões', 'preservadas');
 await page.fill('[data-sf="description"]', 'Texto editado à mão pela veterinária.');
-check('edição manual mostra o aviso', await page.isVisible('#bnotice'));
+check('texto reescrito à mão: sem aviso antes de nova escolha', !(await page.isVisible('#bnotice')));
 await chip('Bordas', 'arredondadas');
+check('escolha que não cabe no texto reescrito mostra o aviso', await page.isVisible('#bnotice'));
 check('novas escolhas não apagam o texto editado', (await desc()) === 'Texto editado à mão pela veterinária.');
 await page.click('[data-act="b-regen"]'); await page.click('.modal button.primary');
 check('"Gerar de novo" substitui pelo texto das escolhas', (await desc()).includes('bordas arredondadas') && !(await desc()).includes('editado'));

@@ -75,6 +75,19 @@ check('texto padrão dos rins', dtxt.includes('tópicos e simétricos.') && dtxt
 check('status vira Normal', (await page.locator('.segbtn[aria-pressed="true"]').textContent()).includes('Normal'));
 check('nome do órgão aparece antes da descrição', (await page.textContent('.descprefix strong')).trim() === 'Rins:');
 check('dimensões diminuídas e aumentadas disponíveis', (await page.locator('.chip:has-text("dimensões diminuídas")').count()) >= 1 && (await page.locator('.chip:has-text("dimensões aumentadas")').count()) >= 1);
+// Texto editado à mão continua recebendo medidas e escolhas
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Manual'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Rins")');
+await page.click('[data-act="b-normal"]');
+const ta = '[data-sec] textarea[id^="d-"]';
+await page.fill(ta, (await page.inputValue(ta)) + ' Minha observação escrita à mão.');
+await page.fill('input[aria-label="Valor de Rim esquerdo – comprimento"]', '4,5');
+let mtxt = await page.inputValue(ta);
+check("medida entra no texto editado à mão", mtxt.includes('preservadas (4,5 cm)') && mtxt.includes('Minha observação escrita à mão.'));
+await page.click('.bblock:has(.bhead:text-is("Rim esquerdo")) .bgroup:has(.blabel:has-text("Dimensões")) .chip:has-text("dimensões aumentadas")');
+mtxt = await page.inputValue(ta);
+check("escolha aplicada no texto editado à mão", mtxt.includes('**Rim esquerdo** com dimensões aumentadas (4,5 cm)') && mtxt.includes('Minha observação escrita à mão.'));
+check('sem aviso de bloqueio', await page.locator('#bnotice').isHidden());
 // Imagens ao lado dos achados
 await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Imagens ao lado'); await page.click('[data-step="1"]');
@@ -93,6 +106,8 @@ await page.click('[data-step="4"]'); await page.waitForSelector('[data-act="copy
 check('botão copiar texto do laudo', (await page.locator('[data-act="copy-text"]').count()) === 1);
 await page.goto(base + '#/'); await page.waitForSelector('#recent');
 check('lembrete de backup no início', (await page.locator('.alert:has-text("Faça um backup")').count()) === 1);
+check('aviso claro de armazenamento no aparelho', (await page.locator('.storage-note:has-text("armazenamento do próprio computador")').count()) === 1);
+check('convite para colocar o logotipo', (await page.locator('.alert:has-text("logotipo")').count()) === 1);
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
