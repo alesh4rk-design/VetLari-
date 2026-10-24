@@ -132,6 +132,18 @@ for (let i = 1; i <= 12; i++) await page.mouse.move(box.x + 30 + i * 25, box.y +
 await page.mouse.up(); await page.click('.modal [data-x=ok]');
 await page.waitForSelector('#assinatura img[alt="Sua assinatura"]');
 check('assinatura desenhada e salva', true);
+// Com assinatura cadastrada: aviso antes de finalizar e imagem depois de finalizar
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Assinado'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('[data-act="b-normal"]');
+await page.click('[data-step="3"]'); await page.fill('#f-impression', 'Exame sem alterações.');
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+check('aviso: assinatura só depois de finalizar', (await page.locator('.alert:has-text("A assinatura só entra depois de finalizar")').count()) === 1 && (await page.locator('.paper .psig-img').count()) === 0);
+await page.click('[data-act="final"]');
+for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
+if (await page.isVisible('#just')) await page.fill('#just', 'Teste.');
+await page.click('.modal [data-x="ok"]'); await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+check('finalizado: assinatura aparece no laudo', (await page.locator('.paper .psig-img img').count()) === 1 && (await page.textContent('.paper')).includes('Assinado eletronicamente por'));
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();

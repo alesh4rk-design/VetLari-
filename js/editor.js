@@ -261,6 +261,7 @@ export async function renderEditor(view, id, settings, profile) {
       const hist = [...exam.history].reverse().map((h) => `<li><span><strong>${esc(h.action)}</strong>${h.detail ? `<div class="muted small">${esc(h.detail)}</div>` : ''}</span>
         <span class="muted small">${esc(h.actor ? h.actor.name : '—')} · ${fmtDateTimeBR(h.ts)} · v${h.version}</span></li>`).join('');
       return `<div class="card no-print"><h2>Revisão e exportação</h2>
+        ${exam.status !== 'final' ? `<div class="alert info">✍️ <strong>A assinatura só entra depois de finalizar.</strong> Enquanto o laudo for rascunho ou preliminar, o PDF sai com "sem assinatura eletrônica". Quando terminar, clique em <strong>Finalizar e assinar laudo</strong> (abaixo) e depois baixe ou envie o PDF.${settings.signatureImage ? '' : ' <a href="#/config">Cadastre sua assinatura em Configurações.</a>'}</div>` : ''}
         ${alertList('Alertas críticos (exigem correção ou justificativa para finalizar):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
         <p class="muted small">Word e PDF contêm exatamente o mesmo conteúdo da prévia abaixo. O sistema não preenche, não conclui nem assina nada em seu nome.${exam.status !== 'final' ? ' Arquivos de laudos não finalizados saem marcados como rascunho/preliminar.' : ''}</p>
         <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn whatsapp" data-act="share-pdf">Enviar PDF pelo WhatsApp</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
@@ -268,7 +269,7 @@ export async function renderEditor(view, id, settings, profile) {
           ? (canRevise ? '<button class="btn" data-act="revise" data-kind="correction">Retificar (nova versão)</button><button class="btn" data-act="revise" data-kind="addendum">Adicionar adendo (nova versão)</button>'
             : '<span class="muted small">Retificações e adendos exigem perfil de médico(a)-veterinário(a).</span>')
           : `${exam.status === 'draft' ? '<button class="btn" data-act="prelim">Marcar como preliminar</button>' : '<button class="btn" data-act="undraft">Voltar para rascunho</button>'}
-             <button class="btn" data-act="final" ${canFinalize ? '' : 'disabled'}>Finalizar laudo</button>
+             <button class="btn primary" data-act="final" ${canFinalize ? '' : 'disabled'}>Finalizar e assinar laudo</button>
              <button class="btn danger" data-act="discard">Excluir exame</button>
              ${canFinalize ? '' : '<span class="muted small">Seu perfil (auxiliar) não pode finalizar nem assinar laudos.</span>'}`}</div></div>
         ${reportToHtml(report)}
