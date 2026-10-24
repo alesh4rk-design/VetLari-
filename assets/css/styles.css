@@ -143,3 +143,16 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .help-link { background: none; border: 0; padding: 4px 0; color: var(--accent); font: inherit; font-size: .9rem; text-decoration: underline; cursor: pointer; }
 .helplist { padding-left: 20px; line-height: 1.5; } .helplist li { margin-bottom: 6px; }
 .descprefix { margin: 2px 0 6px; font-size: 1rem; }
+
+.findings.withimgs { grid-template-columns: 220px minmax(0, 1fr) minmax(260px, 340px); }
+.sideimgs { position: sticky; top: 64px; max-height: calc(100vh - 80px); overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.sideimgs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sideimg { display: flex; flex-direction: column; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); cursor: zoom-in; text-align: left; font: inherit; }
+.sideimg:hover { border-color: var(--accent); }
+.sideimg img { width: 100%; height: auto; border-radius: 6px; display: block; }
+@media (max-width: 1100px) {
+  .findings.withimgs { grid-template-columns: 220px minmax(0, 1fr); }
+  .findings.withimgs .sideimgs { grid-column: 1 / -1; position: static; max-height: none; flex-direction: row; flex-wrap: wrap; }
+  .findings.withimgs .sideimg { width: 140px; }
+}
+@media (max-width: 820px) { .findings.withimgs { grid-template-columns: minmax(0, 1fr); } }

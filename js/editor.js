@@ -18,7 +18,8 @@ import { composeDescription, toggleOption, pendingFields, expandBlocks, normalSe
 import { listReferences, referenceCard } from './references.js';
 import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
-import { imagesStepHtml, bindImages, moveItem } from './image-manager.js';
+import { imagesStepHtml, bindImages, moveItem, importFile } from './image-manager.js';
+import { openImageViewer } from './image-viewer.js';
 import { buildReport } from './report-model.js';
 import { reportToHtml } from './preview.js';
 import { buildDocx } from './docx-export.js';
@@ -238,7 +239,8 @@ export async function renderEditor(view, id, settings, profile) {
     1: () => `${mod.techniqueHtml(exam, locked)}<div class="card"><h2>Achados por estrutura</h2><p class="muted small">${esc(mod.findingsHint)}</p>
       <datalist id="units">${MEASURE_UNITS.map((u) => `<option value="${esc(u)}">`).join('')}</datalist>
       ${area('Texto introdutório (opcional)', 'intro', 2)}
-      <div class="findings"><nav class="organs" id="organs" aria-label="Órgãos e estruturas">${organList()}</nav><div id="organ-panel">${organPanel()}</div></div></div>`,
+      <div class="row"><button type="button" class="btn sm ${sideImages() ? 'primary' : ''}" data-act="side-toggle" aria-pressed="${sideImages()}">🖼 Imagens ao lado do texto</button></div>
+      <div class="findings ${sideImages() ? 'withimgs' : ''}"><nav class="organs" id="organs" aria-label="Órgãos e estruturas">${organList()}</nav><div id="organ-panel">${organPanel()}</div>${sideImages() ? `<aside class="sideimgs" id="sideimgs" aria-label="Imagens do exame">${sideImagesHtml()}</aside>` : ''}</div></div>`,
     2: () => `<div class="card"><h2>Imagens</h2><p class="muted small">As imagens ficam salvas somente neste aparelho (perfil de ${esc(profile.name)}).</p><div id="imgroot">${imagesStepHtml(exam, locked, mod.regionLabel)}</div></div>`,
     3: () => `<div class="card"><h2>Conclusão</h2>
       ${area(exam.layout.conclusionTitle || 'Impressão diagnóstica', 'impression', 5)}${area('Diagnósticos diferenciais (se houver)', 'differentials', 3)}
@@ -291,6 +293,21 @@ export async function renderEditor(view, id, settings, profile) {
   function refreshOrgans() { const o = view.querySelector('#organs'); if (o) o.innerHTML = organList(); }
 
   /** Atualiza só a lista de órgãos e o painel, sem mexer na rolagem. */
+  /** Imagens ao lado dos achados (laudar olhando as imagens). Preferência guardada neste aparelho. */
+  const sideImages = () => {
+    try { const v = localStorage.getItem('vl-sideimg'); if (v !== null) return v === '1'; } catch { /* sem armazenamento */ }
+    return window.innerWidth >= 1100;
+  };
+  const sideImagesHtml = () => {
+    const imgs = exam.images || [];
+    return `<div class="sideimgs-head"><strong>Imagens (${imgs.length})</strong>
+      ${locked ? '' : '<button type="button" class="btn sm" data-act="side-add">Adicionar</button><input type="file" id="side-file" accept="image/*" multiple hidden>'}</div>
+      ${imgs.length ? imgs.map((im, i) => `<button type="button" class="sideimg" data-act="side-view" data-id="${im.id}" aria-label="Ampliar imagem ${i + 1}">
+        <img src="${esc(im.annotatedSrc || im.src)}" alt="Imagem ${i + 1}"><span class="small muted">#${i + 1}${im.caption ? ' · ' + esc(im.caption) : ''}</span></button>`).join('')
+        : '<p class="muted small">Nenhuma imagem ainda. Use "Adicionar" para importar; clique numa imagem para ampliar e fazer anotações.</p>'}`;
+  };
+  const refreshSideImages = () => { const el = view.querySelector('#sideimgs'); if (el) el.innerHTML = sideImagesHtml(); };
+
   function refreshFindings() {
     const o = view.querySelector('#organs'), p = view.querySelector('#organ-panel');
     if (!o || !p) return draw();
@@ -410,6 +427,9 @@ export async function renderEditor(view, id, settings, profile) {
     if (act === 'next') { step = Math.min(STEPS.length - 1, step + 1); draw({ top: true }); }
     else if (act === 'prev') { step = Math.max(0, step - 1); draw({ top: true }); }
     else if (act === 'org-pick') { selSec = b.dataset.id; refreshFindings(); if (window.innerWidth <= 820) view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' }); }
+    else if (act === 'side-toggle') { try { localStorage.setItem('vl-sideimg', sideImages() ? '0' : '1'); } catch { /* sem armazenamento */ } draw(); }
+    else if (act === 'side-add') { const f = view.querySelector('#side-file'); if (f) f.click(); }
+    else if (act === 'side-view') { await openImageViewer(exam, b.dataset.id, { locked }); touch(); refreshSideImages(); }
     else if (act === 'org-next') {
       const vis = visibleSections(); const i = vis.findIndex((s) => s.id === (current() || {}).id);
       selSec = vis[(i + 1) % vis.length].id; refreshFindings(); view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' });
@@ -510,6 +530,13 @@ export async function renderEditor(view, id, settings, profile) {
     } else if (t.id === 'savepat') savePatientFlag = t.checked;
   };
   view.onchange = async (e) => {
+    if (e.target.id === 'side-file') {
+      let ok = 0;
+      for (const f of [...e.target.files]) { try { exam.images.push(await importFile(f, settings)); ok++; } catch (err) { toast(err.message, 'error'); } }
+      e.target.value = '';
+      if (ok) { toast(`${ok} imagem(ns) adicionada(s).`, 'success'); touch(); refreshSideImages(); }
+      return;
+    }
     const t = e.target;
     if (t.dataset.act === 'pick' && t.value) {
       const p = await getPatient(t.value);
