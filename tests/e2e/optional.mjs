@@ -86,6 +86,13 @@ check('imagem adicionada pelo painel lateral', (await page.locator('.sideimg').c
 await page.click('.sideimg'); await page.waitForSelector('.modal');
 check('clique na imagem abre o visualizador', true);
 await page.keyboard.press('Escape');
+// Texto padrão em outros órgãos, copiar texto e lembrete de backup
+await page.click('.organ:has-text("Fígado")'); await page.click('[data-act="b-normal"]');
+check('texto padrão do fígado', (await page.inputValue('[data-sec] textarea[id^="d-"]')).startsWith('em topografia habitual, com dimensões preservadas, bordas afiladas'));
+await page.click('[data-step="4"]'); await page.waitForSelector('[data-act="copy-text"]');
+check('botão copiar texto do laudo', (await page.locator('[data-act="copy-text"]').count()) === 1);
+await page.goto(base + '#/'); await page.waitForSelector('#recent');
+check('lembrete de backup no início', (await page.locator('.alert:has-text("Faça um backup")').count()) === 1);
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();

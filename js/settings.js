@@ -2,7 +2,7 @@
 import { esc, toast, download, todayISO, formatBytes } from './utils.js';
 import { APP_VERSION } from './version.js';
 import { saveSettings } from './templates.js';
-import { exportBackup, importBackup, wipeAll, dbAll, dbDel } from './local-storage.js';
+import { exportBackup, importBackup, wipeAll, dbAll, dbDel, setSetting } from './local-storage.js';
 import { confirmDialog } from './ui.js';
 
 export function applyTheme(theme) { document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark'; }
@@ -84,7 +84,7 @@ export function renderSettings(view, settings, onChange) {
   }
   view.querySelectorAll('[data-rmlogo]').forEach((btn) => { btn.onclick = async () => { const next = { ...settings, [btn.dataset.rmlogo]: '' }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); }; });
   view.querySelector('#bk').onclick = async () => {
-    try { download(new Blob([JSON.stringify(await exportBackup())], { type: 'application/json' }), `VetLaudo_backup_${todayISO()}.json`); toast('Backup gerado.', 'success'); }
+    try { download(new Blob([JSON.stringify(await exportBackup())], { type: 'application/json' }), `VetLaudo_backup_${todayISO()}.json`); await setSetting('last-backup', Date.now()); toast('Backup gerado.', 'success'); }
     catch (err) { toast(`Falha ao gerar backup: ${err.message}`, 'error'); }
   };
   view.querySelector('#rs').onclick = () => view.querySelector('#rsf').click();

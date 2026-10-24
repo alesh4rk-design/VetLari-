@@ -3,13 +3,14 @@
 Lista viva do que falta. (Peça "o que temos pendente?" para receber o resumo.)
 
 ## Ações do responsável técnico (não dependem da veterinária)
-- [ ] Mesclar a branch de desenvolvimento na `main` (pull request) e ativar o GitHub Pages: Settings → Pages → branch `main`, pasta `/ (root)`.
+- [x] Publicação: cada mudança vai para a `main` por pull request e o GitHub Pages atualiza sozinho.
 - [ ] Testar em celular Android e iPhone reais (principalmente ditado por voz, câmera/galeria e instalação na tela inicial) (até agora só em navegador de computador com tela simulada).
 
 ## Depende da veterinária (quando ela puder)
 - [ ] Revisar o catálogo de frases carregado dos laudos dela (Meus modelos → duplicar → "Frases deste órgão") e acrescentar as variações que faltam (o catálogo só tem o que apareceu nos 6 laudos enviados: ex.: faltam opções como rins com dimensões aumentadas, útero, felinos).
 - [ ] Decidir sobre pontos de estilo: achados adicionais dos rins saem como frase com ponto final (nos laudos dela vinham após ponto e vírgula); medidas sempre com vírgula decimal.
-- [ ] Mandar mais laudos (felinos, outras espécies e casos alterados) para ampliar o catálogo. Já incorporados: 10 laudos de cães (machos e fêmeas).
+- [ ] Mandar mais laudos (outras espécies) e, principalmente, a parte de **Impressão Diagnóstica** dos laudos (nas imagens enviadas ela costuma vir cortada). Já incorporados: cerca de 120 laudos de cães e gatos.
+- [ ] Conferir o **Texto padrão (sem alterações)** de cada órgão (montado com a redação mais frequente nos laudos dela).
 - [ ] Conferir padronizações feitas ao carregar o catálogo: "volume e de 5,59 ml" virou "volume de {Volume}"; "preservados no cornos uterinos" virou "nos cornos uterinos"; decimais sempre com vírgula; achados adicionais dos rins como frase com ponto final.
 - [ ] Revisar os modelos iniciais de ultrassonografia (estruturas) e ajustar à rotina dela.
 - [ ] Montar o **ecocardiograma** usando as ferramentas já prontas: um modelo em "Meus modelos", as referências em "Bases → Referências" e as fórmulas em "Bases → Cálculos". O sistema não traz valores nem fórmulas prontos.
@@ -27,4 +28,6 @@ Lista viva do que falta. (Peça "o que temos pendente?" para receber o resumo.)
 - [ ] Avaliar com profissional habilitado os requisitos do CFMV (prontuário, telediagnóstico) antes de uso real.
 
 ## Ideias da veterinária
+- [x] Data/hora opcionais e vazias; peso em kg ou g; estrutura da frase em lista; tutorial por aba; nome do órgão antes da frase; contorno, dimensões e pelve com mais opções; imagens ao lado dos achados.
+- [x] Copiar o texto do laudo para WhatsApp/e-mail; lembrete de backup no Início.
 (registrar aqui as ideias recebidas nas conversas)
