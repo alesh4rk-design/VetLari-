@@ -47,7 +47,7 @@ const TUTORIALS = {
     'Confira a <strong>prévia</strong> abaixo: o Word e o PDF saem exatamente iguais a ela.',
     'Escolha <strong>Baixar Word</strong> ou <strong>Baixar PDF</strong>.',
     'Use <strong>Enviar PDF pelo WhatsApp</strong>: no celular abre o WhatsApp já com o PDF anexado; no computador o PDF é baixado e o WhatsApp abre para você anexar.',
-    'Use "Marcar como preliminar" enquanto estiver em andamento e <strong>Finalizar laudo</strong> quando estiver pronto (somente perfil de veterinário).',
+    'Use "Marcar como preliminar" enquanto estiver em andamento e <strong>Finalizar e assinar laudo</strong> quando estiver pronto (só depois disso a sua assinatura aparece) (somente perfil de veterinário).',
     'Depois de finalizado, o laudo fica protegido. Para mudar algo, use <strong>Retificar</strong> ou <strong>Adicionar adendo</strong>: cria uma nova versão e mantém o histórico.'] },
   laudos: { title: 'Meus laudos', intro: 'Lista de todos os exames deste aparelho.', steps: [
     'Use a busca e os filtros para achar um exame.',
