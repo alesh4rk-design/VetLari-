@@ -119,6 +119,7 @@ export async function buildDocx(report, lib) {
       ? [[run('Assinado eletronicamente por: ', { bold: true }), run(sg.name || '(nome não informado)')], sg.crmv && [run(sg.crmv, { bold: true })], [run(`Código identificador: ${sg.code}`)], [run(sg.stamp, { size: size - 4, color: '555555' })]]
       : [[run('Documento não finalizado: sem assinatura eletrônica.', { bold: true })], sg.name && [run(`Responsável: ${sg.name}${sg.crmv ? ' — ' + sg.crmv : ''}`)], [run(`Código identificador: ${sg.code}`)]];
     body.push(new Paragraph({ spacing: { before: 200 }, children: [] }));
+    if (sg.image) { try { body.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, children: [await logoRun(sg.image, 18)] })); } catch { /* imagem inválida */ } }
     body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: noBorders, rows: [new TableRow({ cantSplit: true, children: [new TableCell({
       borders: noBorders, shading: shade(BOX), margins: { top: 100, bottom: 100, left: 160, right: 160 },
       children: lines.filter(Boolean).map((children) => new Paragraph({ keepNext: true, spacing: { after: 20 }, children })),

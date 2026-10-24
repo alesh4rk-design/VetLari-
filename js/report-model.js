@@ -103,6 +103,8 @@ export function buildReport(exam, settings = {}) {
     signature: tpl.signature === false ? null : {
       name: prof.name || '', crmv: filled(prof.crmv) ? `CRMV-${prof.uf || ''} ${prof.crmv}` : '',
       code: String(exam.id || '').replace(/-/g, '').toUpperCase(),
+      // Imagem da assinatura: só no laudo finalizado (rascunho e preliminar nunca saem assinados).
+      image: exam.status === 'final' ? settings.signatureImage || '' : '',
       stamp: exam.status === 'final' && exam.finalizedAt
         ? `Finalizado eletronicamente em ${fmtDateTimeBR(exam.finalizedAt)}${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''} (sem certificado digital ICP-Brasil)` : '',
     },

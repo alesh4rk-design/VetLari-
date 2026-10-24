@@ -124,6 +124,14 @@ await page.goto(base + '#/'); await page.waitForSelector('#recent');
 check('lembrete de backup no início', (await page.locator('.alert:has-text("Faça um backup")').count()) === 1);
 check('aviso claro de armazenamento no aparelho', (await page.locator('.storage-note:has-text("armazenamento do próprio computador")').count()) === 1);
 check('convite para colocar o logotipo', (await page.locator('.alert:has-text("logotipo")').count()) === 1);
+// Assinatura desenhada nas Configurações
+await page.goto(base + '#/config'); await page.click('#sig-draw'); await page.waitForSelector('#sigpad');
+const box = await page.locator('#sigpad').boundingBox();
+await page.mouse.move(box.x + 30, box.y + 60); await page.mouse.down();
+for (let i = 1; i <= 12; i++) await page.mouse.move(box.x + 30 + i * 25, box.y + 60 + (i % 2 ? 40 : -10));
+await page.mouse.up(); await page.click('.modal [data-x=ok]');
+await page.waitForSelector('#assinatura img[alt="Sua assinatura"]');
+check('assinatura desenhada e salva', true);
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();

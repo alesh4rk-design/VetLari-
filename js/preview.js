@@ -28,9 +28,9 @@ export function reportToHtml(r) {
   let sig = '';
   if (r.signature) {
     const s = r.signature;
-    sig = s.stamp
+    sig = (s.image ? `<div class="psig-img"><img src="${esc(s.image)}" alt="Assinatura"></div>` : '') + (s.stamp
       ? `<div class="psig"><div><strong>Assinado eletronicamente por:</strong> ${esc(s.name || '(nome não informado)')}</div>${s.crmv ? `<div><strong>${esc(s.crmv)}</strong></div>` : ''}<div>Código identificador: ${esc(s.code)}</div><div class="small">${esc(s.stamp)}</div></div>`
-      : `<div class="psig"><div><strong>Documento não finalizado: sem assinatura eletrônica.</strong></div>${s.name ? `<div>Responsável: ${esc(s.name)}${s.crmv ? ' — ' + esc(s.crmv) : ''}</div>` : ''}<div>Código identificador: ${esc(s.code)}</div></div>`;
+      : `<div class="psig"><div><strong>Documento não finalizado: sem assinatura eletrônica.</strong></div>${s.name ? `<div>Responsável: ${esc(s.name)}${s.crmv ? ' — ' + esc(s.crmv) : ''}</div>` : ''}<div>Código identificador: ${esc(s.code)}</div></div>`);
   }
   const foot = r.footerText ? `<div class="pfoot">${esc(r.footerText)}</div>` : '';
   return `<article class="paper ${r.font}" aria-label="Prévia do laudo">${logos}${ident}<div class="pbanner">${esc(r.title)}</div>${r.statusNote ? `<p class="pstatus">${esc(r.statusNote)}</p>` : ''}${blocks}${imgs}${sig}${foot}</article>`;

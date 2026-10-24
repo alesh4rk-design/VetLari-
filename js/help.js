@@ -92,6 +92,7 @@ const TUTORIALS = {
   config: { title: 'Configurações', intro: 'Dados do profissional e aparência do documento.', steps: [
     'Preencha nome, CRMV, serviço e contato: saem no cabeçalho/rodapé do laudo.',
     'Envie os dois <strong>logotipos</strong> (serviço à esquerda, clínica à direita).',
+    'Em <strong>Assinatura</strong>, desenhe com o dedo/mouse ou envie a imagem da sua assinatura: ela sai nos laudos finalizados.',
     'Ajuste fonte, tamanho e o texto fixo após a conclusão.',
     'Em <strong>Backup</strong>, exporte uma cópia regularmente: limpar os dados do navegador apaga tudo.',
     'Se uma novidade não aparecer, use a página de atualização (link em "Sobre").'] },
