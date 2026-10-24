@@ -1,7 +1,7 @@
 // Converte um exame no modelo neutro de documento usado pela prévia, pelo Word e pelo PDF.
 // Garante que os três formatos tenham exatamente o mesmo conteúdo clínico.
 // Função pura: campos vazios são omitidos, nada é preenchido automaticamente.
-import { fmtDateBR, fmtDateTimeBR, ageFromBirth } from './utils.js';
+import { fmtDateBR, ageFromBirth } from './utils.js';
 import { STRUCTURE_STATUS } from './quality.js';
 import { documentSource } from './annotations.js';
 
@@ -106,7 +106,7 @@ export function buildReport(exam, settings = {}) {
       // Imagem da assinatura: só no laudo finalizado (rascunho e preliminar nunca saem assinados).
       image: exam.status === 'final' ? settings.signatureImage || '' : '',
       stamp: exam.status === 'final' && exam.finalizedAt
-        ? `Finalizado eletronicamente em ${fmtDateTimeBR(exam.finalizedAt)}${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''} (sem certificado digital ICP-Brasil)` : '',
+        ? `Finalizado eletronicamente em ${new Date(exam.finalizedAt).toLocaleDateString('pt-BR')}${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''} (sem certificado digital ICP-Brasil)` : '',
     },
   };
 }

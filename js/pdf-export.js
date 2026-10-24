@@ -193,6 +193,8 @@ export function buildPdf(report, jsPDFCtor) {
     doc.text(`Página ${i} de ${total}`, PAGE_W - MARGIN, PAGE_H - 11, { align: 'right', baseline: 'top' });
   }
   doc.setProperties({ title: report.title, creator: 'VetLaudo' });
+  // Os dados internos do arquivo guardam só o dia (sem o horário em que o laudo foi feito).
+  const day = new Date(); day.setHours(0, 0, 0, 0); doc.setCreationDate(day);
   return doc;
 }
 

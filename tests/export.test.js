@@ -85,3 +85,24 @@ test('assinatura: imagem só no laudo finalizado, no PDF e no Word', async () =>
   const docx = await buildDocx(r, docxLib);
   assert.ok(docx.size > (await buildDocx(buildReport(fin, sampleSettings), docxLib)).size);
 });
+
+test('assinatura: mostra só a data da finalização, sem o horário', () => {
+  const at = new Date(2026, 9, 23, 22, 20).getTime();
+  const r = buildReport(sampleExam({ status: 'final', finalizedAt: at, finalizedBy: { name: 'Dra. Teste' } }), sampleSettings);
+  assert.ok(r.signature.stamp.includes('23/10/2026'));
+  assert.ok(!/\d{1,2}:\d{2}/.test(r.signature.stamp), r.signature.stamp);
+});
+
+test('arquivos não guardam o horário em que o laudo foi feito (dados internos)', async () => {
+  const r = buildReport(sampleExam(), sampleSettings);
+  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  const dir = mkdtempSync(join(tmpdir(), 'meta-'));
+  const docx = await buildDocx(r, docxLib);
+  writeFileSync(join(dir, 'a.docx'), Buffer.from(await docx.arrayBuffer()));
+  const core = execFileSync('unzip', ['-p', join(dir, 'a.docx'), 'docProps/core.xml']).toString();
+  const created = core.match(/<dcterms:created[^>]*>([^<]+)</)[1];
+  assert.equal(new Date(created).getTime(), midnight.getTime(), core);
+  const pdf = Buffer.from(buildPdf(r, jsPDF).output('arraybuffer')).toString('latin1');
+  const cd = pdf.match(/\/CreationDate \(D:(\d{14})/)[1];
+  assert.equal(cd.slice(8, 14), '000000', cd);
+});
