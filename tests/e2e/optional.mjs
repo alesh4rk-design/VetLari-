@@ -143,7 +143,7 @@ for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
 if (await page.isVisible('#just')) await page.fill('#just', 'Teste.');
 await page.click('.modal [data-x="ok"]'); await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
-check('finalizado: assinatura aparece no laudo', (await page.locator('.paper .psig-img img').count()) === 1 && (await page.textContent('.paper')).includes('Assinado eletronicamente por'));
+check('finalizado: assinatura aparece no laudo', (await page.locator('.paper .psig-img img').count()) === 1 && (await page.textContent('.paper')).includes('Assinado eletronicamente'));
 // Status Normal já escreve o texto de normalidade
 await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Normal direto'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Baço")');

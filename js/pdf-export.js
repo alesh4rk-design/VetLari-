@@ -62,22 +62,27 @@ export function buildPdf(report, jsPDFCtor) {
     y += 8 + 3.5;
   }
 
+  /** Logotipos: um só fica centralizado (maior); dois ficam um em cada lado. */
   function logos(height) {
-    const put = (url, atRight) => {
-      if (!url) return 0;
+    const urls = [report.logo, report.logo2].filter(Boolean);
+    const put = (url, where, h0) => {
       try {
         const pr = doc.getImageProperties(url);
-        const h = height, w = Math.min(60, h * pr.width / pr.height);
-        doc.addImage(url, pr.fileType, atRight ? PAGE_W - MARGIN - w : MARGIN, y, w, h);
+        let h = h0, w = h * pr.width / pr.height;
+        const maxW = where === 'center' ? 95 : 70;
+        if (w > maxW) { w = maxW; h = w * pr.height / pr.width; }
+        const x = where === 'center' ? MARGIN + (CONTENT_W - w) / 2 : where === 'right' ? PAGE_W - MARGIN - w : MARGIN;
+        doc.addImage(url, pr.fileType, x, y, w, h);
         return h;
       } catch { return 0; } // logotipo inválido: segue sem ele
     };
-    return Math.max(put(report.logo, false), put(report.logo2, true));
+    if (urls.length === 1) return put(urls[0], 'center', height * 1.4);
+    return Math.max(report.logo ? put(report.logo, 'left', height) : 0, report.logo2 ? put(report.logo2, 'right', height) : 0);
   }
 
   // ----- Topo: logotipos (ou texto de cabeçalho, se não houver logotipos) -----
-  const lh0 = logos(16);
-  if (lh0) y += lh0 + 4;
+  const lh0 = logos(18);
+  if (lh0) { y += lh0 + 3; doc.setDrawColor(200).setLineWidth(0.3).line(MARGIN, y, PAGE_W - MARGIN, y); y += 4; }
   else if (report.headerLines.length) {
     doc.setFont(family, 'normal').setFontSize(9).setTextColor(70);
     report.headerLines.forEach((l) => { doc.text(l, MARGIN, y, { baseline: 'top' }); y += lh(9); });
@@ -158,8 +163,10 @@ export function buildPdf(report, jsPDFCtor) {
     const sg = report.signature;
     ensure(40);
     y += 4;
-    const h0 = logos(11); if (h0) y += h0 + 3;
     const final = !!sg.stamp;
+    // Bloco de assinatura não se divide entre páginas: logotipo + assinatura + nome cabem juntos.
+    ensure((report.logo || report.logo2 ? 26 : 0) + (sg.image ? 20 : 0) + (final ? 26 : 22));
+    const h0 = logos(14); if (h0) y += h0 + 5;
     if (sg.image) {
       try {
         const pr = doc.getImageProperties(sg.image), h = 18, w = Math.min(70, h * pr.width / pr.height);
@@ -168,18 +175,31 @@ export function buildPdf(report, jsPDFCtor) {
         y += h + 1;
       } catch { /* imagem inválida: segue sem ela */ }
     }
-    const lines = final
-      ? [`**Assinado eletronicamente por:** ${sg.name || '(nome não informado)'}`, sg.crmv && `**${sg.crmv}**`, `Código identificador: ${sg.code}`, sg.stamp]
-      : ['**Documento não finalizado: sem assinatura eletrônica.**', sg.name && `Responsável: ${sg.name}${sg.crmv ? ' — ' + sg.crmv : ''}`, `Código identificador: ${sg.code}`];
     const size = fs - 0.5;
-    const laid = lines.filter(Boolean).map((t, i) => layout(t, CONTENT_W - 8, i === 3 && final ? size - 2 : size));
-    const boxH = laid.reduce((s, c, i) => s + c.lines.length * lh(i === 3 && final ? size - 2 : size), 0) + 6;
-    ensure(boxH);
-    doc.setFillColor(...BOX).roundedRect(MARGIN, y, CONTENT_W, boxH, 2.5, 2.5, 'F');
-    let yy = y + 3;
-    laid.forEach((c, i) => { const sz = i === 3 && final ? size - 2 : size; c.lines.forEach((ln) => { doc.setTextColor(i === 3 && final ? 90 : 0); drawLine(ln, MARGIN + 4, yy, CONTENT_W, sz, c.sp, false); yy += lh(sz); }); });
-    doc.setTextColor(0);
-    y += boxH;
+    const centered = (text, sz, color = 0) => {
+      const c = layout(text, CONTENT_W - 30, sz);
+      c.lines.forEach((ln) => { const lw = ln.reduce((t, wd) => t + wd.w, 0) + c.sp * (ln.length - 1); doc.setTextColor(color); drawLine(ln, MARGIN + (CONTENT_W - lw) / 2, y, CONTENT_W, sz, c.sp, false); y += lh(sz); });
+      doc.setTextColor(0);
+    };
+    if (final) {
+      // Assinatura no estilo clássico: imagem, linha, nome e CRMV centralizados; dados de verificação menores.
+      ensure(26);
+      doc.setDrawColor(120).setLineWidth(0.3).line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y); y += 2;
+      centered(`**${sg.name || '(nome não informado)'}**`, size + 0.5);
+      if (sg.crmv) centered(sg.crmv, size);
+      y += 1.5;
+      centered(`Assinado eletronicamente · Código identificador: ${sg.code}`, size - 2.5, 90);
+      centered(sg.stamp, size - 2.5, 110);
+    } else {
+      const lines = ['**Documento não finalizado: sem assinatura eletrônica.**', sg.name && `Responsável: ${sg.name}${sg.crmv ? ' — ' + sg.crmv : ''}`, `Código identificador: ${sg.code}`];
+      const laid = lines.filter(Boolean).map((t) => layout(t, CONTENT_W - 8, size));
+      const boxH = laid.reduce((t, c) => t + c.lines.length * lh(size), 0) + 6;
+      ensure(boxH);
+      doc.setFillColor(...BOX).roundedRect(MARGIN, y, CONTENT_W, boxH, 2.5, 2.5, 'F');
+      let yy = y + 3;
+      laid.forEach((c) => c.lines.forEach((ln) => { drawLine(ln, MARGIN + 4, yy, CONTENT_W, size, c.sp, false); yy += lh(size); }));
+      y += boxH;
+    }
   }
 
   // ----- Cabeçalho das páginas seguintes e rodapé com paginação -----
