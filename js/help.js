@@ -25,6 +25,7 @@ const TUTORIALS = {
     'Deixe marcado "Salvar/atualizar no cadastro" para guardar o paciente ao finalizar.'] },
   'laudo-1': { title: 'Etapa 2 · Achados', intro: 'Aqui o texto do laudo se monta a partir do que você seleciona.', steps: [
     'Escolha o órgão na <strong>lista</strong> ao lado (ou acima, no celular).',
+    'Ao marcar <strong>Normal</strong>, o texto de normalidade do órgão é escrito sozinho (se já houver texto, o sistema pergunta antes de trocar).',
     'Marque o <strong>status</strong> do órgão. Nada é presumido como normal: órgão sem status e sem texto não aparece no laudo.',
     'Toque nas opções (chips) de cada característica; a frase é escrita sozinha na redação do catálogo.',
     'Preencha as <strong>medidas</strong> (valor e unidade) onde pedir: elas entram automaticamente na frase.',
