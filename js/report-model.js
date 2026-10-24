@@ -10,6 +10,12 @@ const REVISION = { correction: 'Retificação', addendum: 'Adendo' };
 
 const filled = (v) => String(v ?? '').trim().length > 0;
 
+/** O valor aparece no texto como número inteiro ("4" não casa com "4,5" nem com "14"). */
+const valueInText = (text, value) => {
+  const v = String(value).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^\\d,.])${v}(?![\\d]|[,.]\\d)`).test(text);
+};
+
 export function buildReport(exam, settings = {}) {
   const prof = settings.professional || {};
   const p = exam.patient || {};
@@ -54,7 +60,7 @@ export function buildReport(exam, settings = {}) {
     const items = [];
     if (filled(s.description)) items.push({ label: '', text: s.description.trim() });
     // Medidas já escritas na frase do montador não se repetem; as demais (não usadas no texto) aparecem em "Medidas" para nada se perder.
-    const rows = (s.measuresList || []).filter((m) => filled(m.value) && !(s.build && filled(s.description) && s.description.includes(String(m.value).trim()))).map((m) => `${filled(m.label) ? m.label.trim() + ': ' : ''}${m.value.trim()}${filled(m.unit) ? ' ' + m.unit.trim() : ''}${m.calculated ? ` (calculado: ${m.calcName})` : ''}`);
+    const rows = (s.measuresList || []).filter((m) => filled(m.value) && !(s.build && filled(s.description) && valueInText(s.description, m.value))).map((m) => `${filled(m.label) ? m.label.trim() + ': ' : ''}${m.value.trim()}${filled(m.unit) ? ' ' + m.unit.trim() : ''}${m.calculated ? ` (calculado: ${m.calcName})` : ''}`);
     if (filled(s.measures)) rows.push(s.measures.trim());
     if (rows.length) items.push({ label: 'Medidas', text: rows.join('; ') });
     if (filled(s.notes)) items.push({ label: 'Observações', text: s.notes.trim() });
@@ -101,4 +107,25 @@ export function buildReport(exam, settings = {}) {
         ? `Finalizado eletronicamente em ${fmtDateTimeBR(exam.finalizedAt)}${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''} (sem certificado digital ICP-Brasil)` : '',
     },
   };
+}
+
+/**
+ * Texto corrido do laudo para colar no WhatsApp, e-mail ou outro sistema. Negrito e itálico viram
+ * *negrito* e _itálico_ (formato do WhatsApp). Mesmo conteúdo da prévia, sem imagens.
+ */
+export function reportToText(report) {
+  const fmt = (t) => String(t || '').replace(/\*\*([\s\S]+?)\*\*/g, '*$1*').replace(/__([\s\S]+?)__/g, '_$1_');
+  const out = [`*${report.title}*`];
+  if (report.statusNote) out.push(report.statusNote);
+  if (report.patientRows.length) out.push('', report.patientRows.map(([k, v]) => `${k}: ${v}`).join('\n'));
+  for (const b of report.blocks) {
+    if (b.kind === 'h') out.push('', `*${b.text}*`);
+    else if (b.kind === 'kv') out.push('', `*${b.label}:* ${fmt(b.text)}`);
+    else if (b.kind === 'p') out.push('', fmt(b.text));
+    else if (b.kind === 'note') out.push('', `_${fmt(b.text).replace(/^_|_$/g, '')}_`);
+    else if (b.kind === 'list') out.push(b.items.map((i) => `• ${fmt(i)}`).join('\n'));
+    else if (b.kind === 'section') out.push('', `*${b.title}:* ${b.items.map((i) => (i.label ? `${i.label}: ` : '') + fmt(i.text)).join(' ')}`);
+  }
+  if (report.signature && report.signature.name) out.push('', [report.signature.name, report.signature.crmv].filter(Boolean).join(' · '));
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }

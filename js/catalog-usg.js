@@ -611,6 +611,34 @@ addOptions('Linfonodos', 'Avaliação', [
   o('Linfonodos: discreto aumento de linfonodos jejunais medindo até {Medidas dos linfonodos}, ecotextura homogênea', 'aumento de linfonodos jejunais (homogêneos)')]);
 addOptions('Outros achados', 'Achado', [o('__Comentários: paciente pouco colaborativo no momento do exame__', 'comentário: paciente pouco colaborativo'), o('__Comentários: paciente de difícil contenção física e dispneico durante o exame__', 'comentário: difícil contenção e dispneia')]);
 
+/**
+ * "Texto padrão (sem alterações)" de cada órgão: a redação que a veterinária usa nos laudos normais
+ * (a mesma em dezenas de laudos enviados). O botão só marca estas opções; ela confere e muda o que quiser.
+ */
+const markNormal = (organ, blockIndex, picks) => {
+  const block = USG_BUILDERS[organ].blocks[blockIndex];
+  for (const [group, index] of Object.entries(picks)) {
+    const g = block.groups.find((x) => x.label === group);
+    if (!g || !g.options[index]) throw new Error(`Catálogo: texto padrão inválido em ${organ} / ${group}`);
+    g.options[index].n = true;
+  }
+};
+markNormal('Vesícula urinária', 0, { Repleção: 0, Conteúdo: 0, Parede: 2 });
+markNormal('Fígado', 0, { Topografia: 0, Dimensões: 0, Bordas: 0, Contorno: 0, Parênquima: 0, Ecotextura: 0, Vasos: 0 });
+markNormal('Vesícula biliar', 0, { Repleção: 1, Conteúdo: 0, Parede: 0, 'Vias biliares': 0 });
+markNormal('Baço', 0, { Topografia: 0, Dimensões: 0, Bordos: 0, Contorno: 0, Parênquima: 0, Ecotextura: 0, Vasos: 0 });
+markNormal('Estômago', 0, { Conteúdo: 0, Parede: 0, 'Peristaltismo e piloro': 0, Observação: 0 });
+markNormal('Alças intestinais', 0, { Conteúdo: 0, Parede: 0, Peristaltismo: 0 });
+markNormal('Alças intestinais', 1, { Conteúdo: 0, Parede: 0 });
+markNormal('Alças intestinais', 2, { Observação: 0 });
+markNormal('Pâncreas', 0, { Dimensões: 0, Contorno: 0, Ecogenicidade: 0, Ecotextura: 0 });
+markNormal('Adrenais', 0, { Topografia: 0 });
+markNormal('Adrenais', 1, { Dimensões: 0, Formato: 0, Contorno: 0, Parênquima: 0, Ecotextura: 0 });
+markNormal('Próstata', 0, { Tamanho: 0, Contorno: 0, 'Ecotextura e ecogenicidade': 0 });
+markNormal('Testículos', 0, { Aspecto: 0 });
+markNormal('Linfonodos', 0, { Avaliação: 0 });
+markNormal('Líquido livre peritoneal', 0, { Avaliação: 0 });
+
 /** Impressões diagnósticas usadas nos laudos da veterinária (biblioteca de frases, para inserir com um toque). */
 const REC = 'Sugere-se correlacionar com exames laboratoriais complementares, caso o clínico julgue necessário.';
 export const USG_IMPRESSIONS = [

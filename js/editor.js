@@ -20,7 +20,7 @@ import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
 import { imagesStepHtml, bindImages, moveItem, importFile } from './image-manager.js';
 import { openImageViewer } from './image-viewer.js';
-import { buildReport } from './report-model.js';
+import { buildReport, reportToText } from './report-model.js';
 import { reportToHtml } from './preview.js';
 import { buildDocx } from './docx-export.js';
 import { pdfBlob } from './pdf-export.js';
@@ -254,7 +254,7 @@ export async function renderEditor(view, id, settings, profile) {
       return `<div class="card no-print"><h2>Revisão e exportação</h2>
         ${alertList('Alertas críticos (exigem correção ou justificativa para finalizar):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
         <p class="muted small">Word e PDF contêm exatamente o mesmo conteúdo da prévia abaixo. O sistema não preenche, não conclui nem assina nada em seu nome.${exam.status !== 'final' ? ' Arquivos de laudos não finalizados saem marcados como rascunho/preliminar.' : ''}</p>
-        <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button></div>
+        <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
         <div class="row" style="margin-top:10px">${locked
           ? (canRevise ? '<button class="btn" data-act="revise" data-kind="correction">Retificar (nova versão)</button><button class="btn" data-act="revise" data-kind="addendum">Adicionar adendo (nova versão)</button>'
             : '<span class="muted small">Retificações e adendos exigem perfil de médico(a)-veterinário(a).</span>')
@@ -427,6 +427,11 @@ export async function renderEditor(view, id, settings, profile) {
     if (act === 'next') { step = Math.min(STEPS.length - 1, step + 1); draw({ top: true }); }
     else if (act === 'prev') { step = Math.max(0, step - 1); draw({ top: true }); }
     else if (act === 'org-pick') { selSec = b.dataset.id; refreshFindings(); if (window.innerWidth <= 820) view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' }); }
+    else if (act === 'copy-text') {
+      const text = reportToText(buildReport(exam, settings));
+      try { await navigator.clipboard.writeText(text); toast('Texto do laudo copiado. Cole no WhatsApp, e-mail ou outro sistema.', 'success'); }
+      catch { const mo = openModal(`<h2>Texto do laudo</h2><p class="muted small">Selecione e copie.</p><textarea rows="14" readonly style="width:100%">${esc(text)}</textarea><div class="row end"><button class="btn" data-x="close">Fechar</button></div>`, { label: 'Texto do laudo' }); mo.el.querySelector('[data-x=close]').onclick = () => mo.close(null); }
+    }
     else if (act === 'side-toggle') { try { localStorage.setItem('vl-sideimg', sideImages() ? '0' : '1'); } catch { /* sem armazenamento */ } draw(); }
     else if (act === 'side-add') { const f = view.querySelector('#side-file'); if (f) f.click(); }
     else if (act === 'side-view') { await openImageViewer(exam, b.dataset.id, { locked }); touch(); refreshSideImages(); }

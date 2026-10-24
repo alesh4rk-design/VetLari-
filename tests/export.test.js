@@ -51,3 +51,23 @@ test('Word: gera .docx válido contendo as imagens', async () => {
   assert.match(xml, /Texto descritivo fictício do fígado/);
   assert.ok(!/Baço/.test(xml));
 });
+
+test('medidas: só somem do laudo quando o valor exato já está no texto montado', () => {
+  const exam = sampleExam({ sections: [{ id: 's1', title: 'Rins', description: '**Rim esquerdo** com dimensões preservadas (4,5 cm).', measures: '', notes: '', build: { def: { blocks: [] }, sel: {}, extras: {}, auto: '' },
+    measuresList: [{ id: 'm1', label: 'Rim esquerdo – comprimento', value: '4,5', unit: 'cm' }, { id: 'm2', label: 'Rim direito – comprimento', value: '4', unit: 'cm' }] }] });
+  const sec = buildReport(exam, sampleSettings).blocks.find((b) => b.kind === 'section');
+  const med = sec.items.find((i) => i.label === 'Medidas');
+  assert.ok(med, 'a medida que não está no texto precisa aparecer');
+  assert.ok(med.text.includes('Rim direito – comprimento: 4 cm'));
+  assert.ok(!med.text.includes('4,5'));
+});
+
+test('texto para WhatsApp: mesmo conteúdo, com *negrito* e _itálico_', async () => {
+  const { reportToText } = await import('../js/report-model.js');
+  const exam = sampleExam({ sections: [{ id: 's1', title: 'Rins', description: 'tópicos e simétricos. **Rim esquerdo** com dimensões preservadas.', measures: '', notes: '' }] });
+  const t = reportToText(buildReport(exam, sampleSettings));
+  assert.ok(t.includes('*Rins:* tópicos e simétricos. *Rim esquerdo* com dimensões preservadas.'));
+  assert.ok(t.includes('Paciente: Thor'));
+  assert.ok(t.includes('• Impressão fictícia de teste.') || t.includes('Impressão fictícia de teste.'));
+  assert.ok(!t.includes('**'));
+});
