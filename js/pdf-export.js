@@ -160,6 +160,14 @@ export function buildPdf(report, jsPDFCtor) {
     y += 4;
     const h0 = logos(11); if (h0) y += h0 + 3;
     const final = !!sg.stamp;
+    if (sg.image) {
+      try {
+        const pr = doc.getImageProperties(sg.image), h = 18, w = Math.min(70, h * pr.width / pr.height);
+        ensure(h + 2);
+        doc.addImage(sg.image, pr.fileType, MARGIN + (CONTENT_W - w) / 2, y, w, h);
+        y += h + 1;
+      } catch { /* imagem inválida: segue sem ela */ }
+    }
     const lines = final
       ? [`**Assinado eletronicamente por:** ${sg.name || '(nome não informado)'}`, sg.crmv && `**${sg.crmv}**`, `Código identificador: ${sg.code}`, sg.stamp]
       : ['**Documento não finalizado: sem assinatura eletrônica.**', sg.name && `Responsável: ${sg.name}${sg.crmv ? ' — ' + sg.crmv : ''}`, `Código identificador: ${sg.code}`];

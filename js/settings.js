@@ -3,7 +3,25 @@ import { esc, toast, download, todayISO, formatBytes } from './utils.js';
 import { APP_VERSION } from './version.js';
 import { saveSettings } from './templates.js';
 import { exportBackup, importBackup, wipeAll, dbAll, dbDel, setSetting } from './local-storage.js';
-import { confirmDialog } from './ui.js';
+import { confirmDialog, openModal } from './ui.js';
+
+/** Quadro para desenhar a assinatura com o dedo, caneta ou mouse. Devolve PNG com fundo transparente. */
+function drawSignature() {
+  const m = openModal(`<h2>Desenhar assinatura</h2><p class="muted small">Assine no quadro com o dedo, caneta ou mouse.</p>
+    <canvas id="sigpad" width="600" height="200" style="width:100%;max-width:600px;background:#fff;border-radius:8px;touch-action:none;cursor:crosshair"></canvas>
+    <div class="row end" style="margin-top:10px"><button type="button" class="btn" data-x="clear">Limpar</button><button type="button" class="btn" data-x="cancel">Cancelar</button><button type="button" class="btn primary" data-x="ok">Salvar assinatura</button></div>`, { label: 'Desenhar assinatura' });
+  const c = m.el.querySelector('#sigpad'), g = c.getContext('2d');
+  g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
+  let drawing = false, used = false;
+  const pt = (e) => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * c.width / r.width, (e.clientY - r.top) * c.height / r.height]; };
+  c.addEventListener('pointerdown', (e) => { drawing = true; used = true; c.setPointerCapture(e.pointerId); g.beginPath(); g.moveTo(...pt(e)); });
+  c.addEventListener('pointermove', (e) => { if (!drawing) return; g.lineTo(...pt(e)); g.stroke(); });
+  ['pointerup', 'pointercancel'].forEach((ev) => c.addEventListener(ev, () => { drawing = false; }));
+  m.el.querySelector('[data-x=clear]').onclick = () => { g.clearRect(0, 0, c.width, c.height); used = false; };
+  m.el.querySelector('[data-x=cancel]').onclick = () => m.close(null);
+  m.el.querySelector('[data-x=ok]').onclick = () => { if (!used) return toast('Assine no quadro antes de salvar.', 'error'); m.close(c.toDataURL('image/png')); };
+  return m.closed.then((v) => v || null);
+}
 
 export function applyTheme(theme) { document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark'; }
 
@@ -36,6 +54,11 @@ export function renderSettings(view, settings, onChange) {
   view.innerHTML = `<div class="page-head"><h1>Configurações</h1></div>
   <div class="card" id="logos"><h2>Logotipos do laudo</h2><p class="muted small">Escolha a imagem (PNG ou JPG): ela é salva na hora e aparece no topo do PDF e do Word.</p>
     <div class="grid g2">${logoField('logo', 'Logotipo 1 — serviço (aparece à esquerda no topo)')}${logoField('logo2', 'Logotipo 2 — clínica (aparece à direita no topo)')}</div></div>
+  <div class="card" id="assinatura"><h2>Assinatura</h2>
+    <p class="muted small">A imagem da sua assinatura aparece acima do quadro "Assinado eletronicamente por" <strong>somente nos laudos finalizados</strong> (rascunhos e preliminares nunca saem assinados). Use fundo branco ou transparente. Isto não substitui a assinatura digital com certificado ICP-Brasil.</p>
+    ${settings.signatureImage ? `<div style="margin:8px 0"><img src="${esc(settings.signatureImage)}" alt="Sua assinatura" style="max-height:70px;background:#fff;padding:6px;border-radius:6px"></div>` : '<p class="small"><strong>Nenhuma assinatura cadastrada.</strong></p>'}
+    <div class="row"><button type="button" class="btn" id="sig-draw">Desenhar assinatura</button><label class="btn" for="s-sig">Enviar imagem (PNG/JPG)</label><input id="s-sig" type="file" accept="image/png,image/jpeg" hidden>
+    ${settings.signatureImage ? '<button type="button" class="btn danger sm" id="sig-rm">Remover</button>' : ''}</div></div>
   <form class="card" id="sf"><h2>Identificação profissional</h2><div class="grid g2">
     ${inp('s-name', 'Nome do(a) médico(a)-veterinário(a)', pr.name)}${inp('s-service', 'Nome do serviço / clínica', pr.service)}
     ${inp('s-crmv', 'CRMV (número)', pr.crmv)}${inp('s-uf', 'UF do CRMV', pr.uf, 'maxlength="2" style="text-transform:uppercase"')}${inp('s-contact', 'Contato (telefone/e-mail)', pr.contact)}</div>
@@ -84,6 +107,13 @@ export function renderSettings(view, settings, onChange) {
       catch (err) { toast(err.message, 'error'); }
     });
   }
+  const saveSig = async (img) => { const next = { ...settings, signatureImage: img }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); toast(img ? 'Assinatura salva.' : 'Assinatura removida.', 'success'); };
+  view.querySelector('#s-sig').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { await saveSig(await readLogo(f)); } catch (err) { toast(err.message.replace('logotipo', 'imagem da assinatura').replace('O logotipo', 'A imagem'), 'error'); }
+  });
+  const rm = view.querySelector('#sig-rm'); if (rm) rm.onclick = () => saveSig('');
+  view.querySelector('#sig-draw').onclick = async () => { const img = await drawSignature(); if (img) await saveSig(img); };
   view.querySelectorAll('[data-rmlogo]').forEach((btn) => { btn.onclick = async () => { const next = { ...settings, [btn.dataset.rmlogo]: '' }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); }; });
   view.querySelector('#bk').onclick = async () => {
     try { download(new Blob([JSON.stringify(await exportBackup())], { type: 'application/json' }), `VetLaudo_backup_${todayISO()}.json`); await setSetting('last-backup', Date.now()); toast('Backup gerado.', 'success'); }

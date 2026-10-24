@@ -71,3 +71,17 @@ test('texto para WhatsApp: mesmo conteúdo, com *negrito* e _itálico_', async (
   assert.ok(t.includes('• Impressão fictícia de teste.') || t.includes('Impressão fictícia de teste.'));
   assert.ok(!t.includes('**'));
 });
+
+test('assinatura: imagem só no laudo finalizado, no PDF e no Word', async () => {
+  const { fixtureJpeg } = await import('./helpers.js');
+  const settings = { ...sampleSettings, signatureImage: fixtureJpeg };
+  assert.equal(buildReport(sampleExam(), settings).signature.image, '', 'rascunho não sai assinado');
+  const fin = sampleExam({ status: 'final', finalizedAt: Date.now(), finalizedBy: { name: 'Dra. Teste' } });
+  const r = buildReport(fin, settings);
+  assert.equal(r.signature.image, fixtureJpeg);
+  const withSig = buildPdf(r, jsPDF).output('arraybuffer').byteLength;
+  const noSig = buildPdf(buildReport(fin, sampleSettings), jsPDF).output('arraybuffer').byteLength;
+  assert.ok(withSig > noSig, 'PDF contém a imagem da assinatura');
+  const docx = await buildDocx(r, docxLib);
+  assert.ok(docx.size > (await buildDocx(buildReport(fin, sampleSettings), docxLib)).size);
+});
