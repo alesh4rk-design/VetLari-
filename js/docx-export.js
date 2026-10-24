@@ -126,14 +126,20 @@ export async function buildDocx(report, lib) {
     })] })] }));
   }
 
-  const doc = new Document({
-    creator: 'VetLaudo', title: report.title,
-    styles: { default: { document: { run: { font, size } } } },
-    sections: [{
-      properties: { titlePage: true, page: { size: { width: 11906, height: 16838 }, margin: { top: 850, bottom: 850, left: 850, right: 850, header: 450, footer: 450 } } },
-      headers: { first: firstHeader, default: nextHeader }, footers: { first: footer, default: footer }, children: body,
-    }],
-  });
+  // O Word grava a data/hora de criação nos dados internos do arquivo: guarda só o dia, sem o horário.
+  const RealDate = Date, day = new RealDate(); day.setHours(0, 0, 0, 0);
+  globalThis.Date = class extends RealDate { constructor(...a) { if (a.length) super(...a); else super(day.getTime()); } };
+  let doc;
+  try {
+    doc = new Document({
+      creator: 'VetLaudo', title: report.title,
+      styles: { default: { document: { run: { font, size } } } },
+      sections: [{
+        properties: { titlePage: true, page: { size: { width: 11906, height: 16838 }, margin: { top: 850, bottom: 850, left: 850, right: 850, header: 450, footer: 450 } } },
+        headers: { first: firstHeader, default: nextHeader }, footers: { first: footer, default: footer }, children: body,
+      }],
+    });
+  } finally { globalThis.Date = RealDate; }
   return Packer.toBlob ? Packer.toBlob(doc) : Packer.toBuffer(doc);
 }
 
