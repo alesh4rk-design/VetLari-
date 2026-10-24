@@ -30,6 +30,7 @@ const TUTORIALS = {
     'Preencha as <strong>medidas</strong> (valor e unidade) onde pedir: elas entram automaticamente na frase.',
     'O campo de descrição pode ser editado à mão. Use <strong>Inserir</strong>, <strong>Ditar</strong> e <strong>Guardar</strong> para frases suas.',
     'Use <strong>**negrito**</strong> e <strong>__itálico__</strong> no texto se quiser destacar algo.',
+    'Use <strong>Imagens ao lado do texto</strong> para ver as imagens do exame junto com os achados: clique numa imagem para ampliar e anotar, ou use <strong>Adicionar</strong> para importar mais.',
     'Para consultar referências ou usar cálculos cadastrados, veja a aba "Bases".'] },
   'laudo-2': { title: 'Etapa 3 · Imagens', intro: 'As imagens ficam salvas só neste aparelho.', steps: [
     'Adicione imagens pela galeria ou câmera. Elas são comprimidas conforme as Configurações.',

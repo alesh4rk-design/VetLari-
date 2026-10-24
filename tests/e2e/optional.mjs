@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = process.argv[2] || 'http://localhost:8080/';
@@ -72,6 +75,17 @@ check('texto padrão dos rins', dtxt.includes('tópicos e simétricos.') && dtxt
 check('status vira Normal', (await page.locator('.segbtn[aria-pressed="true"]').textContent()).includes('Normal'));
 check('nome do órgão aparece antes da descrição', (await page.textContent('.descprefix strong')).trim() === 'Rins:');
 check('dimensões diminuídas e aumentadas disponíveis', (await page.locator('.chip:has-text("dimensões diminuídas")').count()) >= 1 && (await page.locator('.chip:has-text("dimensões aumentadas")').count()) >= 1);
+// Imagens ao lado dos achados
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Imagens ao lado'); await page.click('[data-step="1"]');
+if ((await page.locator('#sideimgs').count()) === 0) await page.click('[data-act="side-toggle"]');
+check('painel de imagens ao lado dos achados', (await page.locator('.findings.withimgs #sideimgs').count()) === 1);
+await page.setInputFiles('#side-file', [join(here, '../fixture-usg.jpg')]);
+await page.waitForSelector('.sideimg');
+check('imagem adicionada pelo painel lateral', (await page.locator('.sideimg').count()) === 1);
+await page.click('.sideimg'); await page.waitForSelector('.modal');
+check('clique na imagem abre o visualizador', true);
+await page.keyboard.press('Escape');
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
