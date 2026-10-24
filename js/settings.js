@@ -34,13 +34,14 @@ export function renderSettings(view, settings, onChange) {
       ${settings[key] ? `<div style="margin-top:8px"><img src="${esc(settings[key])}" alt="${esc(label)}" style="max-height:60px;background:#fff;padding:4px;border-radius:6px"> <button type="button" class="btn sm" data-rmlogo="${key}">Remover</button></div>` : ''}<div class="hint">PNG ou JPEG, até 2 MB.</div></div>`;
   const inp = (id, label, v, extra = '') => `<div class="field"><label for="${id}">${label}</label><input id="${id}" value="${esc(v)}" ${extra}></div>`;
   view.innerHTML = `<div class="page-head"><h1>Configurações</h1></div>
+  <div class="card" id="logos"><h2>Logotipos do laudo</h2><p class="muted small">Escolha a imagem (PNG ou JPG): ela é salva na hora e aparece no topo do PDF e do Word.</p>
+    <div class="grid g2">${logoField('logo', 'Logotipo 1 — serviço (aparece à esquerda no topo)')}${logoField('logo2', 'Logotipo 2 — clínica (aparece à direita no topo)')}</div></div>
   <form class="card" id="sf"><h2>Identificação profissional</h2><div class="grid g2">
     ${inp('s-name', 'Nome do(a) médico(a)-veterinário(a)', pr.name)}${inp('s-service', 'Nome do serviço / clínica', pr.service)}
     ${inp('s-crmv', 'CRMV (número)', pr.crmv)}${inp('s-uf', 'UF do CRMV', pr.uf, 'maxlength="2" style="text-transform:uppercase"')}${inp('s-contact', 'Contato (telefone/e-mail)', pr.contact)}</div>
     <h2>Documento</h2><div class="grid g2">${inp('s-head', 'Texto adicional do cabeçalho', settings.headerText)}${inp('s-foot', 'Texto do rodapé', settings.footerText)}
     <div class="field"><label for="s-font">Tipografia</label><select id="s-font"><option value="sans" ${settings.font === 'sans' ? 'selected' : ''}>Sem serifa (Arial)</option><option value="serif" ${settings.font === 'serif' ? 'selected' : ''}>Com serifa (Times)</option></select></div>
     <div class="field"><label for="s-size">Tamanho da fonte (pt)</label><select id="s-size">${[10, 11, 12].map((n) => `<option ${Number(settings.fontSize) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
-    <div class="grid g2">${logoField('logo', 'Logotipo 1 — serviço (aparece à esquerda no topo)')}${logoField('logo2', 'Logotipo 2 — clínica (aparece à direita no topo)')}</div>
     <div class="field"><label for="s-after">Texto fixo após a conclusão</label><textarea id="s-after" rows="3">${esc(settings.afterConclusion || '')}</textarea></div>
     <label class="check"><input type="checkbox" id="s-list" ${settings.impressionAsList !== false ? 'checked' : ''}> Conclusão em lista de itens (um por linha)</label>
     <h2>Imagens</h2><div class="grid g2"><label class="check"><input type="checkbox" id="s-comp" ${settings.compress ? 'checked' : ''}> Comprimir imagens ao importar</label>
@@ -49,7 +50,8 @@ export function renderSettings(view, settings, onChange) {
     <div class="field"><label for="s-mb">Limite por arquivo (MB)</label><input id="s-mb" type="number" min="1" max="50" value="${settings.maxImageMB}"></div></div>
     <h2>Aparência</h2><div class="field" style="max-width:260px"><label for="s-theme">Tema</label><select id="s-theme"><option value="dark" ${settings.theme !== 'light' ? 'selected' : ''}>Escuro</option><option value="light" ${settings.theme === 'light' ? 'selected' : ''}>Claro</option></select></div>
     <button class="btn primary" type="submit">Salvar configurações</button></form>
-  <div class="card"><h2>Backup e dados deste dispositivo</h2>
+  <div class="card" id="backup"><h2>Backup e dados deste dispositivo</h2>
+    <div class="alert info">💾 <strong>O VetLaudo usa o armazenamento do próprio computador ou celular.</strong> Laudos, pacientes, frases e imagens ficam salvos só neste navegador, neste aparelho: nada é enviado para a internet e não aparece em outro aparelho. Para não perder nada, exporte um backup e guarde o arquivo (pen drive, Google Drive, e-mail).</div>
     <p class="muted small">Os dados ficam apenas neste navegador. Faça backups regulares: limpar os dados do navegador apaga tudo. O arquivo de backup contém dados clínicos e pessoais — guarde-o com cuidado.</p>
     <div class="row"><button class="btn" id="bk">Exportar backup</button><button class="btn" id="rs">Restaurar backup</button><input type="file" id="rsf" accept="application/json,.json" style="display:none"></div></div>
   <div class="card"><h2>Sobre</h2><p class="small">VetLaudo versão <strong>${esc(APP_VERSION)}</strong>. Se uma novidade não aparecer, abra a página de atualização: <a href="atualizar.html"><strong>Atualizar o VetLaudo</strong></a> (limpa só a cópia antiga do aplicativo; seus laudos não são apagados). <strong>Não limpe os dados do site</strong> pelo navegador: isso apaga os laudos deste aparelho.</p></div>

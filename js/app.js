@@ -36,7 +36,7 @@ function drawNav(path) {
     NAV.map(([href, ico, label]) => {
       const active = href === '/' ? path === '/' : path.startsWith(href) || (href === '/laudos' && path.startsWith('/laudo/')) || (href === '/referencias' && path.startsWith('/calculos'));
       return `<a href="#${href}" ${active ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${ico}</span><span>${label}</span></a>`;
-    }).join('') + `<div class="spacer"></div><a href="#/perfis" class="profile-link" title="Trocar perfil"><span class="ico" aria-hidden="true">👤</span><span>${esc(profile ? profile.name : 'Perfil')}</span></a><div class="app-version" title="Versão do sistema">v${esc(APP_VERSION)}</div>`;
+    }).join('') + `<div class="spacer"></div><a href="#/config" class="storage-link" title="Os dados ficam salvos só neste computador ou celular"><span class="ico" aria-hidden="true">💾</span><span>Salvo neste aparelho</span></a><a href="#/perfis" class="profile-link" title="Trocar perfil"><span class="ico" aria-hidden="true">👤</span><span>${esc(profile ? profile.name : 'Perfil')}</span></a><div class="app-version" title="Versão do sistema">v${esc(APP_VERSION)}</div>`;
 }
 
 /** Executa uma tela capturando erros para nunca deixar a página em branco. */

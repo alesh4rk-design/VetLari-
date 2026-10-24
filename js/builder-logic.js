@@ -121,3 +121,29 @@ export function validateBuilder(def) {
   }
   return errors;
 }
+
+/**
+ * Texto editado à mão: aplica nele a mudança que as escolhas fizeram no texto automático
+ * (antigo → novo), sem apagar o que ela escreveu. Localiza o trecho alterado pelo contexto ao redor;
+ * se não houver como localizar com segurança (ou houver mais de um lugar possível), devolve null.
+ */
+export function patchManualText(manual, oldAuto, newAuto) {
+  if (oldAuto === newAuto) return manual;
+  if (!oldAuto) return null;
+  let p = 0;
+  while (p < oldAuto.length && p < newAuto.length && oldAuto[p] === newAuto[p]) p++;
+  let s = 0;
+  while (s < oldAuto.length - p && s < newAuto.length - p && oldAuto[oldAuto.length - 1 - s] === newAuto[newAuto.length - 1 - s]) s++;
+  const oldMid = oldAuto.slice(p, oldAuto.length - s), newMid = newAuto.slice(p, newAuto.length - s);
+  // Contexto: até 30 caracteres de cada lado, encolhendo até achar um único lugar no texto dela.
+  for (let ctx = 30; ctx >= 4; ctx -= 2) {
+    const left = oldAuto.slice(Math.max(0, p - ctx), p), right = oldAuto.slice(oldAuto.length - s, oldAuto.length - s + ctx);
+    if (!left && !right) break;
+    const needle = left + oldMid + right;
+    const at = manual.indexOf(needle);
+    if (at < 0) continue;
+    if (manual.indexOf(needle, at + 1) >= 0) return null;
+    return manual.slice(0, at) + left + newMid + right + manual.slice(at + needle.length);
+  }
+  return null;
+}

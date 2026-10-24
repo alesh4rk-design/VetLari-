@@ -3,6 +3,7 @@ import { listExams, renderExamBrowser } from './exams.js';
 import { navigate } from './router.js';
 import { esc, fmtDateBR } from './utils.js';
 import { getSetting } from './local-storage.js';
+import { loadSettings } from './templates.js';
 
 export async function renderDashboard(view, profile) {
   const all = await listExams();
@@ -12,9 +13,13 @@ export async function renderDashboard(view, profile) {
   // Os dados só existem neste aparelho: lembra de fazer backup (nunca feito, ou há mais de 7 dias com laudos novos).
   const lastBackup = await getSetting('last-backup', 0);
   const needBackup = all.length > 0 && (!lastBackup || (Date.now() - lastBackup > 7 * 86400000 && all.some((e) => e.updatedAt > lastBackup)));
+  const settings = await loadSettings();
+  const storageNote = `<div class="alert info storage-note">💾 <strong>Seus dados ficam neste aparelho.</strong> O VetLaudo usa o armazenamento do próprio computador ou celular: laudos e imagens não vão para a internet e não aparecem em outro aparelho. <a href="#/config">Fazer backup</a></div>`;
+  const logoNote = settings.logo || settings.logo2 ? '' : `<div class="alert warn">🖼 <strong>Coloque o seu logotipo no laudo.</strong> <a href="#/config">Configurações → Logotipos do laudo</a></div>`;
   const backupAlert = needBackup ? `<div class="alert warn" role="status"><strong>Faça um backup.</strong> Os laudos ficam só neste aparelho: se o navegador for limpo ou o celular trocado, eles se perdem.
     ${lastBackup ? `Último backup: ${fmtDateBR(new Date(lastBackup).toISOString().slice(0, 10))}.` : 'Nenhum backup feito ainda.'} <a href="#/config">Ir para Configurações → Exportar backup</a></div>` : '';
-  view.innerHTML = `<div class="page-head"><div><h1>Início</h1><p class="muted">Painel de laudos veterinários</p></div></div>
+  view.innerHTML = `<div class="page-head"><div class="row" style="align-items:center">${settings.logo ? `<img src="${esc(settings.logo)}" alt="Logotipo" class="home-logo">` : ''}<div><h1>Início</h1><p class="muted">Painel de laudos veterinários</p></div></div></div>
+    ${storageNote}${logoNote}
     <div class="grid g3" style="margin-bottom:16px">
       <a class="btn big primary" href="#/novo"><span>Novo laudo</span></a><a class="btn big" href="#/paciente/novo"><span>Novo paciente</span></a>
       <a class="btn big" href="#/frases"><span>Biblioteca de frases</span></a><a class="btn big" href="#/modelos"><span>Meus modelos</span></a>

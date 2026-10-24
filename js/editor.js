@@ -14,7 +14,7 @@ import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor, saveToLibraryDialog } from './phrase-library.js';
 import { openDictation } from './voice.js';
 import { fillPhrase } from './phrase-logic.js';
-import { composeDescription, toggleOption, pendingFields, expandBlocks, normalSelection } from './builder-logic.js';
+import { composeDescription, toggleOption, pendingFields, expandBlocks, normalSelection, patchManualText } from './builder-logic.js';
 import { listReferences, referenceCard } from './references.js';
 import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
@@ -155,12 +155,21 @@ export async function renderEditor(view, id, settings, profile) {
   };
 
   // ----- Montador de descrição: marcar opções gera o texto no estilo da veterinária -----
-  const isManual = (s) => !!(s.build && s.description.trim() && s.description !== s.build.auto);
-  /** Regenera a descrição a partir das escolhas. Não sobrescreve texto editado à mão (a menos que force). */
+  // Aviso só quando uma escolha NÃO pôde ser aplicada no texto que ela editou.
+  const isManual = (s) => !!(s.build && s.build.patchFailed && s.description.trim() && s.description !== s.build.auto);
+  /**
+   * Regenera a descrição a partir das escolhas. Texto editado à mão é preservado: a mudança (medida ou opção)
+   * é aplicada dentro dele; só quando não há como localizar o trecho, aparece o aviso.
+   */
   function syncBuild(s, force = false) {
     if (!s.build) return false;
     const text = composeDescription(s.build.def, s.build.sel, s.measuresList, s.build.extras);
-    if (force || !s.description.trim() || s.description === s.build.auto) { s.description = text; s.build.auto = text; }
+    if (force || !s.description.trim() || s.description === s.build.auto) { s.description = text; s.build.patchFailed = false; }
+    else if (text !== s.build.auto) {
+      const patched = patchManualText(s.description, s.build.auto, text);
+      if (patched !== null) { s.description = patched; s.build.patchFailed = false; } else s.build.patchFailed = true;
+    }
+    s.build.auto = text;
     const ta = view.querySelector('#d-' + s.id);
     if (ta && s.id === (current() || {}).id) ta.value = s.description;
     const note = view.querySelector('#bnotice'); if (note) note.hidden = !isManual(s);
@@ -178,7 +187,7 @@ export async function renderEditor(view, id, settings, profile) {
           <div class="chips">${g.options.map((op, i) => `<button type="button" class="chip" data-act="b-opt" data-g="${g.key}" data-o="${i}" aria-pressed="${on.includes(i)}" ${locked ? 'disabled' : ''} title="${esc(op.text)}">${esc(op.label || op.text)}</button>`).join('')}</div></div>`;
       }).join('')}</div>`).join('')}
       ${need.length ? `<div class="bextras"><div class="small muted">Complete os campos da frase:</div>${need.map((n) => `<div class="field"><label for="bx-${esc(n.key)}">${esc(n.key)}</label><input id="bx-${esc(n.key)}" data-bx="${esc(n.key)}" value="${esc(s.build.extras[n.key] || '')}" ${locked ? 'disabled' : ''}></div>`).join('')}</div>` : ''}
-      <div id="bnotice" class="alert warn" ${isManual(s) ? '' : 'hidden'}>Você editou o texto manualmente: novas escolhas não o alteram. ${locked ? '' : '<button type="button" class="btn sm" data-act="b-regen">Gerar de novo (substitui o texto)</button>'}</div>
+      <div id="bnotice" class="alert warn" ${isManual(s) ? '' : 'hidden'}>Você editou o texto e a última escolha não pôde ser aplicada nele (o trecho foi reescrito). ${locked ? '' : '<button type="button" class="btn sm" data-act="b-regen">Gerar de novo (substitui o texto)</button>'}</div>
       ${locked ? '' : `<div class="row">${Object.keys(normalSelection(s.build.def)).length ? '<button type="button" class="btn sm" data-act="b-normal">Texto padrão (sem alterações)</button>' : ''}<button type="button" class="btn sm ghost" data-act="b-clear">Limpar escolhas</button></div>`}</div>`;
   };
 

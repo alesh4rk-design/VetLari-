@@ -157,3 +157,5 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
   .findings.withimgs .sideimg { width: 140px; }
 }
 @media (max-width: 820px) { .findings.withimgs { grid-template-columns: minmax(0, 1fr); } }
+.home-logo { max-height: 56px; max-width: 160px; background: #fff; padding: 4px; border-radius: 8px; }
+.storage-link { font-size: .85rem; opacity: .85; }
