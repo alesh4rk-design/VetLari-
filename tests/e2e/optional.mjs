@@ -104,6 +104,22 @@ await page.click('.organ:has-text("Fígado")'); await page.click('[data-act="b-n
 check('texto padrão do fígado', (await page.inputValue('[data-sec] textarea[id^="d-"]')).startsWith('em topografia habitual, com dimensões preservadas, bordas afiladas'));
 await page.click('[data-step="4"]'); await page.waitForSelector('[data-act="copy-text"]');
 check('botão copiar texto do laudo', (await page.locator('[data-act="copy-text"]').count()) === 1);
+// Enviar PDF pelo WhatsApp: sem compartilhamento de arquivos baixa e orienta; com ele, anexa o PDF
+await page.evaluate(() => { Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }); });
+const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="share-pdf"]')]);
+check('WhatsApp (computador): PDF baixado', dl.suggestedFilename().endsWith('.pdf'));
+await page.waitForSelector('.modal a[href^="https://wa.me/"]');
+check('WhatsApp (computador): botão Abrir WhatsApp', true);
+await page.click('.modal [data-x=close]');
+await page.evaluate(() => {
+  window.__shared = null;
+  Object.defineProperty(navigator, 'canShare', { value: (d) => !!(d && d.files), configurable: true });
+  Object.defineProperty(navigator, 'share', { value: async (d) => { window.__shared = { n: d.files.length, type: d.files[0].type, name: d.files[0].name }; }, configurable: true });
+});
+await page.click('[data-act="share-pdf"]');
+await page.waitForFunction(() => window.__shared);
+const shared = await page.evaluate(() => window.__shared);
+check('WhatsApp (celular): PDF anexado ao compartilhar', shared.n === 1 && shared.type === 'application/pdf' && shared.name.endsWith('.pdf'));
 await page.goto(base + '#/'); await page.waitForSelector('#recent');
 check('lembrete de backup no início', (await page.locator('.alert:has-text("Faça um backup")').count()) === 1);
 check('aviso claro de armazenamento no aparelho', (await page.locator('.storage-note:has-text("armazenamento do próprio computador")').count()) === 1);

@@ -263,7 +263,7 @@ export async function renderEditor(view, id, settings, profile) {
       return `<div class="card no-print"><h2>Revisão e exportação</h2>
         ${alertList('Alertas críticos (exigem correção ou justificativa para finalizar):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
         <p class="muted small">Word e PDF contêm exatamente o mesmo conteúdo da prévia abaixo. O sistema não preenche, não conclui nem assina nada em seu nome.${exam.status !== 'final' ? ' Arquivos de laudos não finalizados saem marcados como rascunho/preliminar.' : ''}</p>
-        <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
+        <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn whatsapp" data-act="share-pdf">Enviar PDF pelo WhatsApp</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
         <div class="row" style="margin-top:10px">${locked
           ? (canRevise ? '<button class="btn" data-act="revise" data-kind="correction">Retificar (nova versão)</button><button class="btn" data-act="revise" data-kind="addendum">Adicionar adendo (nova versão)</button>'
             : '<span class="muted small">Retificações e adendos exigem perfil de médico(a)-veterinário(a).</span>')
@@ -333,6 +333,33 @@ export async function renderEditor(view, id, settings, profile) {
       await saveExam(exam);
       toast(`Arquivo ${name} gerado.`, 'success');
     } catch (e) { toast(`Falha ao gerar o ${kind === 'docx' ? 'Word' : 'PDF'}: ${e.message}`, 'error'); }
+  };
+
+  /**
+   * Envia o PDF pelo WhatsApp. No celular (e em navegadores que permitem compartilhar arquivos) abre a
+   * janela de compartilhar já com o PDF anexado: é só escolher o WhatsApp e o contato. Onde não dá para
+   * anexar automaticamente, baixa o PDF e abre o WhatsApp para ela anexar o arquivo baixado.
+   */
+  const sharePdf = async () => {
+    let file, name;
+    try { name = reportFileName(exam, 'pdf'); file = new File([pdfBlob(buildReport(exam, settings))], name, { type: 'application/pdf' }); }
+    catch (e) { return toast(`Falha ao gerar o PDF: ${e.message}`, 'error'); }
+    const text = `Laudo de ${exam.patient.name || 'paciente'}${exam.date ? ' — ' + fmtDateBR(exam.date) : ''}`;
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: name, text });
+        logAction(exam, 'PDF compartilhado (WhatsApp/outro aplicativo)', actor, name); await saveExam(exam);
+      } catch (e) { if (e.name !== 'AbortError') toast('Não foi possível compartilhar. O PDF será baixado.', 'error'), download(file, name); }
+      return;
+    }
+    download(file, name);
+    logAction(exam, 'PDF baixado para enviar pelo WhatsApp', actor, name); await saveExam(exam);
+    const mo = openModal(`<h2>Enviar pelo WhatsApp</h2>
+      <p>O PDF <strong>${esc(name)}</strong> foi baixado (pasta Downloads).</p>
+      <ol class="helplist"><li>Clique em <strong>Abrir WhatsApp</strong> e escolha o contato.</li><li>Clique no clipe 📎 (ou arraste o arquivo para a conversa) e anexe o PDF baixado.</li></ol>
+      <p class="muted small">Este navegador não permite anexar o arquivo sozinho. No celular, o botão abre o WhatsApp já com o PDF anexado.</p>
+      <div class="row end"><button class="btn" data-x="close">Fechar</button><a class="btn primary" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">Abrir WhatsApp</a></div>`, { label: 'Enviar pelo WhatsApp' });
+    mo.el.querySelector('[data-x=close]').onclick = () => mo.close(null);
   };
 
   /** Janela de finalização: checklist de conferência + justificativa quando houver pendências. */
@@ -436,6 +463,7 @@ export async function renderEditor(view, id, settings, profile) {
     if (act === 'next') { step = Math.min(STEPS.length - 1, step + 1); draw({ top: true }); }
     else if (act === 'prev') { step = Math.max(0, step - 1); draw({ top: true }); }
     else if (act === 'org-pick') { selSec = b.dataset.id; refreshFindings(); if (window.innerWidth <= 820) view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' }); }
+    else if (act === 'share-pdf') await sharePdf();
     else if (act === 'copy-text') {
       const text = reportToText(buildReport(exam, settings));
       try { await navigator.clipboard.writeText(text); toast('Texto do laudo copiado. Cole no WhatsApp, e-mail ou outro sistema.', 'success'); }
