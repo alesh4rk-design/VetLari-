@@ -21,12 +21,19 @@ export async function buildDocx(report, lib) {
   const richRuns = (text, o = {}) => parseRich(text).map((r) => run(r.text, { ...o, bold: r.bold || o.bold, italics: r.italic || o.italics }));
   const shade = (fill) => ({ type: ShadingType.CLEAR, fill, color: 'auto' });
 
-  async function logoRun(url, heightMm) {
+  async function logoRun(url, heightMm, maxWmm = 70) {
     const dim = await imageSize(url);
-    const h = Math.round(heightMm * PX_PER_MM), w = Math.min(Math.round(60 * PX_PER_MM), Math.round(h * dim.w / dim.h));
+    let h = Math.round(heightMm * PX_PER_MM), w = Math.round(h * dim.w / dim.h);
+    const maxW = Math.round(maxWmm * PX_PER_MM);
+    if (w > maxW) { w = maxW; h = Math.round(w * dim.h / dim.w); }
     return new ImageRun({ data: dataUrlToBytes(url), transformation: { width: w, height: h } });
   }
   async function logosTable(heightMm) {
+    // Um logotipo só: centralizado e maior. Dois: um de cada lado.
+    const only = [report.logo, report.logo2].filter(Boolean);
+    if (only.length === 1) {
+      try { return new Paragraph({ alignment: AlignmentType.CENTER, children: [await logoRun(only[0], heightMm * 1.4, 95)] }); } catch { return new Paragraph(''); }
+    }
     const cell = async (url, right) => {
       let kids = [new Paragraph('')];
       if (url) { try { kids = [new Paragraph({ alignment: right ? AlignmentType.RIGHT : AlignmentType.LEFT, children: [await logoRun(url, heightMm)] })]; } catch { /* logotipo inválido */ } }
@@ -37,7 +44,7 @@ export async function buildDocx(report, lib) {
 
   // Cabeçalho: logotipos só na primeira página; nas seguintes, uma linha de identificação.
   const hasLogos = !!(report.logo || report.logo2);
-  const firstHeader = new Header({ children: hasLogos ? [await logosTable(16)] : report.headerLines.length ? report.headerLines.map((l) => new Paragraph({ children: [run(l, { size: 18, color: '444444' })] })) : [new Paragraph('')] });
+  const firstHeader = new Header({ children: hasLogos ? [await logosTable(18)] : report.headerLines.length ? report.headerLines.map((l) => new Paragraph({ children: [run(l, { size: 18, color: '444444' })] })) : [new Paragraph('')] });
   const nextHeader = new Header({ children: [new Paragraph({ children: [run([report.idShort, report.dateText, report.title].filter(Boolean).join(' — '), { size: 15, color: '777777' })] })] });
 
   const footer = new Footer({
@@ -114,16 +121,25 @@ export async function buildDocx(report, lib) {
 
   if (report.signature) {
     const sg = report.signature, final = !!sg.stamp;
-    if (hasLogos) body.push(new Paragraph({ spacing: { before: 200 }, children: [] }), await logosTable(11));
+    if (hasLogos) body.push(new Paragraph({ spacing: { before: 240 }, keepNext: true, children: [] }), await logosTable(14));
     const lines = final
       ? [[run('Assinado eletronicamente por: ', { bold: true }), run(sg.name || '(nome não informado)')], sg.crmv && [run(sg.crmv, { bold: true })], [run(`Código identificador: ${sg.code}`)], [run(sg.stamp, { size: size - 4, color: '555555' })]]
       : [[run('Documento não finalizado: sem assinatura eletrônica.', { bold: true })], sg.name && [run(`Responsável: ${sg.name}${sg.crmv ? ' — ' + sg.crmv : ''}`)], [run(`Código identificador: ${sg.code}`)]];
     body.push(new Paragraph({ spacing: { before: 200 }, children: [] }));
     if (sg.image) { try { body.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, children: [await logoRun(sg.image, 18)] })); } catch { /* imagem inválida */ } }
-    body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: noBorders, rows: [new TableRow({ cantSplit: true, children: [new TableCell({
-      borders: noBorders, shading: shade(BOX), margins: { top: 100, bottom: 100, left: 160, right: 160 },
-      children: lines.filter(Boolean).map((children) => new Paragraph({ keepNext: true, spacing: { after: 20 }, children })),
-    })] })] }));
+    if (final) {
+      // Assinatura no estilo clássico: linha, nome e CRMV centralizados; dados de verificação menores.
+      const c = (children, extra = {}) => new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { after: 20 }, children, ...extra });
+      body.push(c([run(sg.name || '(nome não informado)', { bold: true, size: size + 1 })], { border: { top: { style: BorderStyle.SINGLE, size: 6, color: '777777', space: 4 } }, indent: { left: 2600, right: 2600 } }));
+      if (sg.crmv) body.push(c([run(sg.crmv)]));
+      body.push(c([run(`Assinado eletronicamente · Código identificador: ${sg.code}`, { size: size - 5, color: '555555' })], { spacing: { before: 60, after: 20 } }));
+      body.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [run(sg.stamp, { size: size - 5, color: '666666' })] }));
+    } else {
+      body.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: noBorders, rows: [new TableRow({ cantSplit: true, children: [new TableCell({
+        borders: noBorders, shading: shade(BOX), margins: { top: 100, bottom: 100, left: 160, right: 160 },
+        children: lines.filter(Boolean).map((children) => new Paragraph({ keepNext: true, spacing: { after: 20 }, children })),
+      })] })] }));
+    }
   }
 
   // O Word grava a data/hora de criação nos dados internos do arquivo: guarda só o dia, sem o horário.

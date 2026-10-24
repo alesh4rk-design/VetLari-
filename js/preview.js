@@ -11,7 +11,7 @@ const rich = (text) => parseRich(text).map((r) => {
 
 export function reportToHtml(r) {
   const logos = (r.logo || r.logo2)
-    ? `<div class="plogos">${r.logo ? `<img src="${esc(r.logo)}" alt="Logotipo">` : '<span></span>'}${r.logo2 ? `<img src="${esc(r.logo2)}" alt="Segundo logotipo">` : ''}</div>`
+    ? `<div class="plogos ${r.logo && r.logo2 ? '' : 'single'}">${r.logo ? `<img src="${esc(r.logo)}" alt="Logotipo">` : '<span></span>'}${r.logo2 ? `<img src="${esc(r.logo2)}" alt="Segundo logotipo">` : ''}</div>`
     : (r.headerLines.length ? `<div class="phead"><div>${r.headerLines.map((l) => `<div>${esc(l)}</div>`).join('')}</div></div>` : '');
   const ident = r.patientRows.length
     ? `<div class="pbanner">Identificação</div><div class="pid">${r.patientRows.map(([k, v]) => `<div><strong>${esc(k)}:</strong> ${esc(v)}</div>`).join('')}</div>` : '';
@@ -28,8 +28,9 @@ export function reportToHtml(r) {
   let sig = '';
   if (r.signature) {
     const s = r.signature;
-    sig = (s.image ? `<div class="psig-img"><img src="${esc(s.image)}" alt="Assinatura"></div>` : '') + (s.stamp
-      ? `<div class="psig"><div><strong>Assinado eletronicamente por:</strong> ${esc(s.name || '(nome não informado)')}</div>${s.crmv ? `<div><strong>${esc(s.crmv)}</strong></div>` : ''}<div>Código identificador: ${esc(s.code)}</div><div class="small">${esc(s.stamp)}</div></div>`
+    const bottomLogo = (r.logo || r.logo2) ? `<div class="psig-logo"><img src="${esc(r.logo || r.logo2)}" alt="Logotipo"></div>` : '';
+    sig = bottomLogo + (s.image ? `<div class="psig-img"><img src="${esc(s.image)}" alt="Assinatura"></div>` : '') + (s.stamp
+      ? `<div class="psig-final"><div class="psig-name">${esc(s.name || '(nome não informado)')}</div>${s.crmv ? `<div>${esc(s.crmv)}</div>` : ''}<div class="psig-meta">Assinado eletronicamente · Código identificador: ${esc(s.code)}</div><div class="psig-meta">${esc(s.stamp)}</div></div>`
       : `<div class="psig"><div><strong>Documento não finalizado: sem assinatura eletrônica.</strong></div>${s.name ? `<div>Responsável: ${esc(s.name)}${s.crmv ? ' — ' + esc(s.crmv) : ''}</div>` : ''}<div>Código identificador: ${esc(s.code)}</div></div>`);
   }
   const foot = r.footerText ? `<div class="pfoot">${esc(r.footerText)}</div>` : '';

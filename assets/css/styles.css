@@ -161,3 +161,10 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .storage-link { font-size: .85rem; opacity: .85; }
 .btn.whatsapp { background: #25d366; border-color: #25d366; color: #06301a; font-weight: 700; }
 .psig-img { text-align: center; margin-top: 14px; } .psig-img img { max-height: 70px; max-width: 260px; }
+
+.paper .plogos.single { justify-content: center; padding-bottom: 10px; border-bottom: 1px solid #ccc; }
+.paper .plogos.single img { max-height: 80px; max-width: 340px; }
+.paper .psig-logo { text-align: center; margin-top: 22px; } .paper .psig-logo img { max-height: 60px; max-width: 280px; }
+.paper .psig-final { text-align: center; margin: 4px auto 0; max-width: 420px; }
+.paper .psig-final .psig-name { border-top: 1px solid #777; padding-top: 6px; font-weight: 700; font-size: 1.05em; }
+.paper .psig-meta { font-size: .78em; color: #666; margin-top: 2px; }
