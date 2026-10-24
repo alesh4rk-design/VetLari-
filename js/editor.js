@@ -488,7 +488,14 @@ export async function renderEditor(view, id, settings, profile) {
       const s = current();
       if (await confirmDialog('Gerar o texto de novo a partir das escolhas? O texto que você editou à mão será substituído.', { ok: 'Substituir' })) { syncBuild(s, true); touch(); refreshFindings(); }
     } else if (act === 'set-status') {
-      const s = current(); s.status = s.status === b.dataset.val ? '' : b.dataset.val; touch(); refreshFindings();
+      const s = current(); s.status = s.status === b.dataset.val ? '' : b.dataset.val;
+      // "Normal" já escreve o texto de normalidade do órgão (o mesmo do botão Texto padrão).
+      // Texto vazio: preenche direto; se já houver texto, pergunta antes de trocar.
+      if (s.status === 'normal' && s.build && Object.keys(normalSelection(s.build.def)).length
+        && (!s.description.trim() || await confirmDialog('Trocar o texto atual pelo texto de normalidade deste órgão?', { ok: 'Usar texto de normalidade' }))) {
+        s.build.sel = normalSelection(s.build.def); s.build.extras = {}; syncBuild(s, true);
+      }
+      touch(); refreshFindings();
     }
     else if (act === 'sec-del') {
       const s = exam.sections.find((x) => x.id === secId);

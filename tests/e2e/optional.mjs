@@ -144,6 +144,11 @@ if (await page.isVisible('#just')) await page.fill('#just', 'Teste.');
 await page.click('.modal [data-x="ok"]'); await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('finalizado: assinatura aparece no laudo', (await page.locator('.paper .psig-img img').count()) === 1 && (await page.textContent('.paper')).includes('Assinado eletronicamente por'));
+// Status Normal já escreve o texto de normalidade
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Normal direto'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Baço")');
+await page.click('[data-act="set-status"][data-val="normal"]');
+check('clicar em Normal preenche o texto de normalidade', (await page.inputValue('[data-sec] textarea[id^="d-"]')).startsWith('em topografia habitual, com dimensões preservadas, bordos afilados'));
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
