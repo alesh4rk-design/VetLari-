@@ -45,7 +45,7 @@ const TUTORIALS = {
     'Use <strong>Guardar</strong> para salvar uma frase e reutilizá-la depois.',
     'A conclusão é sempre uma decisão médica sua: o sistema não conclui nada sozinho.'] },
   'laudo-4': { title: 'Etapa 5 · Prévia e exportar', intro: 'Revise e gere o documento final.', steps: [
-    'Leia os <strong>alertas</strong>: os críticos pedem correção ou justificativa para finalizar; os informativos são avisos.',
+    'Leia os <strong>alertas</strong>: ao finalizar, o sistema mostra só o que falta (medidas, dados do cabeçalho, campos pendentes) e você corrige ou finaliza assim mesmo.',
     'Confira a <strong>prévia</strong> abaixo: o Word e o PDF saem exatamente iguais a ela.',
     'Escolha <strong>Baixar Word</strong> ou <strong>Baixar PDF</strong>.',
     'Use <strong>Enviar PDF pelo WhatsApp</strong>: no celular abre o WhatsApp já com o PDF anexado; no computador o PDF é baixado e o WhatsApp abre para você anexar.',

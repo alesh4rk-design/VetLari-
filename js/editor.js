@@ -290,7 +290,7 @@ export async function renderEditor(view, id, settings, profile) {
         <span class="muted small">${esc(h.actor ? h.actor.name : '—')} · ${fmtDateTimeBR(h.ts)} · v${h.version}</span></li>`).join('');
       return `<div class="card no-print"><h2>Revisão e exportação</h2>
         ${exam.status !== 'final' ? `<div class="alert info">✍️ <strong>A assinatura só entra depois de finalizar.</strong> Enquanto o laudo for rascunho ou preliminar, o PDF sai com "sem assinatura eletrônica". Quando terminar, clique em <strong>Finalizar e assinar laudo</strong> (abaixo) e depois baixe ou envie o PDF.${settings.signatureImage ? '' : ' <a href="#/config">Cadastre sua assinatura em Configurações.</a>'}</div>` : ''}
-        ${alertList('Alertas críticos (exigem correção ou justificativa para finalizar):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
+        ${alertList('Para conferir (medida, cabeçalho ou texto pendente):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
         <p class="muted small">Word e PDF contêm exatamente o mesmo conteúdo da prévia abaixo. O sistema não preenche, não conclui nem assina nada em seu nome.${exam.status !== 'final' ? ' Arquivos de laudos não finalizados saem marcados como rascunho/preliminar.' : ''}</p>
         <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn whatsapp" data-act="share-pdf">Enviar PDF pelo WhatsApp</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
         <div class="row" style="margin-top:10px">${locked
