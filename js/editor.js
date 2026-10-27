@@ -20,7 +20,7 @@ import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
 import { imagesStepHtml, bindImages, moveItem, importFile } from './image-manager.js';
 import { openImageViewer } from './image-viewer.js';
-import { buildReport, reportToText } from './report-model.js';
+import { buildReport, reportToText, resolveLogos } from './report-model.js';
 import { reportToHtml } from './preview.js';
 import { buildDocx } from './docx-export.js';
 import { pdfBlob } from './pdf-export.js';
@@ -212,6 +212,34 @@ export async function renderEditor(view, id, settings, profile) {
       ${locked ? '' : '<button type="button" class="btn danger sm" data-act="sec-del">Excluir esta estrutura</button>'}</div></section>`;
   };
 
+  /** Logotipos deste laudo: padrão (Configurações), nenhum ou um da biblioteca de logotipos das clínicas. */
+  const logoPicker = () => {
+    const lib = settings.logoLibrary || [], ch = exam.logos || {};
+    const opts = (slot) => [['default', `Padrão das Configurações${settings[slot] ? '' : ' (vazio)'}`], ['none', 'Nenhum'], ...lib.map((l) => [l.id, l.name || 'Logotipo sem nome'])]
+      .map(([v, t]) => `<option value="${esc(v)}" ${(ch[slot] ?? 'default') === v ? 'selected' : ''}>${esc(t)}</option>`).join('');
+    const cur = resolveLogos(exam, settings);
+    const thumb = (src) => src ? `<img src="${esc(src)}" alt="" class="lg-thumb">` : '<span class="muted small">sem logotipo</span>';
+    return `<div class="field lg-pick" style="grid-column:1/-1"><label>Logotipos deste laudo</label>
+      <div class="grid g2"><div><label for="lg-logo" class="small muted">Logotipo 1 (esquerda, ou centro se for o único)</label><select id="lg-logo" data-lg="logo" ${locked ? 'disabled' : ''}>${opts('logo')}</select><div id="lgt-logo">${thumb(cur.logo)}</div></div>
+      <div><label for="lg-logo2" class="small muted">Logotipo 2 (direita)</label><select id="lg-logo2" data-lg="logo2" ${locked ? 'disabled' : ''}>${opts('logo2')}</select><div id="lgt-logo2">${thumb(cur.logo2)}</div></div></div>
+      <div class="hint">${lib.length ? 'Ao digitar a clínica solicitante, o logotipo dela é escolhido sozinho (se estiver cadastrado com o mesmo nome).' : 'Cadastre os logotipos das clínicas em'} <a href="#/config">Configurações → Logotipos</a>.</div></div>`;
+  };
+  const refreshLogoThumbs = () => {
+    const cur = resolveLogos(exam, settings);
+    for (const slot of ['logo', 'logo2']) { const el = view.querySelector('#lgt-' + slot); if (el) el.innerHTML = cur[slot] ? `<img src="${esc(cur[slot])}" alt="" class="lg-thumb">` : '<span class="muted small">sem logotipo</span>'; }
+  };
+  /** Clínica digitada com o mesmo nome de um logotipo da biblioteca: usa esse logotipo na posição 2 (se ela não escolheu à mão). */
+  const autoClinicLogo = () => {
+    if ((exam.logos || {}).manual) return;
+    const n = (x) => String(x || '').trim().toLowerCase();
+    const hit = (settings.logoLibrary || []).find((l) => n(l.name) && n(exam.clinic) && (n(exam.clinic).includes(n(l.name)) || n(l.name).includes(n(exam.clinic))));
+    const want = hit ? hit.id : 'default';
+    if ((exam.logos || {}).logo2 === want || (!exam.logos && want === 'default')) return;
+    exam.logos = { ...(exam.logos || {}), logo2: want };
+    const sel = view.querySelector('#lg-logo2'); if (sel) sel.value = want;
+    refreshLogoThumbs();
+  };
+
   /** Idade: calculada sozinha a partir da data de nascimento (na data do exame); manual só sem data de nascimento. */
   const autoAge = () => ageFromBirth(exam.patient.birthDate, exam.date);
   const ageField = () => {
@@ -237,7 +265,7 @@ export async function renderEditor(view, id, settings, profile) {
       <datalist id="species-list">${optionsHtml(SPECIES)}</datalist><datalist id="breeds-list">${optionsHtml(breedsFor(exam.patient.species))}</datalist>
       <div class="field"><label for="f-sex">Sexo</label><select id="f-sex" data-bind="patient.sex" ${locked ? 'disabled' : ''}>${SEXES.map((s) => `<option value="${s}" ${exam.patient.sex === s ? 'selected' : ''}>${s || 'Selecione'}</option>`).join('')}</select></div>
       ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${ageField()}${field('Peso', 'patient.weight', { extra: 'inputmode="decimal"' })}<div class="field"><label for="f-wunit">Unidade do peso</label><select id="f-wunit" data-bind="patient.weightUnit" ${locked ? 'disabled' : ''}>${['kg', 'g'].map((u) => `<option value="${u}" ${(exam.patient.weightUnit || 'kg') === u ? 'selected' : ''}>${u === 'kg' ? 'quilos (kg)' : 'gramas (g)'}</option>`).join('')}</select></div>
-      ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}
+      ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}${logoPicker()}
       ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame (opcional)', 'date', { type: 'date' })}${field('Hora do exame (opcional)', 'time', { type: 'time' })}</div>
       ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
       <div class="card"><h2>Exame</h2><p class="muted small">Preencha o que for conhecido. Itens deixados em branco aparecem como pendência informativa, nunca como "normal".</p>
@@ -565,6 +593,7 @@ export async function renderEditor(view, id, settings, profile) {
     if (t.dataset.bind) {
       setPath(exam, t.dataset.bind, t.dataset.num ? Number(t.value) : t.value);
       if (t.dataset.bind === 'patient.birthDate' || t.dataset.bind === 'date') updateAge();
+      if (t.dataset.bind === 'clinic') autoClinicLogo();
       if (t.dataset.bind === 'patient.species') { const bl = view.querySelector('#breeds-list'); if (bl) bl.innerHTML = optionsHtml(breedsFor(t.value));
         if (!String(exam.patient.weight || '').trim()) { exam.patient.weightUnit = defaultWeightUnit(t.value); const wu = view.querySelector('#f-wunit'); if (wu) wu.value = exam.patient.weightUnit; } }
       touch();
@@ -580,6 +609,10 @@ export async function renderEditor(view, id, settings, profile) {
     } else if (t.id === 'savepat') savePatientFlag = t.checked;
   };
   view.onchange = async (e) => {
+    if (e.target.dataset && e.target.dataset.lg) {
+      exam.logos = { ...(exam.logos || {}), [e.target.dataset.lg]: e.target.value, manual: true };
+      refreshLogoThumbs(); touch(); return;
+    }
     if (e.target.id === 'side-file') {
       let ok = 0;
       for (const f of [...e.target.files]) { try { exam.images.push(await importFile(f, settings)); ok++; } catch (err) { toast(err.message, 'error'); } }

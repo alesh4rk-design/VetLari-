@@ -20,6 +20,7 @@ const TUTORIALS = {
     'Informe a <strong>data de nascimento</strong>: a idade é calculada sozinha. Sem ela, digite a idade.',
     'O <strong>peso</strong> pode ser em kg ou em gramas (a unidade muda para gramas em aves, roedores, coelhos, furões, répteis e silvestres, mas você pode trocar).',
     '<strong>Data e hora do exame</strong> são opcionais e começam vazias. Se ficarem em branco, não aparecem no laudo.',
+    'Em <strong>Logotipos deste laudo</strong>, escolha o seu padrão, o da clínica ou os dois juntos (cadastre os logotipos das clínicas em Configurações).',
     'Em "Exame", preencha indicação, pergunta clínica, histórico, medicamentos etc. Campos vazios são omitidos do laudo.',
     'Abaixo de cada campo de texto há <strong>Inserir</strong> (frase salva), <strong>Ditar</strong> (voz) e <strong>Guardar</strong> (salvar o que escreveu como frase para os próximos laudos).',
     'Deixe marcado "Salvar/atualizar no cadastro" para guardar o paciente ao finalizar.'] },
