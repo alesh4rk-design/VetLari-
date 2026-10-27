@@ -16,6 +16,23 @@ const valueInText = (text, value) => {
   return new RegExp(`(^|[^\\d,.])${v}(?![\\d]|[,.]\\d)`).test(text);
 };
 
+/**
+ * Logotipos do laudo: cada laudo pode escolher, para cada posição, o padrão das Configurações,
+ * nenhum, ou um logotipo da biblioteca (clínicas onde ela atende). Sem escolha, vale o padrão.
+ */
+export function resolveLogos(exam, settings) {
+  const lib = settings.logoLibrary || [];
+  const choice = exam.logos || {};
+  const pick = (slot) => {
+    const c = choice[slot] ?? 'default';
+    if (c === 'none') return '';
+    if (c === 'default') return settings[slot] || '';
+    const hit = lib.find((l) => l.id === c);
+    return hit ? hit.src : settings[slot] || '';
+  };
+  return { logo: pick('logo'), logo2: pick('logo2') };
+}
+
 export function buildReport(exam, settings = {}) {
   const prof = settings.professional || {};
   const p = exam.patient || {};
@@ -93,7 +110,7 @@ export function buildReport(exam, settings = {}) {
     title: tpl.docTitle || (isRx ? 'Laudo de Radiografia Veterinária' : 'Laudo de Ultrassonografia Veterinária'),
     version: exam.version || 1,
     status: exam.status,
-    headerLines, logo: settings.logo || '', logo2: settings.logo2 || '',
+    headerLines, ...resolveLogos(exam, settings),
     footerText: [settings.footerText, `Documento ${String(exam.id || '').slice(0, 8)} · versão ${exam.version || 1}`].filter(filled).join(' · '),
     statusNote: STATUS_NOTE[exam.status] || '',
     font: settings.font === 'serif' ? 'serif' : 'sans',

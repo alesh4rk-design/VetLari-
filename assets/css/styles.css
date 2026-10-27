@@ -168,3 +168,4 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .paper .psig-final { text-align: center; margin: 4px auto 0; max-width: 420px; }
 .paper .psig-final .psig-name { border-top: 1px solid #777; padding-top: 6px; font-weight: 700; font-size: 1.05em; }
 .paper .psig-meta { font-size: .78em; color: #666; margin-top: 2px; }
+.lg-thumb { max-height: 44px; max-width: 160px; background: #fff; padding: 3px; border-radius: 6px; margin-top: 6px; }

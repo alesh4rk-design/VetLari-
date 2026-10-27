@@ -149,6 +149,17 @@ await page.goto(base + '#/novo'); await page.click('button:has-text("Começar la
 await page.fill('#f-patient\\.name', 'Normal direto'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Baço")');
 await page.click('[data-act="set-status"][data-val="normal"]');
 check('clicar em Normal preenche o texto de normalidade', (await page.inputValue('[data-sec] textarea[id^="d-"]')).startsWith('em topografia habitual, com dimensões preservadas, bordos afilados'));
+// Biblioteca de logotipos das clínicas e escolha por laudo
+await page.goto(base + '#/config'); await page.fill('#lg-new-name', 'Hamadulu');
+await page.setInputFiles('#lg-new-file', [join(here, '../fixture-usg.jpg')]);
+await page.waitForSelector('[data-lgname]');
+check('logotipo de clínica cadastrado', (await page.inputValue('[data-lgname]')) === 'Hamadulu');
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Logos'); await page.fill('#f-clinic', 'Hamadulu');
+check('clínica digitada escolhe o logotipo dela', (await page.inputValue('#lg-logo2')) !== 'default' && (await page.locator('#lgt-logo2 img').count()) === 1);
+await page.selectOption('#lg-logo', 'none');
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+check('prévia usa só o logotipo da clínica (centralizado)', (await page.locator('.paper .plogos.single img').count()) === 1);
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();

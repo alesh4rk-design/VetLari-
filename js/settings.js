@@ -53,7 +53,14 @@ export function renderSettings(view, settings, onChange) {
   const inp = (id, label, v, extra = '') => `<div class="field"><label for="${id}">${label}</label><input id="${id}" value="${esc(v)}" ${extra}></div>`;
   view.innerHTML = `<div class="page-head"><h1>Configurações</h1></div>
   <div class="card" id="logos"><h2>Logotipos do laudo</h2><p class="muted small">Escolha a imagem (PNG ou JPG): ela é salva na hora e aparece no topo do PDF e do Word.</p>
-    <div class="grid g2">${logoField('logo', 'Logotipo 1 — serviço (aparece à esquerda no topo)')}${logoField('logo2', 'Logotipo 2 — clínica (aparece à direita no topo)')}</div></div>
+    <h3>Padrão (usado quando o laudo não escolhe outro)</h3>
+    <div class="grid g2">${logoField('logo', 'Logotipo 1 — seu serviço (ex.: Paiva Vet)')}${logoField('logo2', 'Logotipo 2 — opcional')}</div>
+    <h3>Logotipos das clínicas</h3>
+    <p class="muted small">Cadastre aqui os logotipos das clínicas onde você atende. Em cada laudo (etapa Paciente → "Logotipos deste laudo") você escolhe quais usar, inclusive dois juntos. Se o nome for igual ao da clínica solicitante, ele é escolhido sozinho.</p>
+    <ul class="list lg-lib">${(settings.logoLibrary || []).map((l) => `<li><span class="row" style="align-items:center"><img src="${esc(l.src)}" alt="" class="lg-thumb" style="margin:0"><input data-lgname="${esc(l.id)}" value="${esc(l.name)}" aria-label="Nome da clínica" style="max-width:260px"></span>
+      <button type="button" class="btn danger sm" data-lgrm="${esc(l.id)}">Excluir</button></li>`).join('') || '<li class="muted small">Nenhum logotipo de clínica cadastrado.</li>'}</ul>
+    <div class="row" style="align-items:flex-end"><div class="field" style="margin:0"><label for="lg-new-name">Nome da clínica</label><input id="lg-new-name" placeholder="Ex.: Hamadulu"></div>
+      <label class="btn" for="lg-new-file">Adicionar logotipo da clínica</label><input id="lg-new-file" type="file" accept="image/png,image/jpeg" hidden></div></div>
   <div class="card" id="assinatura"><h2>Assinatura</h2>
     <p class="muted small">A imagem da sua assinatura aparece acima do quadro "Assinado eletronicamente por" <strong>somente nos laudos finalizados</strong> (rascunhos e preliminares nunca saem assinados). Use fundo branco ou transparente. Isto não substitui a assinatura digital com certificado ICP-Brasil.</p>
     ${settings.signatureImage ? `<div style="margin:8px 0"><img src="${esc(settings.signatureImage)}" alt="Sua assinatura" style="max-height:70px;background:#fff;padding:6px;border-radius:6px"></div>` : '<p class="small"><strong>Nenhuma assinatura cadastrada.</strong></p>'}
@@ -114,6 +121,19 @@ export function renderSettings(view, settings, onChange) {
   });
   const rm = view.querySelector('#sig-rm'); if (rm) rm.onclick = () => saveSig('');
   view.querySelector('#sig-draw').onclick = async () => { const img = await drawSignature(); if (img) await saveSig(img); };
+  const saveLib = async (lib, msg) => { const next = { ...settings, logoLibrary: lib }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); if (msg) toast(msg, 'success'); };
+  view.querySelector('#lg-new-file').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const name = view.querySelector('#lg-new-name').value.trim() || f.name.replace(/\.[^.]+$/, '');
+    try { await saveLib([...(settings.logoLibrary || []), { id: 'lg-' + Date.now().toString(36), name, src: await readLogo(f) }], `Logotipo "${name}" adicionado.`); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+  view.querySelectorAll('[data-lgrm]').forEach((b) => { b.onclick = async () => {
+    if (await confirmDialog('Excluir este logotipo? Laudos que o usavam passam a usar o logotipo padrão.', { ok: 'Excluir', danger: true })) await saveLib((settings.logoLibrary || []).filter((l) => l.id !== b.dataset.lgrm), 'Logotipo excluído.');
+  }; });
+  view.querySelectorAll('[data-lgname]').forEach((inp) => { inp.onchange = async () => {
+    await saveLib((settings.logoLibrary || []).map((l) => (l.id === inp.dataset.lgname ? { ...l, name: inp.value.trim() } : l)), 'Nome atualizado.');
+  }; });
   view.querySelectorAll('[data-rmlogo]').forEach((btn) => { btn.onclick = async () => { const next = { ...settings, [btn.dataset.rmlogo]: '' }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); }; });
   view.querySelector('#bk').onclick = async () => {
     try { download(new Blob([JSON.stringify(await exportBackup())], { type: 'application/json' }), `VetLaudo_backup_${todayISO()}.json`); await setSetting('last-backup', Date.now()); toast('Backup gerado.', 'success'); }

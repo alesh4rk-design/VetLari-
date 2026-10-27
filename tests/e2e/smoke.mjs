@@ -110,7 +110,8 @@ check('PDF válido com imagens', pdf.slice(0, 5).toString() === '%PDF-' && pdf.l
 
 // Preliminar e finalização com checklist
 await page.click('[data-act="prelim"]');
-await page.waitForSelector('text=Preliminar');
+// Espera a prévia mudar (o texto "Preliminar" já existia no botão, o que deixava o teste instável).
+await page.waitForFunction(() => (document.querySelector('.paper') || {}).textContent?.includes('PRELIMINAR'), null, { timeout: 10000 }).catch(() => {});
 check('marcar como preliminar', (await page.textContent('.paper')).includes('PRELIMINAR'));
 await page.click('[data-act="final"]');
 check('finalizar exige confirmação do checklist', await page.isDisabled('.modal [data-x="ok"]'));

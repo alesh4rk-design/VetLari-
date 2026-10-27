@@ -106,3 +106,14 @@ test('arquivos não guardam o horário em que o laudo foi feito (dados internos)
   const cd = pdf.match(/\/CreationDate \(D:(\d{14})/)[1];
   assert.equal(cd.slice(8, 14), '000000', cd);
 });
+
+test('logotipos por laudo: padrão, nenhum ou da biblioteca de clínicas (inclusive dois)', async () => {
+  const { resolveLogos } = await import('../js/report-model.js');
+  const settings = { ...sampleSettings, logo: 'PAIVA', logo2: '', logoLibrary: [{ id: 'h', name: 'Hamadulu', src: 'HAMA' }, { id: 'c', name: 'Camev', src: 'CAMEV' }] };
+  assert.deepEqual(resolveLogos(sampleExam(), settings), { logo: 'PAIVA', logo2: '' });
+  assert.deepEqual(resolveLogos(sampleExam({ logos: { logo2: 'h' } }), settings), { logo: 'PAIVA', logo2: 'HAMA' });
+  assert.deepEqual(resolveLogos(sampleExam({ logos: { logo: 'c', logo2: 'h' } }), settings), { logo: 'CAMEV', logo2: 'HAMA' });
+  assert.deepEqual(resolveLogos(sampleExam({ logos: { logo: 'none', logo2: 'h' } }), settings), { logo: '', logo2: 'HAMA' });
+  assert.deepEqual(resolveLogos(sampleExam({ logos: { logo2: 'apagado' } }), settings), { logo: 'PAIVA', logo2: '' });
+  assert.equal(buildReport(sampleExam({ logos: { logo2: 'h' } }), settings).logo2, 'HAMA');
+});
