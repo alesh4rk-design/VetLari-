@@ -6,7 +6,7 @@ import { SPECIES, breedsFor, optionsHtml, defaultWeightUnit } from './animals.js
 import { ageFromBirth } from './utils.js';
 import { navigate, setLeaveGuard } from './router.js';
 import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
-import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, FINAL_CHECKLIST, sectionHasContent } from './quality.js';
+import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, sectionHasContent } from './quality.js';
 import { can } from './profiles.js';
 import { openModal, pickOption } from './ui.js';
 import { listPatients, getPatient, upsertPatient } from './patients.js';
@@ -290,7 +290,7 @@ export async function renderEditor(view, id, settings, profile) {
         <span class="muted small">${esc(h.actor ? h.actor.name : '—')} · ${fmtDateTimeBR(h.ts)} · v${h.version}</span></li>`).join('');
       return `<div class="card no-print"><h2>Revisão e exportação</h2>
         ${exam.status !== 'final' ? `<div class="alert info">✍️ <strong>A assinatura só entra depois de finalizar.</strong> Enquanto o laudo for rascunho ou preliminar, o PDF sai com "sem assinatura eletrônica". Quando terminar, clique em <strong>Finalizar e assinar laudo</strong> (abaixo) e depois baixe ou envie o PDF.${settings.signatureImage ? '' : ' <a href="#/config">Cadastre sua assinatura em Configurações.</a>'}</div>` : ''}
-        ${alertList('Alertas críticos (exigem correção ou justificativa para finalizar):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
+        ${alertList('Para conferir (medida, cabeçalho ou texto pendente):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
         <p class="muted small">Word e PDF contêm exatamente o mesmo conteúdo da prévia abaixo. O sistema não preenche, não conclui nem assina nada em seu nome.${exam.status !== 'final' ? ' Arquivos de laudos não finalizados saem marcados como rascunho/preliminar.' : ''}</p>
         <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn whatsapp" data-act="share-pdf">Enviar PDF pelo WhatsApp</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
         <div class="row" style="margin-top:10px">${locked
@@ -392,28 +392,22 @@ export async function renderEditor(view, id, settings, profile) {
   };
 
   /** Janela de finalização: checklist de conferência + justificativa quando houver pendências. */
+  /**
+   * Finalizar: sem lista de confirmações. Mostra só o que falta ou parece errado (medidas, cabeçalho,
+   * campos pendentes no texto). Sem pendências, finaliza direto; com pendências, ela escolhe corrigir
+   * ou finalizar assim mesmo (o que ficou pendente vai para o histórico).
+   */
   function finalizeDialog() {
-    const { critical } = reviewExam(exam, actor, refs);
-    const m = openModal(`<h2>Finalizar laudo</h2>
-      <p class="muted small">Confirme cada item. Itens não marcados ou alertas críticos exigem uma justificativa, que ficará registrada no histórico. Esta ação cria a versão emitida: depois dela, só é possível retificar ou fazer adendo em nova versão.</p>
-      ${alertList('Alertas críticos em aberto:', critical, 'error')}
-      <div>${FINAL_CHECKLIST.map((t, i) => `<label class="check"><input type="checkbox" data-ck="${i}"> ${esc(t)}</label>`).join('')}</div>
-      <div class="field" id="jwrap" style="display:none"><label for="just">Justificativa *</label><textarea id="just" rows="3"></textarea></div>
-      <div class="row end"><button class="btn" data-x="cancel">Cancelar</button><button class="btn primary" data-x="ok" disabled>Finalizar</button></div>`, { label: 'Finalizar laudo' });
-    const refresh = () => {
-      const unchecked = FINAL_CHECKLIST.filter((_, i) => !m.el.querySelector(`[data-ck="${i}"]`).checked);
-      const needs = critical.length > 0 || unchecked.length > 0;
-      m.el.querySelector('#jwrap').style.display = needs ? '' : 'none';
-      const just = m.el.querySelector('#just').value.trim();
-      m.el.querySelector('[data-x=ok]').disabled = needs && !just;
-      return { unchecked, needs, just };
-    };
-    m.el.addEventListener('input', refresh);
+    const { critical, info } = reviewExam(exam, actor, refs);
+    const attention = info.filter((t) => /medida sem valor|^Cabeçalho:|Solicitante\/clínica|sem descrição/i.test(t));
+    const clean = !critical.length && !attention.length;
+    const m = openModal(`<h2>Finalizar e assinar laudo</h2>
+      ${clean ? '<p>Tudo certo: nenhuma medida ou dado do cabeçalho faltando. Depois de finalizado, mudanças só por retificação ou adendo (nova versão).</p>'
+        : `${alertList('Corrija antes de finalizar (ou finalize assim mesmo):', critical, 'error')}${alertList('Faltando preencher:', attention, 'warn')}`}
+      <div class="row end"><button class="btn" data-x="cancel">${clean ? 'Cancelar' : 'Voltar e corrigir'}</button><button class="btn primary" data-x="ok">${clean ? 'Finalizar e assinar' : 'Finalizar assim mesmo'}</button></div>`, { label: 'Finalizar laudo' });
     m.el.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-x]'); if (!b) return;
       if (b.dataset.x === 'cancel') return m.close(null);
-      const { unchecked, needs, just } = refresh();
-      if (needs && !just) return;
       m.close(true);
       try {
         autosave.cancel();
@@ -422,8 +416,8 @@ export async function renderEditor(view, id, settings, profile) {
           await upsertPatient({ ...(await getPatient(pid) || {}), ...exam.patient, id: pid });
           exam.patientId = pid;
         }
-        await finalizeExam(exam, actor, { justification: just, pending: [...critical, ...unchecked.map((u) => `não confirmado: ${u}`)] });
-        dirty = false; toast('Laudo finalizado.', 'success');
+        await finalizeExam(exam, actor, { pending: [...critical, ...attention] });
+        dirty = false; toast('Laudo finalizado e assinado.', 'success');
         navigate(`/laudo/${exam.id}?r=${Date.now()}`);
       } catch (err) { toast(`Não foi possível finalizar: ${err.message}`, 'error'); }
     });

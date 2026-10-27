@@ -52,8 +52,6 @@ check('exame excluído não volta pelo salvamento automático', (await page.loca
 await newExam('Excluir Final');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 await page.click('[data-act="final"]');
-for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
-await page.fill('#just', 'Teste automatizado de exclusão.');
 await page.click('.modal [data-x="ok"]');
 await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 await dash();

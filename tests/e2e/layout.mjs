@@ -52,8 +52,7 @@ check('rascunho: caixa avisa que não há assinatura', (await paper.locator('.ps
 
 // Finaliza e exporta
 await page.click('[data-act="final"]');
-for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
-await page.fill('#just', 'Teste do formato.'); await page.click('.modal [data-x="ok"]');
+await page.click('.modal [data-x="ok"]');
 await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('finalizado: assinatura centralizada com "Assinado eletronicamente" e código', (await page.locator('.psig-final').textContent()).includes('Assinado eletronicamente') && (await page.locator('.psig-final').textContent()).includes('Código identificador:'));

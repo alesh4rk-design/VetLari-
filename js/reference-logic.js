@@ -2,7 +2,7 @@
 // O sistema NÃO traz valores de referência prontos, NÃO aplica referência de uma espécie a outra e
 // NÃO classifica nada como "normal" ou "anormal": só informa a posição do valor frente ao intervalo
 // publicado na fonte cadastrada, deixando a interpretação para a profissional.
-import { norm, isNumericValue } from './utils.js';
+import { norm, isSingleNumber } from './utils.js';
 import { speciesKey } from './animals.js';
 
 export const OUTDATED_YEARS = 5;
@@ -59,7 +59,7 @@ export function matchReferences(refs, { species, structure, label }) {
 export function checkMeasure(m, r) {
   if (!has(r.min) && !has(r.max)) return { status: 'sem_intervalo' };
   if (!has(m.unit) || norm(m.unit) !== norm(r.unit)) return { status: 'unidade_diferente' };
-  if (!isNumericValue(m.value) || /[x×]/i.test(m.value)) return { status: 'sem_comparacao' };
+  if (!isSingleNumber(m.value)) return { status: 'sem_comparacao' };
   const v = toNum(m.value);
   if (isNum(r.min) && v < toNum(r.min)) return { status: 'abaixo' };
   if (isNum(r.max) && v > toNum(r.max)) return { status: 'acima' };
