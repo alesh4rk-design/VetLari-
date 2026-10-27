@@ -40,7 +40,7 @@ test('qualidade: medida sem unidade ou não numérica é alerta crítico', () =>
   const noUnit = reviewExam(exam([sec({ description: 'x', measuresList: [{ id: '1', label: 'a', value: '5', unit: '' }] })]), prof);
   assert.ok(noUnit.critical.some((c) => /sem unidade/.test(c)));
   const bad = reviewExam(exam([sec({ description: 'x', measuresList: [{ id: '1', label: 'a', value: 'cinco', unit: 'cm' }] })]), prof);
-  assert.ok(bad.critical.some((c) => /não é numérico/.test(c)));
+  assert.ok(bad.critical.some((c) => /não parece uma medida/.test(c)));
   assert.ok(isNumericValue('3,2 x 2,1') && isNumericValue('12.5') && !isNumericValue('abc'));
 });
 test('qualidade: estrutura "não avaliada" com texto/medidas é contradição crítica', () => {
@@ -179,4 +179,9 @@ test('laudo: identificação na ordem e com os nomes dos laudos da veterinária,
   assert.deepEqual(r.patientRows.map(([k]) => k), ['Paciente', 'Espécie', 'Raça', 'Sexo', 'Idade', 'Responsável', 'Data', 'Solicitante', 'Clínica/Hospital']);
   assert.equal(r.patientRows.find(([k]) => k === 'Data')[1], '10/10/2026 10:58');
   assert.equal(r.title, 'Laudo de Ultrassonografia Veterinária'); // título vem do modelo do exame
+});
+
+test('medidas: faixas (menor e maior espessura) são aceitas', () => {
+  for (const v of ['0,35 a 0,41', '0,35-0,41', '0,35 – 0,41', '0,35 até 0,41', '3,2 x 2,1', '5,2']) assert.ok(isNumericValue(v), v);
+  for (const v of ['abc', '0,35 a', 'a 0,41']) assert.ok(!isNumericValue(v), v);
 });

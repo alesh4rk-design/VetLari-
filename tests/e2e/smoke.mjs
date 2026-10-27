@@ -108,23 +108,21 @@ await dPdf.saveAs(pdfPath);
 const pdf = readFileSync(pdfPath);
 check('PDF válido com imagens', pdf.slice(0, 5).toString() === '%PDF-' && pdf.length > 20000, String(pdf.length));
 
-// Preliminar e finalização com checklist
+// Preliminar e finalização
 await page.click('[data-act="prelim"]');
 // Espera a prévia mudar (o texto "Preliminar" já existia no botão, o que deixava o teste instável).
 await page.waitForFunction(() => (document.querySelector('.paper') || {}).textContent?.includes('PRELIMINAR'), null, { timeout: 10000 }).catch(() => {});
 check('marcar como preliminar', (await page.textContent('.paper')).includes('PRELIMINAR'));
 await page.click('[data-act="final"]');
-check('finalizar exige confirmação do checklist', await page.isDisabled('.modal [data-x="ok"]'));
-for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
-check('pendência crítica (CRMV ausente) exige justificativa', await page.isDisabled('.modal [data-x="ok"]'));
-await page.fill('#just', 'Teste: CRMV será preenchido depois.');
+check('finalizar sem lista de confirmações', (await page.locator('.modal [data-ck]').count()) === 0);
+check('pendência crítica (CRMV ausente) é apontada', (await page.textContent('.modal')).includes('CRMV'));
 await page.click('.modal [data-x="ok"]');
 await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 check('finalização bloqueia edição', await page.isDisabled('#f-patient\\.name'));
 await page.click('[data-step="4"]');
 await page.click('details summary');
 const histTxt = await page.textContent('details');
-check('histórico do laudo mostra finalização com justificativa', histTxt.includes('Laudo finalizado') && histTxt.includes('CRMV será preenchido'));
+check('histórico do laudo registra a pendência da finalização', histTxt.includes('Laudo finalizado') && histTxt.includes('CRMV'));
 await page.click('[data-act="revise"][data-kind="correction"]');
 await page.fill('#rj', 'Correção de teste');
 await page.click('.modal [data-x="ok"]');

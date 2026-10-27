@@ -122,4 +122,7 @@ export function formatBytes(n) {
 export const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 /** Aceita "5", "5,2", "5.2" e dimensões como "3,2 x 2,1". O valor digitado é preservado como texto. */
-export const isNumericValue = (v) => /^\d+([.,]\d+)?(\s*[x×]\s*\d+([.,]\d+)?)*$/.test(String(v).trim());
+// Medida válida: número, dimensões (3,2 x 2,1) ou faixa (0,35 a 0,41 · 0,35-0,41 · 0,35 – 0,41).
+export const isNumericValue = (v) => /^\d+([.,]\d+)?(\s*([x×–—-]|a|e|até)\s*\d+([.,]\d+)?)*$/i.test(String(v).trim());
+/** Um número só (para cálculos e comparação com referências; faixas e dimensões não entram). */
+export const isSingleNumber = (v) => /^\d+([.,]\d+)?$/.test(String(v).trim());

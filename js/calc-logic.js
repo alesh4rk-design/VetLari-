@@ -1,6 +1,6 @@
 // Regras puras das calculadoras definidas pela veterinária (validação e execução).
 import { parseFormula, formulaVariables, evaluate, formatResult, isValidVariableName } from './formula.js';
-import { isNumericValue } from './quality.js';
+import { isSingleNumber } from './utils.js';
 
 const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 export { norm };
@@ -34,7 +34,7 @@ export function runCalculation(calc, inputs) {
   for (const v of calc.variables) {
     const i = inputs[v.name];
     if (!i || !String(i.value || '').trim()) throw new Error(`Informe o valor de ${v.label || v.name}.`);
-    if (!isNumericValue(i.value) || /[x×]/i.test(i.value)) throw new Error(`${v.label || v.name}: use um número simples (ex.: 5,2).`);
+    if (!isSingleNumber(i.value)) throw new Error(`${v.label || v.name}: use um número simples (ex.: 5,2).`);
     if (norm(i.unit) !== norm(v.unit)) throw new Error(`${v.label || v.name}: a unidade deve ser "${v.unit}" (informada: "${i.unit || 'nenhuma'}"). Nenhuma conversão é feita automaticamente.`);
     vars[v.name] = Number(String(i.value).trim().replace(',', '.'));
   }

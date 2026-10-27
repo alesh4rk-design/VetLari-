@@ -35,7 +35,7 @@ export function reviewExam(exam, profile = {}, refs = []) {
     for (const m of s.measuresList || []) {
       const label = m.label ? `${name} — ${m.label}` : name;
       if (filled(m.value) && !filled(m.unit)) critical.push(`${label}: medida "${m.value}" sem unidade.`);
-      else if (filled(m.value) && !isNumericValue(m.value)) critical.push(`${label}: o valor "${m.value}" não é numérico (use, por exemplo, 5,2 ou 3,2 x 2,1).`);
+      else if (filled(m.value) && !isNumericValue(m.value)) critical.push(`${label}: o valor "${m.value}" não parece uma medida (use, por exemplo, 5,2 · 3,2 x 2,1 · 0,35 a 0,41).`);
       else if (!m.slot && !filled(m.value) && (filled(m.unit) || filled(m.label))) info.push(`${label}: medida sem valor.`);
     }
     if ((status === 'nao_avaliado' || status === 'nao_visualizado') && sectionHasContent(s)) {
@@ -68,6 +68,11 @@ export function reviewExam(exam, profile = {}, refs = []) {
   if (!filled(c.indication)) info.push('Indicação clínica não informada.');
   if (!filled(c.limitations)) info.push('Técnica e limitações do exame não informadas.');
   if (!filled(exam.requestingVet) && !filled(exam.clinic)) info.push('Solicitante/clínica não informados.');
+  const pt = exam.patient || {};
+  if (!filled(pt.species)) info.push('Cabeçalho: espécie não informada.');
+  if (!filled(pt.sex)) info.push('Cabeçalho: sexo não informado.');
+  if (!filled(pt.tutor)) info.push('Cabeçalho: tutor/responsável não informado.');
+  if (!filled(pt.age) && !filled(pt.birthDate)) info.push('Cabeçalho: idade não informada.');
 
   // Campos de frases prontas que ficaram sem preenchimento.
   const spots = [['Introdução', exam.intro], ['Impressão diagnóstica', exam.impression], ['Diagnósticos diferenciais', exam.differentials], ['Observações', exam.notes], ['Adendo', exam.addendum],
@@ -82,14 +87,3 @@ export function reviewExam(exam, profile = {}, refs = []) {
 
   return { critical: [...new Set(critical)], info: [...new Set(info)] };
 }
-
-export const FINAL_CHECKLIST = [
-  'O paciente e o tutor estão corretos',
-  'O exame e a data foram conferidos',
-  'As estruturas não examinadas ou não avaliáveis estão identificadas',
-  'As medidas têm unidade e foram conferidas',
-  'Os achados foram revisados',
-  'A conclusão foi revisada',
-  'As limitações do exame foram registradas quando relevantes',
-  'Solicitante e profissional foram conferidos',
-];

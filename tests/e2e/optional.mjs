@@ -30,8 +30,7 @@ await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('sem data/hora não há alerta crítico de data', !(await page.textContent('.alert.error').catch(() => '')).includes('data'));
 check('prévia não mostra data nem hora', !(await page.locator('.paper .pid').textContent()).includes('Data:') && !(await page.locator('.paper .pid').textContent()).includes('Hora:'));
 await page.click('[data-act="final"]');
-for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
-await page.fill('#just', 'Teste sem data.'); await page.click('.modal [data-x="ok"]');
+await page.click('.modal [data-x="ok"]');
 await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 check('laudo finalizado sem data e sem hora', true);
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
@@ -139,8 +138,6 @@ await page.click('[data-step="3"]'); await page.fill('#f-impression', 'Exame sem
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('aviso: assinatura só depois de finalizar', (await page.locator('.alert:has-text("A assinatura só entra depois de finalizar")').count()) === 1 && (await page.locator('.paper .psig-img').count()) === 0);
 await page.click('[data-act="final"]');
-for (const c of await page.locator('.modal [data-ck]').all()) await c.check();
-if (await page.isVisible('#just')) await page.fill('#just', 'Teste.');
 await page.click('.modal [data-x="ok"]'); await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('finalizado: assinatura aparece no laudo', (await page.locator('.paper .psig-img img').count()) === 1 && (await page.textContent('.paper')).includes('Assinado eletronicamente'));
@@ -160,6 +157,18 @@ check('clínica digitada escolhe o logotipo dela', (await page.inputValue('#lg-l
 await page.selectOption('#lg-logo', 'none');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('prévia usa só o logotipo da clínica (centralizado)', (await page.locator('.paper .plogos.single img').count()) === 1);
+// Finalizar sem lista de confirmações: só o que falta
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Faixa'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Alças intestinais")'); await page.click('[data-act="b-normal"]');
+await page.fill('input[aria-label="Valor de Duodeno – espessura da parede"]', '0,35 a 0,41');
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+await page.click('[data-act="final"]'); await page.waitForSelector('.modal');
+const fin = await page.textContent('.modal');
+check('finalizar: sem lista de confirmações', (await page.locator('.modal [data-ck]').count()) === 0 && (await page.locator('.modal #just').count()) === 0);
+check('finalizar: aponta dados do cabeçalho faltando', fin.includes('espécie não informada') && fin.includes('tutor/responsável não informado'));
+check('finalizar: faixa de medida (0,35 a 0,41) não é alerta', !fin.includes('0,35 a 0,41'));
+await page.click('.modal [data-x="ok"]'); await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
+check('finalizar assim mesmo funciona', true);
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();

@@ -1,12 +1,12 @@
 // Comparação de medidas entre exames do mesmo paciente. Só calcula diferença quando os dados são
 // realmente comparáveis (mesma estrutura, mesma medida, mesma unidade, valores simples). Nunca
 // declara crescimento, redução ou evolução: apresenta números e a razão quando não comparáveis.
-import { isNumericValue } from './utils.js';
+import { isSingleNumber } from './utils.js';
 import { speciesKey } from './animals.js';
 
 const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const num = (v) => Number(String(v).trim().replace(',', '.'));
-const simple = (v) => isNumericValue(v) && !/[x×]/i.test(String(v));
+const simple = (v) => isSingleNumber(v);
 
 export function orderByDate(a, b) {
   return [a, b].sort((x, y) => (x.date || '').localeCompare(y.date || '') || (x.version || 0) - (y.version || 0));
