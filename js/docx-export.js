@@ -142,8 +142,8 @@ export async function buildDocx(report, lib) {
     }
   }
 
-  // O Word grava a data/hora de criação nos dados internos do arquivo: guarda só o dia, sem o horário.
-  const RealDate = Date, day = new RealDate(); day.setHours(0, 0, 0, 0);
+  // O Word grava a data de criação nos dados internos do arquivo: usa a data do exame (nunca o dia em que o laudo foi feito).
+  const RealDate = Date, day = (() => { const d = report.fileDate ? new RealDate(`${report.fileDate}T00:00:00`) : new RealDate(2000, 0, 1); return isNaN(d) ? new RealDate(2000, 0, 1) : d; })();
   globalThis.Date = class extends RealDate { constructor(...a) { if (a.length) super(...a); else super(day.getTime()); } };
   let doc;
   try {

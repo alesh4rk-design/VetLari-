@@ -214,7 +214,7 @@ export function buildPdf(report, jsPDFCtor) {
   }
   doc.setProperties({ title: report.title, creator: 'VetLaudo' });
   // Os dados internos do arquivo guardam só o dia (sem o horário em que o laudo foi feito).
-  const day = new Date(); day.setHours(0, 0, 0, 0); doc.setCreationDate(day);
+  doc.setCreationDate((() => { const d = report.fileDate ? new Date(`${report.fileDate}T00:00:00`) : new Date(2000, 0, 1); return isNaN(d) ? new Date(2000, 0, 1) : d; })());
   return doc;
 }
 
