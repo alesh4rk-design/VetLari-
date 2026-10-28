@@ -61,7 +61,8 @@ export const MODALITY = {
 export function reportFileName(exam, ext) {
   const code = (MODALITY[exam.type] || MODALITY.usg).code;
   const name = slugName(exam.patient && exam.patient.name);
-  return `Laudo_${code}_${name}_${exam.date || todayISO()}.${ext}`;
+  // Sem data do exame, o nome do arquivo não leva data (nunca a do dia em que o laudo foi feito).
+  return `Laudo_${code}_${name}${exam.date ? '_' + exam.date : ''}.${ext}`;
 }
 
 export function debounce(fn, ms) {

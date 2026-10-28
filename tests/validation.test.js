@@ -53,7 +53,7 @@ test('backup: estrutura', () => {
   assert.equal(validateBackup({ app: 'vetlaudo', stores: { exams: [] } }), null);
 });
 
-test('data e hora do exame são opcionais: sem elas o laudo não mostra o campo e o nome do arquivo usa o dia de hoje', async () => {
+test('data e hora do exame são opcionais: sem elas o laudo não mostra o campo e o nome do arquivo fica sem data', async () => {
   const { buildReport } = await import('../js/report-model.js');
   const { reportFileName } = await import('../js/utils.js');
   const { sampleSettings } = await import('./helpers.js');
@@ -64,7 +64,7 @@ test('data e hora do exame são opcionais: sem elas o laudo não mostra o campo 
   assert.deepEqual(soHora.patientRows.find(([k]) => k === 'Hora'), ['Hora', '10:58']);
   const soData = buildReport(sampleExam({ date: '2026-10-10', time: '' }), sampleSettings);
   assert.deepEqual(soData.patientRows.find(([k]) => k === 'Data'), ['Data', '10/10/2026']);
-  assert.match(reportFileName(sampleExam({ date: '' }), 'pdf'), /^Laudo_USG_Thor_\d{4}-\d{2}-\d{2}\.pdf$/);
+  assert.equal(reportFileName(sampleExam({ date: '' }), 'pdf'), 'Laudo_USG_Thor.pdf');
   assert.equal(validateExam(sampleExam({ date: '', time: '' })).errors.length, 0);
 });
 

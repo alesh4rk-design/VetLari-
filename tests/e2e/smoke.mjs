@@ -98,7 +98,7 @@ await page.waitForSelector('.paper');
 const [dDocx] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="docx"]')]);
 const docxPath = join(mkdtempSync(join(tmpdir(), 'e2e-')), dDocx.suggestedFilename());
 await dDocx.saveAs(docxPath);
-check('nome do Word padronizado', /^Laudo_USG_Thor_Ficticio_\d{4}-\d{2}-\d{2}\.docx$/.test(dDocx.suggestedFilename()), dDocx.suggestedFilename());
+check('nome do Word padronizado', /^Laudo_USG_Thor_Ficticio(_\d{4}-\d{2}-\d{2})?\.docx$/.test(dDocx.suggestedFilename()), dDocx.suggestedFilename());
 const media = execFileSync('unzip', ['-l', docxPath]).toString().match(/word\/media\/\S+\.\w+/g) || [];
 check('Word contém as 2 imagens', media.length === 2, String(media.length));
 check('Word de rascunho vem marcado', execFileSync('unzip', ['-p', docxPath, 'word/document.xml']).toString().includes('RASCUNHO'));

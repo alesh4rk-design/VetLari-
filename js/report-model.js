@@ -111,6 +111,8 @@ export function buildReport(exam, settings = {}) {
     version: exam.version || 1,
     status: exam.status,
     headerLines, ...resolveLogos(exam, settings),
+    // Data gravada nos dados internos do arquivo: a data do exame (nunca o dia em que o laudo foi feito).
+    fileDate: filled(exam.date) ? exam.date : '',
     footerText: [settings.footerText, `Documento ${String(exam.id || '').slice(0, 8)} · versão ${exam.version || 1}`].filter(filled).join(' · '),
     statusNote: STATUS_NOTE[exam.status] || '',
     font: settings.font === 'serif' ? 'serif' : 'sans',
@@ -123,7 +125,7 @@ export function buildReport(exam, settings = {}) {
       // Imagem da assinatura: só no laudo finalizado (rascunho e preliminar nunca saem assinados).
       image: exam.status === 'final' ? settings.signatureImage || '' : '',
       stamp: exam.status === 'final' && exam.finalizedAt
-        ? `Finalizado eletronicamente em ${new Date(exam.finalizedAt).toLocaleDateString('pt-BR')}${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''} (sem certificado digital ICP-Brasil)` : '',
+        ? `Finalizado eletronicamente${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''} (sem certificado digital ICP-Brasil)` : '',
     },
   };
 }

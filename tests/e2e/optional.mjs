@@ -38,7 +38,7 @@ const [dp] = await Promise.all([page.waitForEvent('download'), page.click('[data
 const pdf = join(tmp, dp.suggestedFilename()); await dp.saveAs(pdf);
 const txt = execFileSync('pdftotext', ['-layout', pdf, '-']).toString();
 check('PDF sem o campo Data', !/\bData:/.test(txt) && txt.includes('Paciente: Paciente Sem Data'));
-check('nome do arquivo usa o dia de hoje quando não há data do exame', /^Laudo_USG_Paciente_Sem_Data_\d{4}-\d{2}-\d{2}\.pdf$/.test(dp.suggestedFilename()), dp.suggestedFilename());
+check('nome do arquivo sem data quando não há data do exame', /^Laudo_USG_Paciente_Sem_Data\.pdf$/.test(dp.suggestedFilename()), dp.suggestedFilename());
 // Só a hora
 await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Só Hora'); await page.fill('#f-date', ''); await page.fill('#f-time', '10:58');
