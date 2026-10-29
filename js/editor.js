@@ -5,7 +5,7 @@ import { SEXES } from './validation.js';
 import { SPECIES, breedsFor, optionsHtml, defaultWeightUnit } from './animals.js';
 import { ageFromBirth } from './utils.js';
 import { navigate, setLeaveGuard } from './router.js';
-import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
+import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, reopenExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
 import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, sectionHasContent } from './quality.js';
 import { can } from './profiles.js';
 import { openModal, pickOption } from './ui.js';
@@ -294,7 +294,7 @@ export async function renderEditor(view, id, settings, profile) {
         <p class="muted small">Word e PDF contêm exatamente o mesmo conteúdo da prévia abaixo. O sistema não preenche, não conclui nem assina nada em seu nome.${exam.status !== 'final' ? ' Arquivos de laudos não finalizados saem marcados como rascunho/preliminar.' : ''}</p>
         <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn whatsapp" data-act="share-pdf">Enviar PDF pelo WhatsApp</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
         <div class="row" style="margin-top:10px">${locked
-          ? (canRevise ? '<button class="btn" data-act="revise" data-kind="correction">Retificar (nova versão)</button><button class="btn" data-act="revise" data-kind="addendum">Adicionar adendo (nova versão)</button>'
+          ? (canRevise ? '<button class="btn primary" data-act="reopen">✏️ Editar este laudo</button><button class="btn" data-act="revise" data-kind="correction">Retificar (nova versão)</button><button class="btn" data-act="revise" data-kind="addendum">Adicionar adendo (nova versão)</button>'
             : '<span class="muted small">Retificações e adendos exigem perfil de médico(a)-veterinário(a).</span>')
           : `${exam.status === 'draft' ? '<button class="btn" data-act="prelim">Marcar como preliminar</button>' : '<button class="btn" data-act="undraft">Voltar para rascunho</button>'}
              <button class="btn primary" data-act="final" ${canFinalize ? '' : 'disabled'}>Finalizar e assinar laudo</button>
@@ -313,7 +313,7 @@ export async function renderEditor(view, id, settings, profile) {
       <div class="row"><a class="btn sm" href="#/laudo/${exam.id}/nova-versao-estrutura">Novo laudo com esta estrutura</a>
       ${canDelete(exam, profile) ? '<button class="btn sm danger" data-act="del-exam">Excluir exame</button>' : ''}</div></div>
       ${related.length ? `<details class="card"><summary>Outros exames deste paciente (${related.length})</summary><ul class="list">${related.map((x) => `<li><span>${MODALITY[x.type].code} · ${fmtDateBR(x.date)} · v${x.version} · ${STATUS_LABEL[x.status]}</span><span class="row"><a class="btn sm" href="#/laudo/${x.id}">Abrir</a><a class="btn sm" href="#/comparar/${x.id}/${exam.id}">Comparar</a></span></li>`).join('')}</ul></details>` : ''}
-      ${locked ? '<div class="alert info">Laudo finalizado: o conteúdo está protegido contra alterações. Para corrigir, use "Retificar" ou "Adicionar adendo" na etapa de revisão: uma nova versão é criada e a original permanece preservada.</div>' : ''}
+      ${locked ? `<div class="alert info">Laudo finalizado: o conteúdo está protegido contra alterações por engano. ${canFinalize ? '<button type="button" class="btn sm primary" data-act="reopen">✏️ Editar este laudo</button> (reabre o mesmo laudo; depois é só finalizar de novo).' : ''}</div>` : ''}
       <div class="savebar"><span id="savestate" class="status ${state}" role="status">${STATUS_TEXT[state]}</span>
       <span class="small muted">${locked ? 'Somente leitura' : 'Salvamento automático neste aparelho (sem sincronização)'}</span></div>
       <nav class="steps" aria-label="Etapas do laudo">${STEPS.map((s, i) => `<button data-step="${i}" ${i === step ? 'aria-current="step"' : ''}>${i + 1}. ${s}</button>`).join('')}</nav>
@@ -575,6 +575,12 @@ export async function renderEditor(view, id, settings, profile) {
       if (!can(profile, 'prelim')) return;
       await setStatus(exam, act === 'prelim' ? 'preliminary' : 'draft', actor); dirty = false; draw();
     } else if (act === 'final') { if (canFinalize) finalizeDialog(); }
+    else if (act === 'reopen') {
+      if (!canFinalize) return;
+      if (!(await confirmDialog('Reabrir este laudo para editar? Você corrige o que precisar e depois clica em "Finalizar e assinar laudo" de novo. Lembre de reenviar o PDF corrigido.', { ok: 'Editar laudo' }))) return;
+      try { await reopenExam(exam, actor); toast('Laudo reaberto para edição.', 'success'); navigate(`/laudo/${exam.id}?r=${Date.now()}`); }
+      catch (err) { toast(`Não foi possível reabrir: ${err.message}`, 'error'); }
+    }
     else if (act === 'revise') { if (canRevise) revisionDialog(b.dataset.kind); }
     else if (act === 'discard' || act === 'del-exam') {
       if (await deleteExamFlow(exam, profile)) { autosave.cancel(); dirty = false; failed = false; navigate('/'); }

@@ -112,6 +112,15 @@ export function finalizeExam(exam, profile, { justification = '', pending = [] }
   return saveExam(exam);
 }
 
+/** Reabre um laudo finalizado para editar no mesmo documento (sem nova versão). Fica registrado no histórico. */
+export function reopenExam(exam, profile) {
+  exam.status = 'draft';
+  exam.finalizedAt = null;
+  exam.finalizedBy = null;
+  logAction(exam, 'Laudo reaberto para edição', profile, 'Editado no mesmo documento (sem retificação).');
+  return saveExam(exam);
+}
+
 export const REVISION_LABEL = { correction: 'Retificação', addendum: 'Adendo' };
 
 /** Cria nova versão (retificação ou adendo) a partir de um laudo finalizado; o original permanece intacto. */
