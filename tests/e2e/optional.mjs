@@ -169,6 +169,15 @@ check('finalizar: aponta dados do cabeçalho faltando', fin.includes('espécie n
 check('finalizar: faixa de medida (0,35 a 0,41) não é alerta', !fin.includes('0,35 a 0,41'));
 await page.click('.modal [data-x="ok"]'); await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 check('finalizar assim mesmo funciona', true);
+// Editar laudo finalizado sem retificar
+await page.click('[data-act="reopen"] >> nth=0'); await page.click('.modal button.primary');
+await page.waitForSelector('[data-step]'); await page.click('[data-step="0"]');
+check('laudo reaberto pode ser editado', !(await page.isDisabled('#f-patient\\.name')));
+await page.fill('#f-patient\\.tutor', 'Tutor corrigido');
+await page.click('[data-step="4"]'); await page.click('[data-act="final"]'); await page.click('.modal [data-x="ok"]');
+await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+check('refinalizado com a correção, mesma versão', (await page.textContent('.paper')).includes('Tutor corrigido') && (await page.textContent('.paper')).includes('versão 1'));
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
