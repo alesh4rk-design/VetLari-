@@ -43,7 +43,7 @@ check('fórmula inválida é recusada', (await page.textContent('#cerr')).length
 await page.click('.modal [data-x="cancel"]');
 
 // Laudo usando referência e cálculo
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Paciente Bases'); await page.fill('#f-patient\\.species', 'Canino');
 await page.click('[data-step="1"]');

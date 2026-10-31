@@ -23,7 +23,7 @@ await page.setInputFiles('#s-logo', join(here, '../fixture-rx.png')); await page
 await page.setInputFiles('#s-logo2', join(here, '../fixture-rx.png')); await page.waitForSelector('[data-rmlogo="logo2"]');
 check('dois logotipos configuráveis', true);
 
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Paciente Formato'); await page.fill('#f-patient\\.species', 'Cão'); await page.selectOption('#f-sex', 'Macho');
 await page.fill('#f-patient\\.tutor', 'Responsável Teste'); await page.fill('#f-clinic', 'Clínica Teste'); await page.fill('#f-requestingVet', 'Dra. Solicitante');

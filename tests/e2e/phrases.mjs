@@ -26,7 +26,7 @@ await page.click('.modal [data-x=cancel]');
 await addPhrase('Fígado medido', 'Fígado em topografia habitual, medindo {Comprimento}.');
 await addPhrase('Lama biliar', 'Lama biliar grau {Grau}.');
 
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', 'Paciente Frases');
 await page.click('[data-step="1"]');
 await page.click('.organ:has-text("Fígado")');

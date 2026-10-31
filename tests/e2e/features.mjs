@@ -27,7 +27,7 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
 await page.goto(base);
 await page.waitForSelector('text=Painel de laudos');
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', 'Paciente Voz');
 await page.click('[data-step="1"]');
 await page.click('.organ:has-text("Fígado")');
@@ -79,7 +79,7 @@ check('imagem desmarcada não entra na prévia do laudo', (await page.locator('.
 
 // Sem reconhecimento de voz: digitação manual continua funcionando
 const page2 = await ctx.newPage();
-await page2.goto(base + '?semvoz=1#/novo'); await page2.click('button:has-text("Começar laudo")');
+await page2.goto(base + '?semvoz=1#/novo'); await page2.waitForSelector('#nf button[type=submit]'); await page2.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page2.click('button:has-text("Começar laudo")');
 await page2.waitForSelector('#f-patient\\.name'); await page2.click('[data-step="1"]');
 await page2.click('[data-sec] [data-act="dictate"] >> nth=0');
 check('sem suporte de voz: iniciar desabilitado e aviso exibido', await page2.isDisabled('.modal [data-x="start"]') && (await page2.textContent('.modal')).includes('não oferece reconhecimento de voz'));

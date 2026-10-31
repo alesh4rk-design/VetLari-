@@ -92,6 +92,13 @@ const TUTORIALS = {
     'Teste com <strong>Calcular</strong> e salve.',
     'No laudo, o resultado entra como <strong>medida calculada</strong>.',
     'O sistema não cria nem sugere fórmulas: use as da sua fonte confiável.'] },
+  financeiro: { title: 'Financeiro', intro: 'Faturamento, recebimentos, gastos e tempo de laudo, só com os dados que você registra.', steps: [
+    'Cadastre as <strong>clínicas</strong> e a tabela de preços de cada uma (aba Clínicas e preços). Para reajustar, adicione um preço novo com a data de início: exames antigos não mudam.',
+    'Ao criar um laudo, escolha a <strong>modalidade de atendimento</strong> (clínica ou domiciliar), o tipo de exame e a data: o valor vem da tabela e o lançamento é criado sozinho, um por laudo.',
+    'Em <strong>Recebimentos</strong>, registre o que entrou (pode ser parcial): o saldo atualiza sozinho.',
+    'Em <strong>Gastos e despesas</strong>, lance despesas e abastecimentos; nas compartilhadas, informe o % profissional.',
+    'O <strong>cronômetro</strong> do laudo começa quando você escreve e para quando finaliza; veja os tempos em Produtividade.',
+    'Use os filtros (mês, período, clínica, tipo) e <strong>Exportar para Excel</strong> para ter a planilha completa.'] },
   config: { title: 'Configurações', intro: 'Dados do profissional e aparência do documento.', steps: [
     'Preencha nome, CRMV, serviço e contato: saem no cabeçalho/rodapé do laudo.',
     'Envie os dois <strong>logotipos</strong> (serviço à esquerda, clínica à direita).',

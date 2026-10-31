@@ -12,7 +12,7 @@ const lib = () => page.evaluate(() => new Promise((res) => {
   const r = indexedDB.open('vetlaudo');
   r.onsuccess = () => { const q = r.result.transaction('phrases').objectStore('phrases').getAll(); q.onsuccess = () => res(q.result.filter((p) => p.source === 'minha').map((p) => ({ t: p.text, s: p.structure, c: p.category }))); };
 }));
-const novo = async (n) => { await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', n); };
+const novo = async (n) => { await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', n); };
 const save = (bind) => page.click(`[data-act="save-phrase"][data-target="f-${bind}"]`);
 const insert = (bind) => page.click(`[data-act="phrase"][data-target="f-${bind}"]`);
 

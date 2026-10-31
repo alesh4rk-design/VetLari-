@@ -2,7 +2,7 @@
 import { BACKUP_STORES, validateBackup } from './validation.js';
 
 let dbName = 'vetlaudo';
-const DB_VERSION = 2; // v2: adiciona as bases de referências e de cálculos
+const DB_VERSION = 3; // v2: bases de referências e de cálculos; v3: financeiro (clínicas, procedimentos, lançamentos, despesas)
 const KEYED = { settings: 'key' };
 let dbPromise;
 

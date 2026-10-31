@@ -32,7 +32,7 @@ check('modelo duplicado e salvo', true);
 
 await page.goto(base + '#/novo');
 await page.selectOption('#nt', { label: 'Meu abdominal (teste)' });
-await page.click('button:has-text("Começar laudo")');
+await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', 'Paciente Modelo');
 await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")');
 check('opção nova aparece como botão curto', await page.isVisible('.bgroup:has(.blabel:has-text("Dimensões")) .chip:has-text("acentuadamente aumentadas")'));

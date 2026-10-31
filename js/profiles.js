@@ -6,7 +6,7 @@ import { uid } from './utils.js';
 const KEY = 'vetlaudo.profiles.v1';
 export const ROLES = { vet: 'Médico(a)-veterinário(a)', assistant: 'Auxiliar (sem assinatura)' };
 const PERMS = {
-  vet: ['edit', 'prelim', 'finalize', 'revise', 'export', 'deleteFinal'],
+  vet: ['edit', 'prelim', 'finalize', 'revise', 'export', 'deleteFinal', 'finance'],
   assistant: ['edit', 'prelim', 'export'],
 };
 

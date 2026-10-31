@@ -37,7 +37,7 @@ await page.click('button:has-text("Salvar paciente")'); await page.waitForSelect
 
 // No exame: idade na data do exame
 await page.goto(base + '#/novo'); await page.selectOption('#np', { label: 'Teste Espécie' });
-await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 check('paciente traz espécie e raça digitadas', (await page.inputValue('#f-patient\\.species')) === 'Cão' && (await page.inputValue('#f-patient\\.breed')) === 'Shih Tzu');
 await page.fill('#f-date', '2026-10-10');
 check('exame: idade calculada na data do exame (2 anos e 2 meses)', (await page.inputValue('#age-auto')) === '2 anos e 2 meses', await page.inputValue('#age-auto'));
@@ -64,7 +64,7 @@ await page.click('[data-pick="breed"]'); await page.click('.modal .chip:has-text
 check('lista de raças preenche a raça', (await page.inputValue('#p-breed')) === 'Calopsita');
 await page.fill('#p-species', 'Capivara'); await page.click('[data-pick="breed"]');
 check('espécie sem sugestões: aviso e digitação livre', (await page.locator('.modal').count()) === 0 && (await page.textContent('#toasts')).includes('digite a raça'));
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.click('[data-target="f-patient.species"]'); await page.click('.modal .chip:has-text("Gato")');
 await page.click('[data-target="f-patient.breed"]'); await page.click('.modal .chip:has-text("Persa")');
 check('no exame: Lista de espécie e raça preenchem os campos', (await page.inputValue('#f-patient\\.species')) === 'Gato' && (await page.inputValue('#f-patient\\.breed')) === 'Persa');
