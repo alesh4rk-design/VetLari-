@@ -125,7 +125,7 @@ export function buildReport(exam, settings = {}) {
       // Imagem da assinatura: só no laudo finalizado (rascunho e preliminar nunca saem assinados).
       image: exam.status === 'final' ? settings.signatureImage || '' : '',
       stamp: exam.status === 'final' && exam.finalizedAt
-        ? `Finalizado eletronicamente${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''} (sem certificado digital ICP-Brasil)` : '',
+        ? `Finalizado eletronicamente${exam.finalizedBy ? ' por ' + exam.finalizedBy.name : ''}` : '',
     },
   };
 }
