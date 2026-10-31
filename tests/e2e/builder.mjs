@@ -15,7 +15,7 @@ const grp = (name, blk) => `${blk ? `.bblock:has(.bhead:text-is("${blk}")) ` : '
 const chip = async (name, text, blk) => page.click(`${grp(name, blk)} .chip:has-text("${text}")`);
 const organ = async (n) => page.click(`.organ:has-text("${n}")`);
 
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', 'Paciente Montador'); await page.selectOption('#f-sex', 'Macho');
 await page.click('[data-step="1"]');
 

@@ -18,7 +18,7 @@ const page = await ctx.newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 const tmp = mkdtempSync(join(tmpdir(), 'opt-'));
 
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 check('data e hora começam vazias', (await page.inputValue('#f-date')) === '' && (await page.inputValue('#f-time')) === '');
 check('os rótulos indicam que são opcionais (sem asterisco)', (await page.textContent('label[for="f-date"]')).includes('opcional') && (await page.textContent('label[for="f-time"]')).includes('opcional'));
 await page.fill('#f-patient\\.name', 'Paciente Sem Data');
@@ -40,13 +40,13 @@ const txt = execFileSync('pdftotext', ['-layout', pdf, '-']).toString();
 check('PDF sem o campo Data', !/\bData:/.test(txt) && txt.includes('Paciente: Paciente Sem Data'));
 check('nome do arquivo sem data quando não há data do exame', /^Laudo_USG_Paciente_Sem_Data\.pdf$/.test(dp.suggestedFilename()), dp.suggestedFilename());
 // Só a hora
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Só Hora'); await page.fill('#f-date', ''); await page.fill('#f-time', '10:58');
 await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('.bgroup:has(.blabel:has-text("Contorno")) .chip');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('só hora preenchida: aparece como "Hora"', (await page.locator('.paper .pid').textContent()).includes('Hora: 10:58'));
 // Peso em gramas para animais pequenos
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Pipoca'); await page.fill('#f-patient\\.species', 'Roedor');
 check('espécie pequena sugere gramas', (await page.inputValue('#f-wunit')) === 'g');
 await page.fill('#f-patient\\.weight', '350');
@@ -66,7 +66,7 @@ await page.click('.modal [data-x=close]');
 await page.goto(base + '#/frases'); await page.waitForSelector('.help-link');
 check('ajuda na aba Frases', true);
 // Texto padrão sem alterações (Rins)
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Padrao Rins'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Rins")');
 await page.click('[data-act="b-normal"]');
 const dtxt = await page.inputValue('[data-sec] textarea[id^="d-"]');
@@ -75,7 +75,7 @@ check('status vira Normal', (await page.locator('.segbtn[aria-pressed="true"]').
 check('nome do órgão aparece antes da descrição', (await page.textContent('.descprefix strong')).trim() === 'Rins:');
 check('dimensões diminuídas e aumentadas disponíveis', (await page.locator('.chip:has-text("dimensões diminuídas")').count()) >= 1 && (await page.locator('.chip:has-text("dimensões aumentadas")').count()) >= 1);
 // Texto editado à mão continua recebendo medidas e escolhas
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Manual'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Rins")');
 await page.click('[data-act="b-normal"]');
 const ta = '[data-sec] textarea[id^="d-"]';
@@ -88,7 +88,7 @@ mtxt = await page.inputValue(ta);
 check("escolha aplicada no texto editado à mão", mtxt.includes('**Rim esquerdo** com dimensões aumentadas (4,5 cm)') && mtxt.includes('Minha observação escrita à mão.'));
 check('sem aviso de bloqueio', await page.locator('#bnotice').isHidden());
 // Imagens ao lado dos achados
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Imagens ao lado'); await page.click('[data-step="1"]');
 if ((await page.locator('#sideimgs').count()) === 0) await page.click('[data-act="side-toggle"]');
 check('painel de imagens ao lado dos achados', (await page.locator('.findings.withimgs #sideimgs').count()) === 1);
@@ -132,7 +132,7 @@ await page.mouse.up(); await page.click('.modal [data-x=ok]');
 await page.waitForSelector('#assinatura img[alt="Sua assinatura"]');
 check('assinatura desenhada e salva', true);
 // Com assinatura cadastrada: aviso antes de finalizar e imagem depois de finalizar
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Assinado'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('[data-act="b-normal"]');
 await page.click('[data-step="3"]'); await page.fill('#f-impression', 'Exame sem alterações.');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
@@ -142,7 +142,7 @@ await page.click('.modal [data-x="ok"]'); await page.waitForSelector('text=Laudo
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('finalizado: assinatura aparece no laudo', (await page.locator('.paper .psig-img img').count()) === 1 && (await page.textContent('.paper')).includes('Assinado eletronicamente'));
 // Status Normal já escreve o texto de normalidade
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Normal direto'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Baço")');
 await page.click('[data-act="set-status"][data-val="normal"]');
 check('clicar em Normal preenche o texto de normalidade', (await page.inputValue('[data-sec] textarea[id^="d-"]')).startsWith('em topografia habitual, com dimensões preservadas, bordos afilados'));
@@ -151,14 +151,14 @@ await page.goto(base + '#/config'); await page.fill('#lg-new-name', 'Hamadulu');
 await page.setInputFiles('#lg-new-file', [join(here, '../fixture-usg.jpg')]);
 await page.waitForSelector('[data-lgname]');
 check('logotipo de clínica cadastrado', (await page.inputValue('[data-lgname]')) === 'Hamadulu');
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Logos'); await page.fill('#f-clinic', 'Hamadulu');
 check('clínica digitada escolhe o logotipo dela', (await page.inputValue('#lg-logo2')) !== 'default' && (await page.locator('#lgt-logo2 img').count()) === 1);
 await page.selectOption('#lg-logo', 'none');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('prévia usa só o logotipo da clínica (centralizado)', (await page.locator('.paper .plogos.single img').count()) === 1);
 // Finalizar sem lista de confirmações: só o que falta
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Faixa'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Alças intestinais")'); await page.click('[data-act="b-normal"]');
 await page.fill('input[aria-label="Valor de Duodeno – espessura da parede"]', '0,35 a 0,41');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
@@ -179,7 +179,7 @@ await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido')
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('refinalizado com a correção, mesma versão', (await page.textContent('.paper')).includes('Tutor corrigido') && (await page.textContent('.paper')).includes('versão 1'));
 // Novo laudo a partir deste: tudo, menos as imagens
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
 await page.fill('#f-patient\\.name', 'Acompanhamento'); await page.fill('#f-patient\\.tutor', 'Tutora X');
 await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('[data-act="b-normal"]');
 await page.setInputFiles('#side-file', [join(here, '../fixture-usg.jpg')]).catch(async () => {});

@@ -43,7 +43,7 @@ check('criação de frase', true);
 // Laudo USG
 await page.goto(base + '#/novo');
 await page.selectOption('#np', { label: 'Thor Fictício — Tutor de Teste' });
-await page.click('button:has-text("Começar laudo")');
+await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name');
 check('paciente preenchido a partir do cadastro', (await page.inputValue('#f-patient\\.name')) === 'Thor Fictício');
 await page.click('[data-step="1"]');
@@ -151,7 +151,7 @@ await page.waitForSelector('text=Quem está usando?');
 await page.fill('#np-name', 'Auxiliar Teste'); await page.selectOption('#np-role', 'assistant');
 await page.click('#np button[type=submit]');
 await page.waitForSelector('text=Painel de laudos');
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name');
 await page.click('[data-step="4"]');
 await page.waitForSelector('.paper');

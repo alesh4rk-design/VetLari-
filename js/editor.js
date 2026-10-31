@@ -1,5 +1,5 @@
 // Editor de laudos (ultrassonografia e radiografia): etapas, salvamento automático, imagens, prévia e exportação.
-import { esc, debounce, download, reportFileName, toast, fmtDateTimeBR, fmtDateBR, MODALITY, uid } from './utils.js';
+import { esc, debounce, download, reportFileName, toast, fmtDateTimeBR, fmtDateBR, MODALITY, uid, todayISO } from './utils.js';
 import { getPath, setPath, alertList, confirmDialog } from './ui.js';
 import { SEXES } from './validation.js';
 import { SPECIES, breedsFor, optionsHtml, defaultWeightUnit } from './animals.js';
@@ -25,6 +25,9 @@ import { reportToHtml } from './preview.js';
 import { buildDocx } from './docx-export.js';
 import { pdfBlob } from './pdf-export.js';
 import { attachHelp } from './help.js';
+import { loadFinanceData, suggestPrice, defaultDue, entryDialog } from './finance.js';
+import { saveEntry, saveExpense, getEntry } from './finance-store.js';
+import { money, brl, netOf, changePrice, statusOf, FIN_STATUS, MODES, startSession, pauseSession, resumeSession, stopSession, timerState, workedMs, fmtDuration } from './finance-logic.js';
 import { ULTRASOUND } from './ultrasound.js';
 import { RADIOGRAPHY } from './radiography.js';
 
@@ -32,15 +35,38 @@ const MODS = { usg: ULTRASOUND, rx: RADIOGRAPHY };
 const STEPS = ['Paciente', 'Achados', 'Imagens', 'Conclusão', 'Prévia e exportar'];
 const STATUS_TEXT = { dirty: 'Alterações não salvas', saving: 'Salvando…', saved: 'Salvo neste dispositivo', error: 'Erro ao salvar' };
 
-export async function renderNewExam(view, query) {
+export async function renderNewExam(view, query, profile) {
   const [templates, patients] = await Promise.all([listTemplates(), listPatients()]);
+  const fin = can(profile, 'finance') ? await loadFinanceData() : null;
   const type = query.tipo === 'rx' ? 'rx' : 'usg';
-  view.innerHTML = `<div class="page-head"><h1>Novo laudo</h1></div><form class="card" id="nf">
+  const activeClinics = fin ? fin.clinics.filter((c) => c.active !== false) : [];
+  const procs = fin ? fin.procedures.filter((p) => p.active !== false) : [];
+  const o = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+  view.innerHTML = `<div class="page-head"><h1>Novo laudo</h1></div><form class="card" id="nf" novalidate>
     <fieldset class="field" style="border:0;padding:0;margin:0 0 12px"><legend class="muted small">Modalidade</legend><div class="row">
       ${Object.entries(MODALITY).map(([k, v]) => `<label class="check"><input type="radio" name="type" value="${k}" ${k === type ? 'checked' : ''}> ${v.label}</label>`).join('')}</div></fieldset>
     <div class="field"><label for="nt">Modelo</label><select id="nt" name="template"></select></div>
     <div class="field"><label for="np">Paciente (opcional — pode preencher depois)</label><select id="np" name="patient"><option value="">Novo paciente / preencher no laudo</option>
       ${patients.map((p) => `<option value="${p.id}" ${p.id === query.paciente ? 'selected' : ''}>${esc(p.name)}${p.tutor ? ' — ' + esc(p.tutor) : ''}</option>`).join('')}</select></div>
+    ${fin ? `<fieldset class="field fin-box"><legend><strong>Modalidade de atendimento *</strong></legend><div class="row">
+        <label class="check"><input type="radio" name="fmode" value="clinic"> Clínica ou empresa</label>
+        <label class="check"><input type="radio" name="fmode" value="home"> Atendimento domiciliar</label>
+        <label class="check"><input type="radio" name="fmode" value="none"> Sem cobrança (cortesia, retorno, teste)</label></div>
+      <div id="fin-fields" hidden><div class="grid g2">
+        <div class="field" data-for="clinic"><label for="fc">Clínica contratante *</label><select id="fc" name="clinicId"><option value="">Escolha</option>${activeClinics.map((c) => o(c.id, c.name)).join('')}</select>
+          ${activeClinics.length ? '' : '<div class="hint">Nenhuma clínica cadastrada. <a href="#/financeiro?aba=clinicas">Cadastrar clínicas e preços</a>.</div>'}</div>
+        <div class="field"><label for="fp">Tipo de ultrassonografia *</label><select id="fp" name="procedureId"><option value="">Escolha</option>${procs.map((p) => o(p.id, p.name)).join('')}</select></div>
+        <div class="field"><label for="fd">Data do exame *</label><input type="date" id="fd" name="examDate" value="${todayISO()}"></div>
+        <div class="field" data-for="home"><label for="fr">Endereço ou região (opcional)</label><input id="fr" name="region"></div>
+        <div class="field"><label for="fg">Valor do exame *</label><input id="fg" name="gross" inputmode="decimal"><div class="hint" id="fhint"></div></div>
+        <div class="field" id="freasonw" hidden><label for="freason">Motivo do valor diferente da tabela *</label><input id="freason" name="reason" placeholder="Ex.: valor negociado"></div>
+        <div class="field" data-for="home"><label for="ft">Taxa de deslocamento (opcional)</label><input id="ft" name="travelFee" inputmode="decimal"></div>
+        <div class="field" data-for="home"><label for="fdisc">Desconto (opcional)</label><input id="fdisc" name="discount" inputmode="decimal"></div>
+        <div class="field" data-for="home"><label for="fx">Despesas do atendimento (opcional)</label><input id="fx" name="expense" inputmode="decimal" placeholder="Ex.: estacionamento, pedágio"><div class="hint">Registrada como gasto (não soma no valor cobrado).</div></div>
+        <div class="field" data-for="home"><label for="fps">Situação do pagamento</label><select id="fps" name="payStatus"><option value="pending">A receber</option><option value="paid">Recebido no dia</option></select></div>
+      </div><p class="small"><strong>Valor líquido previsto:</strong> <span id="fnet">R$ 0,00</span> · O tempo de elaboração começa a contar quando você começar a escrever o laudo.</p></div>
+    </fieldset>` : ''}
+    <div id="nferr"></div>
     <button class="btn primary" type="submit">Começar laudo</button></form>`;
   const form = view.querySelector('#nf');
   const fill = () => {
@@ -48,16 +74,68 @@ export async function renderNewExam(view, query) {
     form.elements.template.innerHTML = templates.filter((x) => x.modality === t).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
   };
   fill();
-  form.addEventListener('change', (e) => { if (e.target.name === 'type') fill(); });
+  let suggested = null;
+  const finRefresh = (e) => {
+    if (!fin) return;
+    const mode = (form.elements.fmode.value || '');
+    const box = view.querySelector('#fin-fields'); box.hidden = !mode || mode === 'none';
+    view.querySelectorAll('[data-for]').forEach((el) => { el.hidden = el.dataset.for !== mode; });
+    const fd = Object.fromEntries(new FormData(form));
+    if (!e || ['fmode', 'clinicId', 'procedureId', 'examDate', 'region'].includes(e.target.name)) {
+      const p = fd.procedureId ? suggestPrice(fin, { mode, clinicId: fd.clinicId, procedureId: fd.procedureId, examDate: fd.examDate, region: fd.region }) : null;
+      suggested = p ? p.value : null;
+      if (p) form.elements.gross.value = String(p.value).replace('.', ',');
+      view.querySelector('#fhint').textContent = p ? `Preço da tabela vigente: R$ ${String(p.value.toFixed(2)).replace('.', ',')}.` : fd.procedureId ? 'Sem preço cadastrado para esta combinação: digite o valor.' : '';
+    }
+    const gross = money(form.elements.gross.value);
+    view.querySelector('#freasonw').hidden = suggested == null || gross === suggested;
+    view.querySelector('#fnet').textContent = brl(gross - (mode === 'home' ? money(fd.discount) : 0) + (mode === 'home' ? money(fd.travelFee) : 0));
+  };
+  form.addEventListener('change', (e) => { if (e.target.name === 'type') fill(); finRefresh(e); });
+  form.addEventListener('input', (e) => { if (e.target.name === 'gross' || e.target.name === 'travelFee' || e.target.name === 'discount') finRefresh(e); });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const err = (t) => { view.querySelector('#nferr').innerHTML = `<div class="alert error">${esc(t)}</div>`; };
     const t = templates.find((x) => x.id === form.elements.template.value);
     if (!t) return toast('Escolha um modelo.', 'error');
     const exam = newExam(t.modality, t, patients.find((p) => p.id === form.elements.patient.value));
-    try { await saveExam(exam); navigate(`/laudo/${exam.id}`); }
-    catch { toast('Não foi possível criar o laudo neste navegador.', 'error'); }
+    let entry = null, expense = null;
+    if (fin) {
+      const fd = Object.fromEntries(new FormData(form));
+      if (!fd.fmode) return err('Escolha a modalidade de atendimento (clínica, domiciliar ou sem cobrança).');
+      if (fd.fmode !== 'none') {
+        if (fd.fmode === 'clinic' && !fd.clinicId) return err('Escolha a clínica contratante.');
+        if (!fd.procedureId) return err('Escolha o tipo de ultrassonografia.');
+        if (!fd.examDate) return err('Informe a data do exame.');
+        const gross = money(fd.gross);
+        if (!(gross > 0)) return err('Informe o valor do exame.');
+        if (suggested != null && gross !== suggested && !fd.reason.trim()) return err('Informe o motivo do valor diferente da tabela.');
+        exam.date = fd.examDate;
+        entry = { examId: exam.id, mode: fd.fmode, clinicId: fd.fmode === 'clinic' ? fd.clinicId : '', procedureId: fd.procedureId, examDate: fd.examDate,
+          priceSuggested: suggested, gross: suggested ?? gross, discount: fd.fmode === 'home' ? money(fd.discount) : 0, travelFee: fd.fmode === 'home' ? money(fd.travelFee) : 0, extraFees: 0,
+          region: fd.fmode === 'home' ? fd.region.trim() : '', dueDate: fd.fmode === 'clinic' ? defaultDue(fin, fd.clinicId, fd.examDate) : '', payments: [], createdAt: Date.now() };
+        if (gross !== entry.gross) changePrice(entry, gross, fd.reason);
+        if (fd.fmode === 'home' && fd.payStatus === 'paid') entry.payments.push({ id: uid(), amount: netOf(entry), date: fd.examDate, method: '' });
+        if (fd.fmode === 'home' && money(fd.expense) > 0) {
+          const cat = fin.categories.find((c) => /outras/i.test(c.name)) || fin.categories[0];
+          expense = { id: uid(), date: fd.examDate, categoryId: cat ? cat.id : '', description: 'Despesa do atendimento domiciliar', amount: money(fd.expense), use: 'professional', proPercent: 100, status: 'pago', mode: 'home', entryId: exam.id, method: '' };
+        }
+      }
+    }
+    try {
+      await saveExam(exam);
+      if (entry) await saveEntry(entry);
+      if (expense) await saveExpense(expense);
+      navigate(`/laudo/${exam.id}`);
+    } catch { toast('Não foi possível criar o laudo neste navegador.', 'error'); }
   });
 }
+
+let activeTimer = null;
+const tabId = () => {
+  try { let t = sessionStorage.getItem('vl-tab'); if (!t) { t = Math.random().toString(36).slice(2); sessionStorage.setItem('vl-tab', t); } return t; }
+  catch { return 'tab'; }
+};
 
 export async function renderEditor(view, id, settings, profile) {
   const exam = await getExam(id);
@@ -84,12 +162,85 @@ export async function renderEditor(view, id, settings, profile) {
     catch { failed = true; setState('error'); toast('Não foi possível salvar. Seu texto continua na tela: copie ou exporte antes de fechar.', 'error'); }
   };
   const autosave = debounce(save, 700);
-  const touch = () => { if (locked) return; logEdit(exam, actor); dirty = true; setState('dirty'); autosave(); };
+  const touch = () => { if (locked) return; logEdit(exam, actor); timer.onEdit(); dirty = true; setState('dirty'); autosave(); };
+
+  // ----- Financeiro deste laudo (perfil veterinário) -----
+  const finOn = can(profile, 'finance');
+  let fin = null, entry = null;
+  if (finOn) { fin = await loadFinanceData(); entry = (await getEntry(exam.finEntryId || exam.id)) || null; }
+  const finCard = () => {
+    if (!finOn) return '';
+    if (!entry) return `<div class="card fin-box"><h2>Financeiro</h2><p class="muted small">Este laudo ainda não está no financeiro.</p><button type="button" class="btn sm" data-act="fin-new">Registrar no financeiro</button></div>`;
+    const cn = entry.mode === 'home' ? 'Atendimento domiciliar' : ((fin.clinics.find((c) => c.id === entry.clinicId) || {}).name || '(clínica)');
+    const pn = (fin.procedures.find((x) => x.id === entry.procedureId) || {}).name || '';
+    return `<div class="card fin-box"><h2>Financeiro</h2><p>${esc(cn)} · ${esc(pn)} · <strong>${brl(netOf(entry))}</strong> · ${FIN_STATUS[statusOf(entry, todayISO())]}</p>
+      <button type="button" class="btn sm" data-act="fin-edit">Editar valores e recebimentos</button></div>`;
+  };
+
+  // ----- Cronômetro de elaboração: começa ao escrever, para ao finalizar; tempo por timestamps -----
+  const timer = (() => {
+    if (activeTimer) activeTimer.destroy(); // um único cronômetro na tela, mesmo quando o laudo é reaberto
+    const on = finOn;
+    exam.work ||= { sessions: [] };
+    const TAB = tabId(); // o mesmo id para a aba inteira (sobrevive a recarregar), diferente em outra aba
+    const lockKey = `vl-timer-owner-${exam.id}`;
+    const chan = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('vetlaudo-timer') : null;
+    let el = null, tick = null, beat = 0, notice = '';
+    const st = () => timerState(exam.work.sessions);
+    const otherOwner = () => { try { const o = JSON.parse(localStorage.getItem(lockKey) || 'null'); return o && o.tab !== TAB && Date.now() - o.ts < 15000; } catch { return false; } };
+    const claim = () => { try { localStorage.setItem(lockKey, JSON.stringify({ tab: TAB, ts: Date.now() })); } catch { /* sem armazenamento */ } };
+    const release = () => { try { const o = JSON.parse(localStorage.getItem(lockKey) || 'null'); if (o && o.tab === TAB) localStorage.removeItem(lockKey); } catch { /* sem armazenamento */ } };
+    const publish = () => { if (chan) chan.postMessage({ id: exam.id, work: exam.work, tab: TAB }); };
+    const persist = () => { dirty = true; setState('dirty'); autosave(); publish(); };
+    // Página fechada com o cronômetro contando: pausa a partir do último sinal de vida (não conta o tempo fora).
+    if (on && st() === 'contando' && exam.work.beat && Date.now() - exam.work.beat > 120000) { pauseSession(exam.work, exam.work.beat); notice = 'Pausado sozinho: a página ficou fechada.'; }
+    const render = () => {
+      if (!on || (!exam.work.sessions.length && locked)) { if (el) el.hidden = true; return; }
+      if (!el) { el = document.createElement('div'); el.id = 'vl-timer'; el.className = 'vl-timer'; el.setAttribute('role', 'timer'); document.body.appendChild(el); document.body.classList.add('has-timer'); el.addEventListener('click', onClick); }
+      el.hidden = false;
+      const s = st(), min = localStorage.getItem('vl-timer-min') === '1';
+      const other = s === 'contando' && otherOwner();
+      el.classList.toggle('min', min); el.dataset.state = s;
+      el.innerHTML = min ? `<button type="button" data-t="max" aria-label="Mostrar cronômetro">⏱ ${fmtDuration(workedMs(exam.work.sessions))}${s === 'contando' ? ' ●' : ''}</button>`
+        : `<div class="vt-head"><span class="vt-dot" aria-hidden="true"></span><strong>${fmtDuration(workedMs(exam.work.sessions))}</strong><button type="button" class="vt-x" data-t="min" aria-label="Minimizar">–</button></div>
+          <div class="small">${esc((exam.patient.name || 'Laudo').slice(0, 24))} · ${s === 'contando' ? (other ? 'contando em outra aba' : 'contando') : s === 'pausado' ? 'pausado' : exam.work.sessions.length ? 'encerrado' : 'começa ao escrever'}</div>
+          ${notice ? `<div class="small muted">${esc(notice)}</div>` : ''}
+          ${locked ? '' : s === 'contando' ? '<button type="button" class="btn sm" data-t="pause">Pausar</button>' : s === 'pausado' ? '<button type="button" class="btn sm primary" data-t="resume">Continuar</button>' : ''}`;
+    };
+    function onClick(e) {
+      const b = e.target.closest('[data-t]'); if (!b) return;
+      if (b.dataset.t === 'min' || b.dataset.t === 'max') { try { localStorage.setItem('vl-timer-min', b.dataset.t === 'min' ? '1' : '0'); } catch { /* */ } }
+      if (b.dataset.t === 'pause') { pauseSession(exam.work); notice = ''; persist(); }
+      if (b.dataset.t === 'resume') { resumeSession(exam.work); claim(); notice = ''; persist(); }
+      render();
+    }
+    if (chan) chan.onmessage = (ev) => { if (ev.data && ev.data.id === exam.id && ev.data.tab !== TAB) { exam.work = ev.data.work; render(); } };
+    if (on) tick = setInterval(() => {
+      if (!document.body.contains(view)) { api.destroy(); return; } // saiu do laudo
+      if (st() === 'contando' && !otherOwner()) { claim(); if (Date.now() - beat > 30000) { beat = Date.now(); exam.work.beat = beat; if (!locked) { dirty = true; autosave(); } } }
+      render();
+    }, 1000);
+    render();
+    const api = {
+      /** Primeira edição de verdade: inicia (ou retoma após reabrir) a sessão de trabalho, se nenhuma outra aba estiver contando. */
+      onEdit() {
+        if (!on || locked) return;
+        const s = st();
+        if (s === 'parado' && !otherOwner()) { startSession(exam.work); exam.work.beat = Date.now(); claim(); notice = ''; publish(); render(); }
+        else if (s === 'pausado' && notice) { resumeSession(exam.work); claim(); notice = ''; publish(); render(); }
+      },
+      stop() { if (!on) return; stopSession(exam.work); exam.work.emittedAt = Date.now(); release(); publish(); render(); },
+      destroy() { clearInterval(tick); release(); if (chan) chan.close(); if (el) el.remove(); document.body.classList.remove('has-timer'); if (activeTimer === api) activeTimer = null; },
+    };
+    activeTimer = api;
+    return api;
+  })();
 
   const onBeforeUnload = (e) => { if (dirty || failed) { e.preventDefault(); e.returnValue = ''; } };
   window.addEventListener('beforeunload', onBeforeUnload);
   setLeaveGuard(() => {
     if (dirty) autosave.flush();
+    timer.destroy();
     window.removeEventListener('beforeunload', onBeforeUnload);
     if (failed && !confirm('Há alterações que não foram salvas. Sair mesmo assim?')) { window.addEventListener('beforeunload', onBeforeUnload); return false; }
     return true;
@@ -268,6 +419,7 @@ export async function renderEditor(view, id, settings, profile) {
       ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}${logoPicker()}
       ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame (opcional)', 'date', { type: 'date' })}${field('Hora do exame (opcional)', 'time', { type: 'time' })}</div>
       ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
+      ${finCard()}
       <div class="card"><h2>Exame</h2><p class="muted small">Preencha o que for conhecido. Itens deixados em branco aparecem como pendência informativa, nunca como "normal".</p>
       ${area('Indicação clínica', 'clinical.indication', 2)}${area('Pergunta clínica a responder', 'clinical.question', 2)}
       ${area('Histórico relevante', 'clinical.history', 3)}${area('Medicamentos informados', 'clinical.medications', 2)}
@@ -416,6 +568,7 @@ export async function renderEditor(view, id, settings, profile) {
           await upsertPatient({ ...(await getPatient(pid) || {}), ...exam.patient, id: pid });
           exam.patientId = pid;
         }
+        timer.stop();
         await finalizeExam(exam, actor, { pending: [...critical, ...attention] });
         dirty = false; toast('Laudo finalizado e assinado.', 'success');
         navigate(`/laudo/${exam.id}?r=${Date.now()}`);
@@ -575,6 +728,10 @@ export async function renderEditor(view, id, settings, profile) {
       if (!can(profile, 'prelim')) return;
       await setStatus(exam, act === 'prelim' ? 'preliminary' : 'draft', actor); dirty = false; draw();
     } else if (act === 'final') { if (canFinalize) finalizeDialog(); }
+    else if (act === 'fin-edit' || act === 'fin-new') {
+      const base = entry || { examId: exam.finEntryId || exam.id, mode: 'clinic', clinicId: '', procedureId: (fin.procedures[0] || {}).id || '', examDate: exam.date || todayISO(), gross: 0, payments: [] };
+      if (await entryDialog(fin, base)) { entry = await getEntry(base.examId); draw(); }
+    }
     else if (act === 'reopen') {
       if (!canFinalize) return;
       if (!(await confirmDialog('Reabrir este laudo para editar? Você corrige o que precisar e depois clica em "Finalizar e assinar laudo" de novo. Lembre de reenviar o PDF corrigido.', { ok: 'Editar laudo' }))) return;

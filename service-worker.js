@@ -1,7 +1,7 @@
 // Service worker do VetLaudo: permite abrir o sistema sem internet depois da primeira visita.
 // Estratégia: rede primeiro (revalidando sempre, ignorando o cache do navegador, com limite de 4 s)
 // e cache como reserva, para que atualizações cheguem sem precisar limpar nada. Os dados clínicos NÃO passam por aqui: ficam no IndexedDB do aparelho.
-const CACHE = 'vetlaudo-2026.10.31-2'; // mesma versão de js/version.js
+const CACHE = 'vetlaudo-2026.10.31-3'; // mesma versão de js/version.js
 const PRECACHE = [
   './',
   'index.html',
@@ -10,6 +10,7 @@ const PRECACHE = [
   'assets/css/responsive.css',
   'assets/vendor/docx.umd.js',
   'assets/vendor/jspdf.umd.min.js',
+  'assets/vendor/xlsx.mini.min.js',
   'assets/icons/icon-192.png',
   'assets/icons/icon-512.png',
   'assets/icons/icon-maskable-512.png',
@@ -50,6 +51,10 @@ const PRECACHE = [
   "js/ui.js",
   "js/ultrasound.js",
   "js/help.js",
+  "js/finance-export.js",
+  "js/finance-store.js",
+  "js/finance-logic.js",
+  "js/finance.js",
   "js/utils.js",
   "js/validation.js",
   "js/version.js",

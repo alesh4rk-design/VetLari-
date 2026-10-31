@@ -131,6 +131,8 @@ export async function createRevision(original, kind, justification, profile) {
   copy.id = uid(); copy.status = 'draft'; copy.version = original.version + 1; copy.originId = original.id;
   copy.revisionKind = kind; copy.justification = justification.trim();
   copy.createdAt = Date.now(); delete copy.finalizedAt; delete copy.finalizedBy;
+  copy.finEntryId = original.finEntryId || original.id; // mesma cobrança: a nova versão não gera outro lançamento
+  copy.work = { sessions: [] };
   copy.images = []; // nova versão começa sem as imagens (a pedido da veterinária); a versão anterior continua com elas
   copy.history = [...original.history];
   logAction(copy, `${REVISION_LABEL[kind]} iniciado(a) a partir da versão ${original.version}`, profile, `Justificativa: ${copy.justification}`);
@@ -148,7 +150,8 @@ export function copyFrom(prev, profile) {
   Object.assign(c, { id: uid(), status: 'draft', version: 1, originId: null, createdAt: now, updatedAt: now, images: [], date: '', time: '',
     revisionKind: undefined, justification: undefined, addendum: '', finalizedAt: null, finalizedBy: null,
     history: [{ ts: now, action: 'Rascunho criado', version: 1 }] });
-  delete c.revisionKind; delete c.justification;
+  delete c.revisionKind; delete c.justification; delete c.finEntryId;
+  c.work = { sessions: [] };
   logAction(c, `Criado a partir do laudo de ${prev.patient && prev.patient.name ? prev.patient.name : 'paciente'}${prev.date ? ' de ' + fmtDateBR(prev.date) : ''} (sem as imagens)`, profile);
   return c;
 }

@@ -31,3 +31,9 @@ Lista viva do que falta. (Peça "o que temos pendente?" para receber o resumo.)
 - [x] Data/hora opcionais e vazias; peso em kg ou g; estrutura da frase em lista; tutorial por aba; nome do órgão antes da frase; contorno, dimensões e pelve com mais opções; imagens ao lado dos achados.
 - [x] Copiar o texto do laudo para WhatsApp/e-mail; lembrete de backup no Início.
 (registrar aqui as ideias recebidas nas conversas)
+
+## Financeiro (módulo novo)
+- [x] Clínicas com tabela de preços por validade, tipos de exame, lançamento por laudo (clínica/domiciliar/sem cobrança), recebimentos parciais, despesas e abastecimentos, previsão do mês, produtividade com cronômetro, exportação Excel (8 abas).
+- [ ] Agenda de exames futuros (hoje só conta exames lançados com data futura, mostrados à parte e nunca como receita garantida).
+- [ ] Feriados na previsão (hoje separa só dias úteis × fins de semana).
+- [ ] Sincronizar entre aparelhos: os dados ficam só neste navegador (não há servidor); o cronômetro usa horários gravados no aparelho.

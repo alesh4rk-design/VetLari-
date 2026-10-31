@@ -10,7 +10,7 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } })
 const page = await ctx.newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', 'Paciente UI');
 await page.selectOption('#f-sex', 'Fêmea');
 await page.click('[data-step="1"]');

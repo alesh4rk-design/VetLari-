@@ -27,7 +27,7 @@ check('atualização por versão não recria o que ela já excluiu (versão 1)',
 check('atualização por versão não repõe frases que o perfil já tinha nem duplica', all.filter((t) => t === 'Enteropatia.').length === 1);
 
 // Testículos por lado com campos digitados e ectópico
-await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")');
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { const r = document.querySelector('input[name="fmode"][value="none"]'); if (r) r.checked = true; }); await page.click('button:has-text("Começar laudo")');
 await page.waitForSelector('#f-patient\\.name'); await page.fill('#f-patient\\.name', 'Paciente Catálogo'); await page.selectOption('#f-sex', 'Macho');
 await page.click('[data-step="1"]'); await page.click('.organ:has-text("Testículos")');
 const chipIn = (blk, g, t) => page.click(`.bblock:has(.bhead:text-is("${blk}")) .bgroup:has(.blabel:has-text("${g}")) .chip:has-text("${t}")`);
