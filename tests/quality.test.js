@@ -107,7 +107,7 @@ test('exportação: rascunho sai marcado; finalizado traz carimbo e identificado
   assert.match(prelim.statusNote, /PRELIMINAR/);
   const fin = buildReport(sampleExam({ status: 'final', finalizedAt: Date.now(), finalizedBy: { name: 'Dra. Teste' } }), sampleSettings);
   assert.equal(fin.statusNote, '');
-  assert.match(fin.signature.stamp, /ICP-Brasil/);
+  assert.ok(!/ICP-Brasil/.test(fin.signature.stamp) && /Finalizado eletronicamente/.test(fin.signature.stamp));
   assert.match(fin.footerText, /Documento e1 · versão 1/);
   const blob = await buildDocx(draft, docxLib);
   const f = join(mkdtempSync(join(tmpdir(), 'vq-')), 'a.docx');
