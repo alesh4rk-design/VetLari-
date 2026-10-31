@@ -195,3 +195,4 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 @media (max-width: 820px) { .vl-timer { right: 8px; bottom: 74px; min-width: 0; max-width: 200px; padding: 8px 10px; } }
 .fin-box { border-left: 3px solid var(--accent); }
 body.has-timer #view { padding-bottom: 130px; }
+.fin-box input[type="radio"] { width: 22px; min-height: 22px; height: 22px; flex: none; accent-color: var(--accent); } .fin-box > legend { padding: 0 6px; }
