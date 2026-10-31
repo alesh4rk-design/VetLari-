@@ -178,6 +178,19 @@ await page.click('[data-step="4"]'); await page.click('[data-act="final"]'); awa
 await page.waitForSelector('text=Laudo finalizado: o conteúdo está protegido');
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 check('refinalizado com a correção, mesma versão', (await page.textContent('.paper')).includes('Tutor corrigido') && (await page.textContent('.paper')).includes('versão 1'));
+// Novo laudo a partir deste: tudo, menos as imagens
+await page.goto(base + '#/novo'); await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Acompanhamento'); await page.fill('#f-patient\\.tutor', 'Tutora X');
+await page.click('[data-step="1"]'); await page.click('.organ:has-text("Fígado")'); await page.click('[data-act="b-normal"]');
+await page.setInputFiles('#side-file', [join(here, '../fixture-usg.jpg')]).catch(async () => {});
+await page.click('[data-step="3"]'); await page.fill('#f-impression', 'Conclusão anterior.'); await page.waitForTimeout(1200);
+await page.click('a:has-text("Novo laudo a partir deste")');
+await page.waitForURL((u) => !u.href.includes('nova-versao')); await page.waitForSelector('#f-patient\\.name');
+check('cópia: paciente e tutor mantidos', (await page.inputValue('#f-patient\\.name')) === 'Acompanhamento' && (await page.inputValue('#f-patient\\.tutor')) === 'Tutora X');
+await page.click('[data-step="3"]');
+check('cópia: conclusão mantida', (await page.inputValue('#f-impression')) === 'Conclusão anterior.');
+await page.click('[data-step="2"]');
+check('cópia: sem imagens', (await page.locator('.imgcard').count()) === 0);
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();

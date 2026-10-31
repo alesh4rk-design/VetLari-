@@ -131,10 +131,26 @@ export async function createRevision(original, kind, justification, profile) {
   copy.id = uid(); copy.status = 'draft'; copy.version = original.version + 1; copy.originId = original.id;
   copy.revisionKind = kind; copy.justification = justification.trim();
   copy.createdAt = Date.now(); delete copy.finalizedAt; delete copy.finalizedBy;
+  copy.images = []; // nova versão começa sem as imagens (a pedido da veterinária); a versão anterior continua com elas
   copy.history = [...original.history];
   logAction(copy, `${REVISION_LABEL[kind]} iniciado(a) a partir da versão ${original.version}`, profile, `Justificativa: ${copy.justification}`);
   await saveExam(copy);
   return copy;
+}
+
+/**
+ * Novo laudo a partir de um anterior (ex.: acompanhamento): copia tudo — paciente, cabeçalho, textos,
+ * medidas, conclusão e logotipos —, menos as imagens. Começa como rascunho, sem data/hora do exame.
+ */
+export function copyFrom(prev, profile) {
+  const c = JSON.parse(JSON.stringify(prev));
+  const now = Date.now();
+  Object.assign(c, { id: uid(), status: 'draft', version: 1, originId: null, createdAt: now, updatedAt: now, images: [], date: '', time: '',
+    revisionKind: undefined, justification: undefined, addendum: '', finalizedAt: null, finalizedBy: null,
+    history: [{ ts: now, action: 'Rascunho criado', version: 1 }] });
+  delete c.revisionKind; delete c.justification;
+  logAction(c, `Criado a partir do laudo de ${prev.patient && prev.patient.name ? prev.patient.name : 'paciente'}${prev.date ? ' de ' + fmtDateBR(prev.date) : ''} (sem as imagens)`, profile);
+  return c;
 }
 
 /** Nova versão apenas com a estrutura (modelo) de um laudo anterior, sem achados nem paciente. */
