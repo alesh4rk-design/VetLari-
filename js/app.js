@@ -108,7 +108,7 @@ async function boot() {
   route('/', safe((v) => renderDashboard(v, profile)));
   route('/novo', safe((v, { query }) => renderNewExam(v, query)));
   route('/laudo/:id', safe((v, { params }) => renderEditor(v, params.id, settings, profile)));
-  route('/laudo/:id/nova-versao-estrutura', safe((v, { params }) => startFromPrevious(v, params.id)));
+  route('/laudo/:id/nova-versao-estrutura', safe((v, { params }) => startFromPrevious(v, params.id, profile)));
   route('/laudos', safe(viewExams));
   route('/comparar/:a/:b', safe((v, { params }) => compare(v, params.a, params.b)));
   route('/pacientes', safe((v) => renderPatientList(v)));

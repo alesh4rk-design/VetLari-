@@ -73,3 +73,17 @@ test('paciente: peso em gramas aceita valores de animais pequenos', () => {
   assert.ok(validatePatient({ name: 'A', weight: '350', weightUnit: 'kg' }).length === 0);
   assert.ok(validatePatient({ name: 'A', weight: '5000', weightUnit: 'kg' }).length);
 });
+
+test('novo laudo a partir de um anterior: copia tudo, menos as imagens', async () => {
+  const { copyFrom } = await import('../js/exams.js');
+  const prev = sampleExam({ status: 'final', finalizedAt: Date.now(), finalizedBy: { name: 'Dra.' }, history: [{ ts: 1, action: 'x', version: 1 }], logos: { logo2: 'h' }, time: '10:00' });
+  const c = copyFrom(prev, { name: 'Dra.', role: 'vet' });
+  assert.notEqual(c.id, prev.id);
+  assert.equal(c.status, 'draft'); assert.equal(c.version, 1);
+  assert.deepEqual(c.images, []); assert.ok(prev.images.length > 0, 'o original continua com as imagens');
+  assert.equal(c.date, ''); assert.equal(c.time, '');
+  assert.equal(c.patient.name, prev.patient.name); assert.equal(c.impression, prev.impression);
+  assert.equal(c.sections[0].description, prev.sections[0].description); assert.deepEqual(c.logos, prev.logos);
+  assert.equal(c.finalizedAt, null);
+  assert.ok(c.history.some((h) => /sem as imagens/.test(h.action)));
+});

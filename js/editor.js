@@ -5,7 +5,7 @@ import { SEXES } from './validation.js';
 import { SPECIES, breedsFor, optionsHtml, defaultWeightUnit } from './animals.js';
 import { ageFromBirth } from './utils.js';
 import { navigate, setLeaveGuard } from './router.js';
-import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, reopenExam, createRevision, deleteExam, structureFrom, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
+import { getExam, listExams, deleteExamFlow, canDelete, saveExam, newExam, finalizeExam, reopenExam, createRevision, copyFrom, deleteExam, setStatus, logAction, logEdit, blankSection, STATUS_LABEL, REVISION_LABEL } from './exams.js';
 import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, sectionHasContent } from './quality.js';
 import { can } from './profiles.js';
 import { openModal, pickOption } from './ui.js';
@@ -310,7 +310,7 @@ export async function renderEditor(view, id, settings, profile) {
     const histLast = exam.history[exam.history.length - 1];
     view.innerHTML = `<div class="page-head"><div><h1>${MODALITY[exam.type].label} <span class="badge ${exam.status}">${STATUS_LABEL[exam.status]} · v${exam.version}${exam.revisionKind ? ' · ' + REVISION_LABEL[exam.revisionKind] : ''}</span></h1>
       <div class="muted small">${esc(exam.patient.name || 'Paciente sem nome')} · última ação: ${esc(histLast.action)} (${fmtDateTimeBR(histLast.ts)})</div></div>
-      <div class="row"><a class="btn sm" href="#/laudo/${exam.id}/nova-versao-estrutura">Novo laudo com esta estrutura</a>
+      <div class="row"><a class="btn sm" href="#/laudo/${exam.id}/nova-versao-estrutura" title="Copia paciente, textos, medidas e conclusão; as imagens não são copiadas">Novo laudo a partir deste (sem imagens)</a>
       ${canDelete(exam, profile) ? '<button class="btn sm danger" data-act="del-exam">Excluir exame</button>' : ''}</div></div>
       ${related.length ? `<details class="card"><summary>Outros exames deste paciente (${related.length})</summary><ul class="list">${related.map((x) => `<li><span>${MODALITY[x.type].code} · ${fmtDateBR(x.date)} · v${x.version} · ${STATUS_LABEL[x.status]}</span><span class="row"><a class="btn sm" href="#/laudo/${x.id}">Abrir</a><a class="btn sm" href="#/comparar/${x.id}/${exam.id}">Comparar</a></span></li>`).join('')}</ul></details>` : ''}
       ${locked ? `<div class="alert info">Laudo finalizado: o conteúdo está protegido contra alterações por engano. ${canFinalize ? '<button type="button" class="btn sm primary" data-act="reopen">✏️ Editar este laudo</button> (reabre o mesmo laudo; depois é só finalizar de novo).' : ''}</div>` : ''}
@@ -630,11 +630,10 @@ export async function renderEditor(view, id, settings, profile) {
 }
 
 /** Cria um novo rascunho reaproveitando a estrutura de um laudo anterior (sem copiar achados). */
-export async function startFromPrevious(view, prevId) {
+export async function startFromPrevious(view, prevId, profile) {
   const prev = await getExam(prevId);
   if (!prev) { view.innerHTML = '<div class="card empty">Laudo de origem não encontrado.</div>'; return; }
-  const tpl = (await getTemplate(prev.templateId)) || undefined;
-  const fresh = structureFrom(prev, tpl);
+  const fresh = copyFrom(prev, profile);
   await saveExam(fresh);
   navigate(`/laudo/${fresh.id}`);
 }
