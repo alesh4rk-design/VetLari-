@@ -32,7 +32,7 @@ const addClinic = async (name, value) => {
   await page.click('#padd'); await page.click('#cf button.primary'); await page.waitForSelector('.modal', { state: 'detached' });
 };
 await addClinic('Clínica Alfa', '150,00'); await addClinic('Clínica Beta', '200,00');
-check('duas clínicas cadastradas', (await page.locator('.list li:has-text("Clínica")').count()) === 2);
+await page.waitForSelector('.list li:has-text("Clínica Beta")'); check('duas clínicas cadastradas', (await page.locator('.list li:has-text("Clínica")').count()) === 2);
 
 // Laudo pela clínica Alfa: preço sugerido 150
 const newExam = async (fill) => {
@@ -140,6 +140,26 @@ check('Excel: domiciliar com despesa e resultado', rowsOf('Atendimentos domicili
 check('Excel: produtividade com tempo trabalhado', rowsOf('Produtividade').some((r) => typeof r[5] === 'number' && r[5] > 0));
 
 check('lançamento único por laudo (sem duplicar ao reabrir/finalizar)', !!total && lanc.filter((r) => r[0] && !['TOTAL', 'ID do exame'].includes(r[0])).length === 3);
+// Envio: WhatsApp direto para o número e e-mail
+await page.goto(base + `#/laudo/${alfaId}`); await page.waitForSelector('[data-step]'); await page.click('[data-step="4"]'); await page.waitForSelector('[data-act="share-mail"]');
+await page.fill('#st-phone', '(21) 99999-8888'); await page.fill('#st-email', 'laudos@clinica.com'); await page.waitForTimeout(900);
+await page.evaluate(() => { Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }); });
+const [dw] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="share-pdf"]')]);
+check('WhatsApp: PDF baixado', dw.suggestedFilename().endsWith('.pdf'));
+const wa = await page.getAttribute('.modal a.primary', 'href');
+check('WhatsApp abre direto no número', wa.startsWith('https://wa.me/5521999998888?text='), wa);
+await page.click('.modal [data-x=close]');
+const [dm] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="share-mail"]')]);
+const ml = await page.getAttribute('.modal a.primary', 'href');
+check('E-mail abre já para o destinatário', ml.startsWith('mailto:laudos@clinica.com?subject='), ml);
+await page.click('.modal [data-x=close]');
+await page.reload(); await page.waitForSelector('[data-step]'); await page.click('[data-step="4"]'); await page.waitForSelector('#st-phone');
+check('número e e-mail ficam salvos no laudo', (await page.inputValue('#st-phone')) === '(21) 99999-8888' && (await page.inputValue('#st-email')) === 'laudos@clinica.com');
+await page.click('[data-act="send-save"]'); await page.waitForSelector('.toast, [role=status]');
+await page.goto(base + `#/novo`); await page.waitForSelector('#nf button[type=submit]');
+await page.check('input[name=fmode][value=clinic]'); await page.selectOption('#fc', { label: 'Clínica Alfa' }); await page.selectOption('#fp', { label: 'Ultrassonografia abdominal completa' });
+await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name'); await page.click('[data-step="4"]'); await page.waitForSelector('#st-phone');
+check('número da clínica já vem preenchido nos próximos laudos', (await page.inputValue('#st-phone')) === '(21) 99999-8888');
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
 const failed = results.filter(([, ok]) => !ok).length;

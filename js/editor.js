@@ -25,8 +25,9 @@ import { reportToHtml } from './preview.js';
 import { buildDocx } from './docx-export.js';
 import { pdfBlob } from './pdf-export.js';
 import { attachHelp } from './help.js';
+import { whatsappNumber, isEmail, whatsappLink, mailtoLink, messageText } from './send-logic.js';
 import { loadFinanceData, suggestPrice, defaultDue, entryDialog } from './finance.js';
-import { saveEntry, saveExpense, getEntry } from './finance-store.js';
+import { saveEntry, saveExpense, getEntry, saveClinic } from './finance-store.js';
 import { money, brl, netOf, changePrice, statusOf, FIN_STATUS, MODES, startSession, pauseSession, resumeSession, stopSession, timerState, workedMs, fmtDuration } from './finance-logic.js';
 import { ULTRASOUND } from './ultrasound.js';
 import { RADIOGRAPHY } from './radiography.js';
@@ -444,7 +445,8 @@ export async function renderEditor(view, id, settings, profile) {
         ${exam.status !== 'final' ? `<div class="alert info">✍️ <strong>A assinatura só entra depois de finalizar.</strong> Enquanto o laudo for rascunho ou preliminar, o PDF sai com "sem assinatura eletrônica". Quando terminar, clique em <strong>Finalizar e assinar laudo</strong> (abaixo) e depois baixe ou envie o PDF.${settings.signatureImage ? '' : ' <a href="#/config">Cadastre sua assinatura em Configurações.</a>'}</div>` : ''}
         ${alertList('Para conferir (medida, cabeçalho ou texto pendente):', critical, 'error')}${alertList('Alertas informativos:', info, 'warn')}
         <p class="muted small">Word e PDF contêm exatamente o mesmo conteúdo da prévia abaixo. O sistema não preenche, não conclui nem assina nada em seu nome.${exam.status !== 'final' ? ' Arquivos de laudos não finalizados saem marcados como rascunho/preliminar.' : ''}</p>
-        <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn whatsapp" data-act="share-pdf">Enviar PDF pelo WhatsApp</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
+        <div class="row"><button class="btn primary" data-act="docx">Baixar Word (.docx)</button><button class="btn primary" data-act="pdf">Baixar PDF</button><button class="btn whatsapp" data-act="share-pdf">Enviar PDF pelo WhatsApp</button><button class="btn" data-act="share-mail">✉️ Enviar por e-mail</button><button class="btn" data-act="copy-text">Copiar texto (WhatsApp/e-mail)</button></div>
+        ${sendToBlock()}
         <div class="row" style="margin-top:10px">${locked
           ? (canRevise ? '<button class="btn primary" data-act="reopen">✏️ Editar este laudo</button><button class="btn" data-act="revise" data-kind="correction">Retificar (nova versão)</button><button class="btn" data-act="revise" data-kind="addendum">Adicionar adendo (nova versão)</button>'
             : '<span class="muted small">Retificações e adendos exigem perfil de médico(a)-veterinário(a).</span>')
@@ -521,12 +523,49 @@ export async function renderEditor(view, id, settings, profile) {
    * janela de compartilhar já com o PDF anexado: é só escolher o WhatsApp e o contato. Onde não dá para
    * anexar automaticamente, baixa o PDF e abre o WhatsApp para ela anexar o arquivo baixado.
    */
+  /** Destinatário do envio (opcional): vem do cadastro da clínica do lançamento, mas pode ser digitado em cada laudo. */
+  const clinicOfEntry = () => (entry && entry.mode === 'clinic' && fin ? fin.clinics.find((c) => c.id === entry.clinicId) : null);
+  const sendTo = () => { const c = clinicOfEntry() || {}; const s = exam.sendTo || {}; return { phone: s.phone ?? c.phone ?? '', email: s.email ?? c.email ?? '' }; };
+  const sendToBlock = () => {
+    const t = sendTo(), c = clinicOfEntry();
+    const canSave = c && ((t.phone && t.phone !== (c.phone || '')) || (t.email && t.email !== (c.email || '')));
+    return `<div class="row sendto" style="margin-top:10px;align-items:flex-end"><div class="field" style="margin:0;min-width:200px;flex:1"><label for="st-phone">WhatsApp de quem vai receber (opcional)</label><input id="st-phone" data-send="phone" inputmode="tel" value="${esc(t.phone)}" placeholder="(21) 99999-8888"></div>
+      <div class="field" style="margin:0;min-width:200px;flex:1"><label for="st-email">E-mail de quem vai receber (opcional)</label><input id="st-email" data-send="email" type="email" value="${esc(t.email)}" placeholder="laudos@clinica.com"></div>
+      ${canSave ? `<button type="button" class="btn sm" data-act="send-save">Guardar no cadastro de ${esc(c.name)}</button>` : ''}</div>
+      <p class="muted small">Com o número preenchido, "Enviar pelo WhatsApp" abre direto a conversa com ele. Se deixar em branco, você escolhe o contato.</p>`;
+  };
+  const pdfFile = () => { const name = reportFileName(exam, 'pdf'); return { name, file: new File([pdfBlob(buildReport(exam, settings))], name, { type: 'application/pdf' }) }; };
+  const dateText = () => (exam.date ? fmtDateBR(exam.date) : '');
+
+  /** E-mail: no celular abre o compartilhar com o PDF; no computador baixa o PDF e abre o e-mail já com o destinatário. */
+  const shareMail = async () => {
+    const t = sendTo();
+    if (t.email && !isEmail(t.email)) return toast('O e-mail informado parece incompleto. Confira.', 'error');
+    let pf; try { pf = pdfFile(); } catch (e) { return toast(`Falha ao gerar o PDF: ${e.message}`, 'error'); }
+    const subject = `Laudo — ${exam.patient.name || 'paciente'}${dateText() ? ' — ' + dateText() : ''}`;
+    const body = messageText(exam, dateText(), prof.name || '');
+    if (!t.email && navigator.canShare && navigator.canShare({ files: [pf.file] })) {
+      try { await navigator.share({ files: [pf.file], title: subject, text: body }); logAction(exam, 'PDF compartilhado (e-mail/outro aplicativo)', actor, pf.name); await saveExam(exam); }
+      catch (e) { if (e.name !== 'AbortError') { download(pf.file, pf.name); toast('Não foi possível compartilhar. O PDF foi baixado.', 'error'); } }
+      return;
+    }
+    download(pf.file, pf.name);
+    logAction(exam, `PDF baixado para enviar por e-mail${t.email ? ' (' + t.email + ')' : ''}`, actor, pf.name); await saveExam(exam);
+    const mo = openModal(`<h2>Enviar por e-mail</h2><p>O PDF <strong>${esc(pf.name)}</strong> foi baixado (pasta Downloads).</p>
+      <ol class="helplist"><li>Clique em <strong>Abrir e-mail</strong>${t.email ? ` (já vai para <strong>${esc(t.email)}</strong>)` : ''}.</li><li>Anexe o PDF baixado (clipe 📎 ou arraste o arquivo) e envie.</li></ol>
+      <p class="muted small">Por segurança, nenhum site consegue anexar um arquivo sozinho ao e-mail.</p>
+      <div class="row end"><button class="btn" data-x="close">Fechar</button><a class="btn primary" href="${esc(mailtoLink(t.email, subject, body))}">Abrir e-mail</a></div>`, { label: 'Enviar por e-mail' });
+    mo.el.querySelector('[data-x=close]').onclick = () => mo.close(null);
+  };
+
   const sharePdf = async () => {
     let file, name;
     try { name = reportFileName(exam, 'pdf'); file = new File([pdfBlob(buildReport(exam, settings))], name, { type: 'application/pdf' }); }
     catch (e) { return toast(`Falha ao gerar o PDF: ${e.message}`, 'error'); }
-    const text = `Laudo de ${exam.patient.name || 'paciente'}${exam.date ? ' — ' + fmtDateBR(exam.date) : ''}`;
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    const text = messageText(exam, dateText(), prof.name || '');
+    const phone = sendTo().phone;
+    if (phone && !whatsappNumber(phone)) return toast('O número de WhatsApp parece incompleto. Use DDD + número, ex.: (21) 99999-8888.', 'error');
+    if (!phone && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: name, text });
         logAction(exam, 'PDF compartilhado (WhatsApp/outro aplicativo)', actor, name); await saveExam(exam);
@@ -537,9 +576,9 @@ export async function renderEditor(view, id, settings, profile) {
     logAction(exam, 'PDF baixado para enviar pelo WhatsApp', actor, name); await saveExam(exam);
     const mo = openModal(`<h2>Enviar pelo WhatsApp</h2>
       <p>O PDF <strong>${esc(name)}</strong> foi baixado (pasta Downloads).</p>
-      <ol class="helplist"><li>Clique em <strong>Abrir WhatsApp</strong> e escolha o contato.</li><li>Clique no clipe 📎 (ou arraste o arquivo para a conversa) e anexe o PDF baixado.</li></ol>
-      <p class="muted small">Este navegador não permite anexar o arquivo sozinho. No celular, o botão abre o WhatsApp já com o PDF anexado.</p>
-      <div class="row end"><button class="btn" data-x="close">Fechar</button><a class="btn primary" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">Abrir WhatsApp</a></div>`, { label: 'Enviar pelo WhatsApp' });
+      <ol class="helplist"><li>Clique em <strong>Abrir WhatsApp</strong>${phone ? ` (a conversa com <strong>${esc(phone)}</strong> já abre)` : ' e escolha o contato'}.</li><li>Clique no clipe 📎 (ou arraste o arquivo para a conversa) e anexe o PDF baixado.</li></ol>
+      <p class="muted small">O WhatsApp não deixa um site anexar o arquivo sozinho quando o contato já está escolhido. ${phone ? 'Para anexar automático (celular), deixe o número em branco e escolha o contato na hora.' : 'No celular, com o número em branco, o botão abre o WhatsApp já com o PDF anexado.'}</p>
+      <div class="row end"><button class="btn" data-x="close">Fechar</button><a class="btn primary" href="${esc(whatsappLink(phone, text))}" target="_blank" rel="noopener">Abrir WhatsApp</a></div>`, { label: 'Enviar pelo WhatsApp' });
     mo.el.querySelector('[data-x=close]').onclick = () => mo.close(null);
   };
 
@@ -640,6 +679,12 @@ export async function renderEditor(view, id, settings, profile) {
     else if (act === 'prev') { step = Math.max(0, step - 1); draw({ top: true }); }
     else if (act === 'org-pick') { selSec = b.dataset.id; refreshFindings(); if (window.innerWidth <= 820) view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' }); }
     else if (act === 'share-pdf') await sharePdf();
+    else if (act === 'share-mail') await shareMail();
+    else if (act === 'send-save') {
+      const c = clinicOfEntry(), t = sendTo(); if (!c) return;
+      await saveClinic({ ...c, phone: t.phone || c.phone || '', email: t.email || c.email || '' });
+      fin = await loadFinanceData(); toast(`Contato guardado no cadastro de ${c.name}.`, 'success'); draw();
+    }
     else if (act === 'copy-text') {
       const text = reportToText(buildReport(exam, settings));
       try { await navigator.clipboard.writeText(text); toast('Texto do laudo copiado. Cole no WhatsApp, e-mail ou outro sistema.', 'success'); }
@@ -744,8 +789,11 @@ export async function renderEditor(view, id, settings, profile) {
     }
   };
 
+  const saveSendTo = debounce(() => saveExam(exam), 600);
   view.oninput = (e) => {
     const t = e.target;
+    // Destinatário do envio: pode ser editado até em laudo finalizado (não altera o conteúdo do laudo).
+    if (t.dataset.send) { exam.sendTo = { ...sendTo(), [t.dataset.send]: t.value.trim() }; saveSendTo(); return; }
     if (locked) return;
     if (t.dataset.bind) {
       setPath(exam, t.dataset.bind, t.dataset.num ? Number(t.value) : t.value);
