@@ -131,3 +131,16 @@ test('15. permissões: só o perfil veterinário acessa o financeiro', async () 
   assert.ok(can({ role: 'vet' }, 'finance'));
   assert.ok(!can({ role: 'assistant' }, 'finance'));
 });
+
+test('envio: número de WhatsApp, e-mail e links', async () => {
+  const { whatsappNumber, isEmail, whatsappLink, mailtoLink } = await import('../js/send-logic.js');
+  assert.equal(whatsappNumber('(21) 99999-8888'), '5521999998888');
+  assert.equal(whatsappNumber('21 3333-4444'), '552133334444');
+  assert.equal(whatsappNumber('+55 21 99999-8888'), '5521999998888');
+  assert.equal(whatsappNumber('021999998888'), '5521999998888');
+  assert.equal(whatsappNumber('999'), ''); assert.equal(whatsappNumber(''), '');
+  assert.ok(isEmail('clinica@exemplo.com.br')); assert.ok(!isEmail('clinica@')); assert.ok(!isEmail('a b@c.com'));
+  assert.equal(whatsappLink('(21) 99999-8888', 'Olá é'), 'https://wa.me/5521999998888?text=Ol%C3%A1%20%C3%A9');
+  assert.equal(whatsappLink('', 'x'), 'https://wa.me/?text=x');
+  assert.equal(mailtoLink('a@b.com', 'Laudo X', 'Oi\nTchau'), 'mailto:a@b.com?subject=Laudo%20X&body=Oi%0ATchau');
+});

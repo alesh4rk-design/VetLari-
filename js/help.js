@@ -48,6 +48,7 @@ const TUTORIALS = {
     'Leia os <strong>alertas</strong>: ao finalizar, o sistema mostra só o que falta (medidas, dados do cabeçalho, campos pendentes) e você corrige ou finaliza assim mesmo.',
     'Confira a <strong>prévia</strong> abaixo: o Word e o PDF saem exatamente iguais a ela.',
     'Escolha <strong>Baixar Word</strong> ou <strong>Baixar PDF</strong>.',
+    'Preencha (se quiser) o <strong>WhatsApp e o e-mail</strong> de quem vai receber: o botão do WhatsApp abre direto a conversa com o número, e <strong>Enviar por e-mail</strong> já abre o e-mail para o endereço. Guarde no cadastro da clínica para não digitar de novo.',
     'Use <strong>Enviar PDF pelo WhatsApp</strong>: no celular abre o WhatsApp já com o PDF anexado; no computador o PDF é baixado e o WhatsApp abre para você anexar.',
     'Use "Marcar como preliminar" enquanto estiver em andamento e <strong>Finalizar e assinar laudo</strong> quando estiver pronto (só depois disso a sua assinatura aparece) (somente perfil de veterinário).',
     'Esqueceu algo? Em um laudo finalizado, clique em <strong>Editar este laudo</strong>: ele reabre, você corrige e finaliza de novo (sem criar nova versão).',

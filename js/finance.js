@@ -476,6 +476,8 @@ export function clinicDialog(d, base) {
   const procs = d.procedures;
   const m = openModal(`<h2>${base ? 'Editar clínica' : 'Nova clínica'}</h2><form id="cf" novalidate><div class="grid g2">
     <div class="field"><label>Nome *</label><input name="name" value="${esc(c.name)}"></div><div class="field"><label>Endereço (opcional)</label><input name="address" value="${esc(c.address || '')}"></div>
+    <div class="field"><label>WhatsApp da clínica (opcional)</label><input name="phone" inputmode="tel" value="${esc(c.phone || '')}" placeholder="(21) 99999-8888"><div class="hint">Com o número, o botão "Enviar pelo WhatsApp" do laudo já abre a conversa com a clínica.</div></div>
+    <div class="field"><label>E-mail da clínica (opcional)</label><input name="email" type="email" value="${esc(c.email || '')}" placeholder="laudos@clinica.com"></div>
     <div class="field"><label>Forma de remuneração</label><select name="payment">${['Por exame', 'Mensal (fechamento)', 'Percentual', 'Outra'].map((t) => opt(t, t, c.payment)).join('')}</select></div>
     <div class="field"><label>Prazo habitual de pagamento (dias)</label><input name="payTermDays" inputmode="numeric" value="${esc(String(c.payTermDays ?? ''))}"></div>
     <label class="check"><input type="checkbox" name="active" ${c.active !== false ? 'checked' : ''}> Ativa (inativas continuam nos relatórios)</label></div>
@@ -513,7 +515,7 @@ export function clinicDialog(d, base) {
     m.el.querySelector('#cf').addEventListener('submit', async (ev) => {
       ev.preventDefault(); const fd = Object.fromEntries(new FormData(ev.target));
       if (!fd.name.trim()) { m.el.querySelector('#cerr').innerHTML = '<div class="alert error">Informe o nome.</div>'; return; }
-      Object.assign(c, { name: fd.name.trim(), address: fd.address.trim(), payment: fd.payment, payTermDays: Number(fd.payTermDays) || 0, notes: fd.notes.trim(), active: fd.active === 'on' });
+      Object.assign(c, { name: fd.name.trim(), address: fd.address.trim(), phone: (fd.phone || '').trim(), email: (fd.email || '').trim(), payment: fd.payment, payTermDays: Number(fd.payTermDays) || 0, notes: fd.notes.trim(), active: fd.active === 'on' });
       await saveClinic(c); toast('Clínica salva.', 'success'); m.close(true);
     });
     m.closed.then((v) => resolve(!!v));
