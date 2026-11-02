@@ -26,7 +26,7 @@ import { buildDocx } from './docx-export.js';
 import { pdfBlob } from './pdf-export.js';
 import { attachHelp } from './help.js';
 import { whatsappNumber, isEmail, whatsappLink, mailtoLink, messageText } from './send-logic.js';
-import { loadFinanceData, suggestPrice, defaultDue, entryDialog } from './finance.js';
+import { loadFinanceData, suggestPrice, defaultDue, entryDialog, clinicDialog } from './finance.js';
 import { saveEntry, saveExpense, getEntry, saveClinic } from './finance-store.js';
 import { money, brl, netOf, changePrice, statusOf, FIN_STATUS, MODES, startSession, pauseSession, resumeSession, stopSession, timerState, workedMs, fmtDuration } from './finance-logic.js';
 import { ULTRASOUND } from './ultrasound.js';
@@ -38,7 +38,7 @@ const STATUS_TEXT = { dirty: 'Alterações não salvas', saving: 'Salvando…', 
 
 export async function renderNewExam(view, query, profile) {
   const [templates, patients] = await Promise.all([listTemplates(), listPatients()]);
-  const fin = can(profile, 'finance') ? await loadFinanceData() : null;
+  let fin = can(profile, 'finance') ? await loadFinanceData() : null;
   const type = query.tipo === 'rx' ? 'rx' : 'usg';
   const activeClinics = fin ? fin.clinics.filter((c) => c.active !== false) : [];
   const procs = fin ? fin.procedures.filter((p) => p.active !== false) : [];
@@ -55,7 +55,8 @@ export async function renderNewExam(view, query, profile) {
         <label class="check"><input type="radio" name="fmode" value="none"> Sem cobrança (cortesia, retorno, teste)</label></div>
       <div id="fin-fields" hidden><div class="grid g2">
         <div class="field" data-for="clinic"><label for="fc">Clínica contratante *</label><select id="fc" name="clinicId"><option value="">Escolha</option>${activeClinics.map((c) => o(c.id, c.name)).join('')}</select>
-          ${activeClinics.length ? '' : '<div class="hint">Nenhuma clínica cadastrada. <a href="#/financeiro?aba=clinicas">Cadastrar clínicas e preços</a>.</div>'}</div>
+          <button type="button" class="btn sm" id="newclinic" style="margin-top:6px">+ Nova clínica</button>
+          <div class="hint">Não está na lista? Cadastre aqui mesmo, com o preço do exame: ela já fica escolhida.</div></div>
         <div class="field"><label for="fp">Tipo de ultrassonografia *</label><select id="fp" name="procedureId"><option value="">Escolha</option>${procs.map((p) => o(p.id, p.name)).join('')}</select></div>
         <div class="field"><label for="fd">Data do exame *</label><input type="date" id="fd" name="examDate" value="${todayISO()}"></div>
         <div class="field" data-for="home"><label for="fr">Endereço ou região (opcional)</label><input id="fr" name="region"></div>
@@ -76,6 +77,17 @@ export async function renderNewExam(view, query, profile) {
   };
   fill();
   let suggested = null;
+  const newClinicBtn = view.querySelector('#newclinic');
+  if (newClinicBtn) newClinicBtn.onclick = async () => {
+    const before = new Set(fin.clinics.map((c) => c.id));
+    if (!(await clinicDialog(fin, null))) return;
+    fin = await loadFinanceData();
+    const sel = form.elements.clinicId;
+    sel.innerHTML = '<option value="">Escolha</option>' + fin.clinics.filter((c) => c.active !== false).map((c) => o(c.id, c.name)).join('');
+    const added = fin.clinics.find((c) => !before.has(c.id));
+    if (added) sel.value = added.id;
+    finRefresh({ target: sel });
+  };
   const finRefresh = (e) => {
     if (!fin) return;
     const mode = (form.elements.fmode.value || '');

@@ -160,6 +160,17 @@ await page.goto(base + `#/novo`); await page.waitForSelector('#nf button[type=su
 await page.check('input[name=fmode][value=clinic]'); await page.selectOption('#fc', { label: 'Clínica Alfa' }); await page.selectOption('#fp', { label: 'Ultrassonografia abdominal completa' });
 await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name'); await page.click('[data-step="4"]'); await page.waitForSelector('#st-phone');
 check('número da clínica já vem preenchido nos próximos laudos', (await page.inputValue('#st-phone')) === '(21) 99999-8888');
+// Nova clínica direto no Novo laudo
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]');
+await page.check('input[name=fmode][value=clinic]');
+const antes = await page.locator('#fc option').count();
+await page.click('#newclinic'); await page.fill('#cf input[name=name]', 'Clínica Gama');
+await page.selectOption('#pp', { label: 'Ultrassonografia abdominal completa' }); await page.fill('#pv', '175'); await page.fill('#pf', '2026-01-01'); await page.click('#padd');
+await page.click('#cf button.primary'); await page.waitForSelector('.modal', { state: 'detached' });
+check('nova clínica cadastrada no Novo laudo aparece na lista', (await page.locator('#fc option').count()) === antes + 1);
+check('a clínica nova já vem escolhida', (await page.locator('#fc option:checked').textContent()) === 'Clínica Gama');
+await page.selectOption('#fp', { label: 'Ultrassonografia abdominal completa' });
+check('preço da clínica nova sugerido', (await page.inputValue('#fg')) === '175');
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
 const failed = results.filter(([, ok]) => !ok).length;
