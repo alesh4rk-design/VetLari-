@@ -147,3 +147,16 @@ export function patchManualText(manual, oldAuto, newAuto) {
   }
   return null;
 }
+
+/**
+ * O nome do órgão já aparece no título do tópico ("Linfonodos:"), então a descrição não o repete:
+ * "Linfonodos: discreto aumento…" → "discreto aumento…"; "Tecido mamário com discreto…" → "com discreto…".
+ * Só tira o nome no começo do texto, inteiro e como palavra; negrito de bloco (**Útero** …) não é tocado.
+ */
+export function dropTitle(text, title) {
+  const t = String(title || '').trim();
+  if (!t) return text;
+  const esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const out = String(text).replace(new RegExp(`^\\s*${esc}(?![\\p{L}\\p{N}])(?!\\s+e\\s)\\s*[:\\-–—]?\\s*`, 'iu'), '');
+  return out.trim() ? out : text;
+}

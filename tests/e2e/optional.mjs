@@ -207,6 +207,13 @@ check('limpar vários de uma vez', (await page.locator('.organ-clear').count()) 
 await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
 const paper = await page.textContent('.paper');
 check('órgãos limpos saem do laudo e o restante fica', !paper.includes('Fígado') && paper.includes('Baço') && !paper.includes('Rins'));
+// Descrição não repete o nome do órgão do título
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { document.querySelector('input[name="fmode"][value="none"]').checked = true; });
+await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Sem repetir'); await page.click('[data-step="1"]'); await page.click('.organ:has-text("Linfonodos")');
+await page.click('.bgroup .chip >> nth=1');
+const lf = await page.inputValue('[data-sec] textarea[id^="d-"]');
+check('linfonodos: texto não começa repetindo o nome do órgão', /^discreto aumento de linfonodos/i.test(lf), lf.slice(0, 60));
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();

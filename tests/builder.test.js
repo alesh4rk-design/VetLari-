@@ -316,3 +316,15 @@ test('útero e ovários juntos no mesmo parágrafo', () => {
   const osh = toggleOption(d, {}, u.key, 0);
   assert.equal(composeDescription(d, osh, [], {}), 'Útero e ovários não caracterizados (paciente com histórico de OSH).');
 });
+
+test('descrição não repete o nome do órgão que já está no título', async () => {
+  const { dropTitle } = await import('../js/builder-logic.js');
+  assert.equal(dropTitle('Linfonodos: discreto aumento de linfonodos jejunais.', 'Linfonodos'), 'discreto aumento de linfonodos jejunais.');
+  assert.equal(dropTitle('Tecido mamário com discreto aumento de volume.', 'Tecido mamário'), 'com discreto aumento de volume.');
+  assert.equal(dropTitle('Útero e ovários não caracterizados (OSH).', 'Útero e ovários'), 'não caracterizados (OSH).');
+  assert.equal(dropTitle('Não foi evidenciada à ultrassonografia linfonodomegalia abdominal.', 'Linfonodos'), 'Não foi evidenciada à ultrassonografia linfonodomegalia abdominal.');
+  assert.equal(dropTitle('Linfonodomegalia discreta.', 'Linfonodos'), 'Linfonodomegalia discreta.');
+  assert.equal(dropTitle('**Útero** com diâmetro normal.', 'Útero e ovários'), '**Útero** com diâmetro normal.');
+  assert.equal(dropTitle('Rins direito normal', 'Rins'), 'direito normal');
+  assert.equal(dropTitle('Útero e ovários não caracterizados.', 'Útero'), 'Útero e ovários não caracterizados.');
+});

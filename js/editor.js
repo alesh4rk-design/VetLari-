@@ -14,7 +14,7 @@ import { listTemplates, getTemplate } from './templates.js';
 import { pickPhrase, insertAtCursor, saveToLibraryDialog } from './phrase-library.js';
 import { openDictation } from './voice.js';
 import { fillPhrase } from './phrase-logic.js';
-import { composeDescription, toggleOption, pendingFields, expandBlocks, normalSelection, patchManualText } from './builder-logic.js';
+import { composeDescription, toggleOption, pendingFields, expandBlocks, normalSelection, patchManualText, dropTitle } from './builder-logic.js';
 import { listReferences, referenceCard } from './references.js';
 import { listCalculations, openCalculator } from './calculations.js';
 import { matchReferences, checkMeasure, rangeText } from './reference-logic.js';
@@ -339,7 +339,7 @@ export async function renderEditor(view, id, settings, profile) {
    */
   function syncBuild(s, force = false) {
     if (!s.build) return false;
-    const text = composeDescription(s.build.def, s.build.sel, s.measuresList, s.build.extras);
+    const text = dropTitle(composeDescription(s.build.def, s.build.sel, s.measuresList, s.build.extras), s.title);
     if (force || !s.description.trim() || s.description === s.build.auto) { s.description = text; s.build.patchFailed = false; }
     else if (text !== s.build.auto) {
       const patched = patchManualText(s.description, s.build.auto, text);
