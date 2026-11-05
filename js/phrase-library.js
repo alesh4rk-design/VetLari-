@@ -26,7 +26,9 @@ export function filterPhrases(all, { q = '', category = '', modality = '', favOn
     if (category && p.category !== category) return false;
     if (modality && p.modality !== 'all' && p.modality !== modality) return false;
     // Com estrutura informada, mostra as frases dessa estrutura e as gerais (sem estrutura definida).
-    if (structure && p.structure && p.structure.toLowerCase() !== structure.toLowerCase()) return false;
+    // "Útero e ovários" aceita frases guardadas só para "Útero" ou só para "Ovários".
+    const parts = (x) => String(x || '').toLowerCase().split(/\s+e\s+/);
+    if (structure && p.structure && !parts(structure).includes(p.structure.toLowerCase()) && p.structure.toLowerCase() !== structure.toLowerCase()) return false;
     if (!needle) return true;
     return [p.title, p.category, p.structure, p.text, p.keywords].some((f) => String(f || '').toLowerCase().includes(needle));
   });

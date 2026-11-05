@@ -196,3 +196,8 @@ input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-col
 .fin-box { border-left: 3px solid var(--accent); }
 body.has-timer #view { padding-bottom: 130px; }
 .fin-box input[type="radio"] { width: 22px; min-height: 22px; height: 22px; flex: none; accent-color: var(--accent); } .fin-box > legend { padding: 0 6px; }
+
+.organ-row { display: flex; gap: 4px; align-items: stretch; } .organ-row .organ { flex: 1; min-width: 0; }
+.organ-clear { flex: none; width: 36px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--muted); cursor: pointer; font: inherit; }
+.organ-clear:hover { border-color: var(--danger); color: var(--danger); }
+.organ-undo { margin-bottom: 8px; }

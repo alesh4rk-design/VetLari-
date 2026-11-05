@@ -33,7 +33,7 @@ const usg = (id, name, sections, extra = {}) => ({
   id, builtin: true, modality: 'usg', name: `${name} (modelo inicial)`,
   docTitle: 'Relatório Ultrassonográfico', intro: '',
   conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações e recomendações',
-  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 19,
+  signature: true, imagesPerRow: 4, sections: sections.map(sec), ...extra, version: 21,
 });
 
 /**
@@ -56,8 +56,7 @@ export function defaultTemplates() {
         M('Adrenal direita – altura do pólo cranial'), M('Adrenal direita – altura do pólo caudal'), M('Adrenal direita – comprimento')] },
       { title: 'Próstata', sex: 'male', measures: [M('Comprimento'), M('Altura'), M('Largura')] },
       { title: 'Testículos', sex: 'male' },
-      { title: 'Útero', sex: 'female', measures: [M('Corpo uterino'), M('Corno uterino esquerdo'), M('Corno uterino direito')] },
-      { title: 'Ovários', sex: 'female', measures: [M('Ovário esquerdo'), M('Ovário direito')] },
+      { title: 'Útero e ovários', sex: 'female', measures: [M('Corpo uterino'), M('Corno uterino esquerdo'), M('Corno uterino direito'), M('Ovário esquerdo'), M('Ovário direito')] },
       { title: 'Tecido mamário', sex: 'female' }, 'Linfonodos', 'Líquido livre peritoneal', 'Outros achados',
     ], { docTitle: 'Relatório Ultrassonográfico Abdominal' }),
     usg('tpl-usg-cervical', 'Ultrassonografia cervical', ['Glândulas tireoides', 'Glândulas salivares submandibulares', 'Linfonodos mandibulares e retrofaríngeos', 'Esôfago, traqueia e laringe', 'Outros achados'], { docTitle: 'Relatório Ultrassonográfico Cervical', notesTitle: 'Comentários' }),
@@ -65,14 +64,14 @@ export function defaultTemplates() {
     usg('tpl-usg-urinario', 'Avaliação do trato urinário', ['Rim direito', 'Rim esquerdo', 'Ureteres', 'Bexiga urinária', 'Uretra (se avaliada)'], { docTitle: 'Relatório Ultrassonográfico do Trato Urinário' }),
     usg('tpl-usg-hepatobiliar', 'Avaliação hepatobiliar', ['Fígado', 'Vesícula biliar', 'Vias biliares', 'Vasos hepáticos e portais avaliados'], { docTitle: 'Relatório Ultrassonográfico Hepatobiliar' }),
     usg('tpl-usg-gastro', 'Avaliação gastrointestinal', ['Estômago', 'Duodeno', 'Jejuno', 'Íleo', 'Cólon', 'Linfonodos regionais'], { docTitle: 'Relatório Ultrassonográfico Gastrointestinal' }),
-    usg('tpl-usg-reprodutivo', 'Avaliação reprodutiva e gestacional', ['Útero', 'Ovários', 'Próstata', 'Testículos', 'Conteúdo gestacional (se aplicável)'], { docTitle: 'Relatório Ultrassonográfico Reprodutivo' }),
+    usg('tpl-usg-reprodutivo', 'Avaliação reprodutiva e gestacional', ['Útero e ovários', 'Próstata', 'Testículos', 'Conteúdo gestacional (se aplicável)'], { docTitle: 'Relatório Ultrassonográfico Reprodutivo' }),
     usg('tpl-usg-superficial', 'Estruturas superficiais e tecidos moles', ['Região examinada', 'Lesão ou estrutura de interesse', 'Linfonodos regionais'], { docTitle: 'Relatório Ultrassonográfico de Estruturas Superficiais' }),
     usg('tpl-usg-musculo', 'Avaliação musculoesquelética', ['Estrutura avaliada (músculo, tendão ou articulação)', 'Estruturas adjacentes'], { docTitle: 'Relatório Ultrassonográfico Musculoesquelético' }),
     {
       id: 'tpl-rx-geral', builtin: true, modality: 'rx', name: 'Radiografia (modelo inicial editável)',
       docTitle: 'Relatório Radiográfico', intro: '',
       conclusionTitle: 'Impressão Diagnóstica', notesTitle: 'Observações complementares',
-      signature: true, imagesPerRow: 3, version: 19,
+      signature: true, imagesPerRow: 3, version: 20,
       sections: ['Estruturas ósseas', 'Articulações', 'Tecidos moles', 'Outras estruturas avaliadas'].map(sec),
     },
   ];

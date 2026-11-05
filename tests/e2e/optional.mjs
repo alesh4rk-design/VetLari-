@@ -191,6 +191,22 @@ await page.click('[data-step="3"]');
 check('cópia: conclusão mantida', (await page.inputValue('#f-impression')) === 'Conclusão anterior.');
 await page.click('[data-step="2"]');
 check('cópia: sem imagens', (await page.locator('.imgcard').count()) === 0);
+// Limpar órgãos do laudo (um ou vários) e desfazer
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]'); await page.evaluate(() => { document.querySelector('input[name="fmode"][value="none"]').checked = true; });
+await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+await page.fill('#f-patient\\.name', 'Limpar'); await page.click('[data-step="1"]');
+for (const n of ['Fígado', 'Baço', 'Rins']) { await page.click(`.organ:has-text("${n}")`); await page.click('[data-act="b-normal"]'); }
+check('botão de limpar ao lado de cada órgão preenchido', (await page.locator('.organ-clear').count()) === 3);
+await page.click('.organ-row:has-text("Fígado") .organ-clear');
+check('limpar um órgão tira o ✕ e o preenchido', (await page.locator('.organ-clear').count()) === 2);
+await page.click('[data-act="undo-clear"]');
+check('desfazer devolve o órgão', (await page.locator('.organ-clear').count()) === 3);
+await page.click('[data-act="org-clear-many"]');
+await page.check('label:has-text("Fígado") [data-pickclear]'); await page.check('label:has-text("Rins") [data-pickclear]'); await page.click('.modal [data-x=ok]');
+check('limpar vários de uma vez', (await page.locator('.organ-clear').count()) === 1);
+await page.click('[data-step="4"]'); await page.waitForSelector('.paper');
+const paper = await page.textContent('.paper');
+check('órgãos limpos saem do laudo e o restante fica', !paper.includes('Fígado') && paper.includes('Baço') && !paper.includes('Rins'));
 // Data inválida continua sendo conferida
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();

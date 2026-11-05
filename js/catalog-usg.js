@@ -612,6 +612,24 @@ addOptions('Linfonodos', 'Avaliação', [
 addOptions('Outros achados', 'Achado', [o('__Comentários: paciente pouco colaborativo no momento do exame__', 'comentário: paciente pouco colaborativo'), o('__Comentários: paciente de difícil contenção física e dispneico durante o exame__', 'comentário: difícil contenção e dispneia')]);
 
 /**
+ * "Útero e ovários" juntos, no mesmo parágrafo (como nos laudos dela): reaproveita as opções dos dois
+ * construtores. As frases do útero que começam com "Com …" passam a levar o nome na frente em negrito.
+ */
+{
+  const clone = (x) => JSON.parse(JSON.stringify(x));
+  const ut = clone(USG_BUILDERS['Útero']).blocks[0], ov = clone(USG_BUILDERS['Ovários']).blocks[0];
+  for (const gr of ut.groups) for (const op of gr.options) {
+    if (/^Com /.test(op.text)) op.text = `**Útero** com ${op.text.slice(4)}`;
+    else if (/^Dimensões /.test(op.text)) op.text = `**Útero** com dimensões ${op.text.slice(10)}`;
+    else if (/^Não caracterizado;/.test(op.text)) op.text = `**Útero** não caracterizado;${op.text.slice(18)}`;
+    if (!op.label) op.label = op.text.replace(/\*\*/g, '').slice(0, 60);
+  }
+  ov.labels = ['Ovários'];
+  USG_BUILDERS['Útero e ovários'] = { blocks: [ut, ov] };
+  for (const gr of ov.groups) for (const op of gr.options) if (!op.label && op.text.length > 60) op.label = op.text.slice(0, 60);
+}
+
+/**
  * "Texto padrão (sem alterações)" de cada órgão: a redação que a veterinária usa nos laudos normais
  * (a mesma em dezenas de laudos enviados). O botão só marca estas opções; ela confere e muda o que quiser.
  */
