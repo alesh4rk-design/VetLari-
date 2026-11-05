@@ -44,7 +44,7 @@ const nomes = await page.locator('.organ .oname').allTextContents();
 check('macho: não mostra tecido mamário', !nomes.includes('Tecido mamário'));
 await page.click('[data-step="0"]'); await page.selectOption('#f-sex', 'Fêmea'); await page.click('[data-step="1"]');
 const nomesF = await page.locator('.organ .oname').allTextContents();
-check('fêmea: mostra tecido mamário, útero e ovários', ['Tecido mamário', 'Útero', 'Ovários'].every((x) => nomesF.includes(x)));
+check('fêmea: mostra tecido mamário, útero e ovários', ['Tecido mamário', 'Útero e ovários'].every((x) => nomesF.includes(x)));
 await page.click('.organ:has-text("Útero")'); await page.click('.bgroup:has(.blabel:has-text("Descrição")) .chip:has-text("não caracterizados")');
 check('útero/ovários não caracterizados (OSH)', (await page.inputValue('[data-sf="description"]')) === 'Útero e ovários não caracterizados (paciente com histórico de OSH).');
 check('sem erros de console', errors.length === 0, errors.join(' | '));

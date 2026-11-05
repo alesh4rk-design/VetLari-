@@ -16,7 +16,7 @@ await page.selectOption('#f-sex', 'Fêmea');
 await page.click('[data-step="1"]');
 let names = await page.locator('.organ .oname').allTextContents();
 check('lista de órgãos em vez de setas (sem botões ▲▼ no exame)', names.length >= 10 && (await page.locator('[data-act="sec-up"],[data-act="sec-down"]').count()) === 0);
-check('fêmea: mostra útero e ovários e oculta próstata', names.includes('Ovários') && names.includes('Útero') && !names.includes('Próstata'));
+check('fêmea: mostra útero e ovários e oculta próstata', names.includes('Útero e ovários') && !names.includes('Próstata'));
 await page.click('[data-step="0"]'); await page.selectOption('#f-sex', 'Macho'); await page.click('[data-step="1"]');
 names = await page.locator('.organ .oname').allTextContents();
 check('macho: mostra próstata e oculta ovários', names.includes('Próstata') && !names.includes('Ovários'));

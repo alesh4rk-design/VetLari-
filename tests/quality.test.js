@@ -139,7 +139,7 @@ test('modelo: medidas pré-definidas viram linhas prontas e vazias, que não con
 test('modelo: estruturas específicas de sexo e ordem dos órgãos', () => {
   const tpl = defaultTemplates().find((t) => t.id === 'tpl-usg-abdominal');
   const sex = Object.fromEntries(tpl.sections.map((s) => [s.title, s.sex]));
-  assert.equal(sex['Próstata'], 'male'); assert.equal(sex['Ovários'], 'female'); assert.equal(sex['Fígado'], '');
+  assert.equal(sex['Próstata'], 'male'); assert.equal(sex['Útero e ovários'], 'female'); assert.equal(sex['Fígado'], '');
   assert.deepEqual(tpl.sections.slice(0, 3).map((s) => s.title), ['Vesícula urinária', 'Rins', 'Fígado']);
 });
 test('medida preenchida a partir do modelo aparece no laudo com nome e unidade', () => {

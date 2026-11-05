@@ -302,3 +302,17 @@ test('texto editado à mão: medidas e escolhas continuam sendo aplicadas no tex
   // trecho que ela reescreveu: não há como aplicar com segurança
   assert.equal(patchManualText('Texto completamente reescrito por ela.', oldA, oldA.replace('4,5', '4,8')), null);
 });
+
+test('útero e ovários juntos no mesmo parágrafo', () => {
+  const d = USG_BUILDERS['Útero e ovários'];
+  const bl = expandBlocks(d);
+  assert.equal(bl.length, 2);
+  const u = bl[0].groups[0], o = bl[1].groups[0];
+  let sel = toggleOption(d, {}, u.key, u.options.findIndex((x) => x.text.startsWith('**Útero** com diâmetro dentro da normalidade (')));
+  sel = toggleOption(d, sel, o.key, 0);
+  const txt = composeDescription(d, sel, [], {});
+  assert.ok(txt.includes('Útero com diâmetro dentro da normalidade') && txt.includes('Ovários tópicos, simétricos'), txt);
+  assert.ok(!txt.includes('\n'), 'um único parágrafo');
+  const osh = toggleOption(d, {}, u.key, 0);
+  assert.equal(composeDescription(d, osh, [], {}), 'Útero e ovários não caracterizados (paciente com histórico de OSH).');
+});

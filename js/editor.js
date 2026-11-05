@@ -291,11 +291,23 @@ export async function renderEditor(view, id, settings, profile) {
     return vis.find((s) => s.id === selSec) || vis[0] || null;
   };
 
+  // Órgãos limpos há pouco (para "Desfazer"): [{ id, title, snapshot, index }]
+  let cleared = [];
+  /** Tira o órgão do texto do laudo: apaga descrição, escolhas, medidas digitadas, observações e status. A estrutura continua na lista. */
+  const clearSection = (s) => {
+    s.description = ''; s.notes = ''; s.measures = ''; s.status = '';
+    s.measuresList = (s.measuresList || []).filter((m) => m.slot && !m.calculated).map((m) => ({ ...m, value: '' }));
+    if (s.build) { s.build.sel = {}; s.build.extras = {}; s.build.auto = ''; s.build.patchFailed = false; }
+  };
   const organList = () => {
     const cur = current();
-    return `<ul class="organ-list">${visibleSections().map((s) => `<li><button type="button" class="organ ${cur && s.id === cur.id ? 'active' : ''}" data-act="org-pick" data-id="${s.id}" ${cur && s.id === cur.id ? 'aria-current="true"' : ''}>
+    const withData = visibleSections().filter(hasData);
+    return `${cleared.length ? `<div class="alert info small organ-undo">Limpei ${cleared.length === 1 ? `"${esc(cleared[0].title)}"` : cleared.length + ' órgãos'}. <button type="button" class="btn sm" data-act="undo-clear">Desfazer</button></div>` : ''}
+      <ul class="organ-list">${visibleSections().map((s) => `<li class="organ-row"><button type="button" class="organ ${cur && s.id === cur.id ? 'active' : ''}" data-act="org-pick" data-id="${s.id}" ${cur && s.id === cur.id ? 'aria-current="true"' : ''}>
       <span class="dot ${hasData(s) ? 'done' : ''}" aria-hidden="true"></span><span class="oname">${esc(s.title || 'Sem nome')}</span>
-      <span class="ostat">${s.status ? esc(STRUCTURE_STATUS[s.status]) : (sectionHasContent(s) ? 'Preenchido' : '')}</span></button></li>`).join('')}</ul>
+      <span class="ostat">${s.status ? esc(STRUCTURE_STATUS[s.status]) : (sectionHasContent(s) ? 'Preenchido' : '')}</span></button>
+      ${!locked && hasData(s) ? `<button type="button" class="organ-clear" data-act="org-clear" data-id="${s.id}" title="Tirar ${esc(s.title || 'este órgão')} do laudo (limpa tudo deste órgão)" aria-label="Limpar ${esc(s.title || 'órgão')}">✕</button>` : ''}</li>`).join('')}</ul>
+      ${!locked && withData.length > 1 ? '<button type="button" class="btn sm ghost" data-act="org-clear-many" style="margin-top:8px">Limpar vários órgãos…</button>' : ''}
       ${locked ? '' : `<div class="row" style="margin-top:10px"><input id="newsec" placeholder="Nova estrutura" aria-label="Nome da nova estrutura" style="flex:1;min-width:0"><button class="btn sm" data-act="sec-add">Adicionar</button></div>`}`;
   };
 
@@ -728,6 +740,29 @@ export async function renderEditor(view, id, settings, profile) {
         s.build.sel = normalSelection(s.build.def); s.build.extras = {}; syncBuild(s, true);
       }
       touch(); refreshFindings();
+    }
+    else if (act === 'org-clear') {
+      const s = exam.sections.find((x) => x.id === b.dataset.id); if (!s) return;
+      cleared = [{ id: s.id, title: s.title, snapshot: JSON.parse(JSON.stringify(s)) }];
+      clearSection(s); touch(); refreshFindings();
+    }
+    else if (act === 'org-clear-many') {
+      const list = visibleSections().filter(hasData);
+      const mo = openModal(`<h2>Limpar vários órgãos</h2><p class="muted small">Marque os órgãos que devem sair do laudo. A estrutura continua na lista, vazia, e dá para desfazer em seguida.</p>
+        <div>${list.map((x) => `<label class="check"><input type="checkbox" data-pickclear="${esc(x.id)}"> ${esc(x.title)}</label>`).join('')}</div>
+        <div class="row end"><button class="btn" data-x="cancel">Cancelar</button><button class="btn danger" data-x="ok">Limpar selecionados</button></div>`, { label: 'Limpar vários órgãos' });
+      mo.el.querySelector('[data-x=cancel]').onclick = () => mo.close(null);
+      mo.el.querySelector('[data-x=ok]').onclick = () => {
+        const ids = [...mo.el.querySelectorAll('[data-pickclear]:checked')].map((c) => c.dataset.pickclear);
+        if (!ids.length) return mo.close(null);
+        cleared = ids.map((id) => exam.sections.find((x) => x.id === id)).filter(Boolean).map((x) => ({ id: x.id, title: x.title, snapshot: JSON.parse(JSON.stringify(x)) }));
+        for (const c of cleared) clearSection(exam.sections.find((x) => x.id === c.id));
+        mo.close(true); touch(); refreshFindings();
+      };
+    }
+    else if (act === 'undo-clear') {
+      for (const c of cleared) { const i = exam.sections.findIndex((x) => x.id === c.id); if (i >= 0) exam.sections[i] = c.snapshot; }
+      cleared = []; touch(); refreshFindings();
     }
     else if (act === 'sec-del') {
       const s = exam.sections.find((x) => x.id === secId);
