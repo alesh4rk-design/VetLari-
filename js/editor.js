@@ -10,7 +10,7 @@ import { reviewExam, STRUCTURE_STATUS, MEASURE_UNITS, sectionHasContent } from '
 import { can } from './profiles.js';
 import { openModal, pickOption } from './ui.js';
 import { listPatients, getPatient, upsertPatient } from './patients.js';
-import { listTemplates, getTemplate } from './templates.js';
+import { listTemplates, getTemplate, saveSettings } from './templates.js';
 import { pickPhrase, insertAtCursor, saveToLibraryDialog } from './phrase-library.js';
 import { openDictation } from './voice.js';
 import { fillPhrase } from './phrase-logic.js';
@@ -124,6 +124,7 @@ export async function renderNewExam(view, query, profile) {
         if (!(gross > 0)) return err('Informe o valor do exame.');
         if (suggested != null && gross !== suggested && !fd.reason.trim()) return err('Informe o motivo do valor diferente da tabela.');
         exam.date = fd.examDate;
+        if (fd.fmode === 'clinic') { const cl = fin.clinics.find((c) => c.id === fd.clinicId); if (cl) exam.clinic = cl.name; }
         entry = { examId: exam.id, mode: fd.fmode, clinicId: fd.fmode === 'clinic' ? fd.clinicId : '', procedureId: fd.procedureId, examDate: fd.examDate,
           priceSuggested: suggested, gross: suggested ?? gross, discount: fd.fmode === 'home' ? money(fd.discount) : 0, travelFee: fd.fmode === 'home' ? money(fd.travelFee) : 0, extraFees: 0,
           region: fd.fmode === 'home' ? fd.region.trim() : '', dueDate: fd.fmode === 'clinic' ? defaultDue(fin, fd.clinicId, fd.examDate) : '', payments: [], createdAt: Date.now() };
@@ -261,6 +262,17 @@ export async function renderEditor(view, id, settings, profile) {
 
   const field = (label, bind, { type = 'text', extra = '' } = {}) => `<div class="field"><label for="f-${bind}">${label}</label>
     <input id="f-${bind}" type="${type}" data-bind="${bind}" value="${esc(getPath(exam, bind))}" ${locked ? 'disabled' : ''} ${extra}></div>`;
+  /** Médico-veterinário solicitante: escolher entre os nomes guardados (Configurações) ou digitar e guardar. */
+  const vetNames = () => settings.vets || [];
+  const vetField = () => {
+    const cur = String(exam.requestingVet || '').trim();
+    const isNew = !!cur && !vetNames().some((v) => v.toLowerCase() === cur.toLowerCase());
+    return `<div class="field"><label for="f-requestingVet">Médico-veterinário solicitante</label>
+      <div class="row" style="flex-wrap:nowrap"><input id="f-requestingVet" data-bind="requestingVet" value="${esc(exam.requestingVet || '')}" list="vets-list" autocomplete="off" placeholder="Escolha ou digite" ${locked ? 'disabled' : ''} style="flex:1;min-width:0">
+      ${locked ? '' : `<button type="button" class="btn sm" data-act="pick-list" data-kind="vet" data-target="f-requestingVet">Lista</button>`}</div>
+      <datalist id="vets-list">${optionsHtml(vetNames())}</datalist>
+      ${locked ? '' : `<button type="button" class="btn sm" id="vet-save" data-act="vet-save" style="margin-top:6px" ${isNew ? '' : 'hidden'}>+ Guardar "${esc(cur)}" na lista</button>`}</div>`;
+  };
   /** Campo com sugestões e digitação livre + botão "Lista" com todas as opções. */
   const comboField = (label, bind, listId, kind) => `<div class="field"><label for="f-${bind}">${label}</label>
     <div class="row" style="flex-wrap:nowrap"><input id="f-${bind}" data-bind="${bind}" value="${esc(getPath(exam, bind))}" list="${listId}" autocomplete="off" placeholder="Escolha ou digite" ${locked ? 'disabled' : ''} style="flex:1;min-width:0">
@@ -441,7 +453,7 @@ export async function renderEditor(view, id, settings, profile) {
       <datalist id="species-list">${optionsHtml(SPECIES)}</datalist><datalist id="breeds-list">${optionsHtml(breedsFor(exam.patient.species))}</datalist>
       <div class="field"><label for="f-sex">Sexo</label><select id="f-sex" data-bind="patient.sex" ${locked ? 'disabled' : ''}>${SEXES.map((s) => `<option value="${s}" ${exam.patient.sex === s ? 'selected' : ''}>${s || 'Selecione'}</option>`).join('')}</select></div>
       ${field('Data de nascimento', 'patient.birthDate', { type: 'date' })}${ageField()}${field('Peso', 'patient.weight', { extra: 'inputmode="decimal"' })}<div class="field"><label for="f-wunit">Unidade do peso</label><select id="f-wunit" data-bind="patient.weightUnit" ${locked ? 'disabled' : ''}>${['kg', 'g'].map((u) => `<option value="${u}" ${(exam.patient.weightUnit || 'kg') === u ? 'selected' : ''}>${u === 'kg' ? 'quilos (kg)' : 'gramas (g)'}</option>`).join('')}</select></div>
-      ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${field('Médico-veterinário solicitante', 'requestingVet')}${logoPicker()}
+      ${field('Tutor', 'patient.tutor')}${field('Clínica solicitante', 'clinic')}${vetField()}${logoPicker()}
       ${field('Identificador interno (opcional)', 'patient.identifier')}${field('Data do exame (opcional)', 'date', { type: 'date' })}${field('Hora do exame (opcional)', 'time', { type: 'time' })}</div>
       ${locked ? '' : `<label class="check"><input type="checkbox" id="savepat" ${savePatientFlag ? 'checked' : ''}> Salvar/atualizar no cadastro de pacientes ao finalizar</label>`}</div>
       ${finCard()}
@@ -503,6 +515,7 @@ export async function renderEditor(view, id, settings, profile) {
     // Só volta ao topo ao trocar de etapa; demais alterações mantêm a posição da página.
     window.scrollTo(0, top ? 0 : keepY);
   }
+  if (exam.clinic && !exam.logos && !locked) { autoClinicLogo(); if (exam.logos) { dirty = true; autosave(); } }
   draw({ top: true });
 
   /** Atualiza só a lista (marcadores de preenchimento) enquanto se digita; o painel não é redesenhado. */
@@ -703,6 +716,11 @@ export async function renderEditor(view, id, settings, profile) {
     else if (act === 'prev') { step = Math.max(0, step - 1); draw({ top: true }); }
     else if (act === 'org-pick') { selSec = b.dataset.id; refreshFindings(); if (window.innerWidth <= 820) view.querySelector('#organ-panel').scrollIntoView({ block: 'nearest' }); }
     else if (act === 'share-pdf') await sharePdf();
+    else if (act === 'vet-save') {
+      const n = String(exam.requestingVet || '').trim(); if (!n) return;
+      settings.vets = [...new Set([...(settings.vets || []), n])].sort((a, c) => a.localeCompare(c, 'pt-BR'));
+      await saveSettings(settings); toast(`"${n}" guardado na lista de veterinários.`, 'success'); const dl = view.querySelector('#vets-list'); if (dl) dl.innerHTML = optionsHtml(vetNames()); const bt = view.querySelector('#vet-save'); if (bt) bt.hidden = true;
+    }
     else if (act === 'share-mail') await shareMail();
     else if (act === 'send-save') {
       const c = clinicOfEntry(), t = sendTo(); if (!c) return;
@@ -807,9 +825,10 @@ export async function renderEditor(view, id, settings, profile) {
       }
     } else if (act === 'pick-list') {
       const input = view.querySelector('#' + CSS.escape(b.dataset.target));
-      const options = b.dataset.kind === 'species' ? SPECIES : breedsFor(exam.patient.species);
-      if (!options.length) return toast('Não há sugestões de raça para esta espécie: digite a raça no campo.', 'info');
-      const chosen = await pickOption({ title: b.dataset.kind === 'species' ? 'Espécie' : 'Raça', options });
+      const kind = b.dataset.kind;
+      const options = kind === 'species' ? SPECIES : kind === 'vet' ? vetNames() : breedsFor(exam.patient.species);
+      if (!options.length) return toast(kind === 'vet' ? 'Nenhum nome guardado ainda: digite o nome e clique em "Guardar na lista".' : 'Não há sugestões de raça para esta espécie: digite a raça no campo.', 'info');
+      const chosen = await pickOption({ title: kind === 'species' ? 'Espécie' : kind === 'vet' ? 'Médico-veterinário solicitante' : 'Raça', options });
       if (chosen && input) { input.value = chosen; input.dispatchEvent(new Event('input', { bubbles: true })); }
     } else if (act === 'dictate') {
       const target = view.querySelector('#' + CSS.escape(b.dataset.target));
@@ -846,6 +865,10 @@ export async function renderEditor(view, id, settings, profile) {
       setPath(exam, t.dataset.bind, t.dataset.num ? Number(t.value) : t.value);
       if (t.dataset.bind === 'patient.birthDate' || t.dataset.bind === 'date') updateAge();
       if (t.dataset.bind === 'clinic') autoClinicLogo();
+    if (t.dataset.bind === 'requestingVet') {
+      const btn = view.querySelector('#vet-save'), n = t.value.trim();
+      if (btn) { btn.hidden = !n || vetNames().some((v) => v.toLowerCase() === n.toLowerCase()); btn.textContent = `+ Guardar "${n}" na lista`; }
+    }
       if (t.dataset.bind === 'patient.species') { const bl = view.querySelector('#breeds-list'); if (bl) bl.innerHTML = optionsHtml(breedsFor(t.value));
         if (!String(exam.patient.weight || '').trim()) { exam.patient.weightUnit = defaultWeightUnit(t.value); const wu = view.querySelector('#f-wunit'); if (wu) wu.value = exam.patient.weightUnit; } }
       touch();

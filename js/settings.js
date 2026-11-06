@@ -61,6 +61,9 @@ export function renderSettings(view, settings, onChange) {
       <button type="button" class="btn danger sm" data-lgrm="${esc(l.id)}">Excluir</button></li>`).join('') || '<li class="muted small">Nenhum logotipo de clínica cadastrado.</li>'}</ul>
     <div class="row" style="align-items:flex-end"><div class="field" style="margin:0"><label for="lg-new-name">Nome da clínica</label><input id="lg-new-name" placeholder="Ex.: Hamadulu"></div>
       <label class="btn" for="lg-new-file">Adicionar logotipo da clínica</label><input id="lg-new-file" type="file" accept="image/png,image/jpeg" hidden></div></div>
+  <div class="card" id="vets"><h2>Veterinários solicitantes</h2><p class="muted small">Deixe os nomes guardados: no laudo, em "Médico-veterinário solicitante", é só escolher na lista (ou digitar um novo e clicar em "Guardar na lista").</p>
+    <ul class="list">${(settings.vets || []).map((v, i) => `<li><span>${esc(v)}</span><button type="button" class="btn sm danger" data-vetrm="${i}">Remover</button></li>`).join('') || '<li class="muted small">Nenhum nome guardado ainda.</li>'}</ul>
+    <form class="row" id="vetf"><input id="vet-new" placeholder="Ex.: Dra. Beatriz Nassif" aria-label="Nome do veterinário" style="flex:1;min-width:0"><button class="btn">Guardar nome</button></form></div>
   <div class="card" id="assinatura"><h2>Assinatura</h2>
     <p class="muted small">A imagem da sua assinatura aparece acima do quadro "Assinado eletronicamente por" <strong>somente nos laudos finalizados</strong> (rascunhos e preliminares nunca saem assinados). Use fundo branco ou transparente. Isto não substitui a assinatura digital com certificado ICP-Brasil.</p>
     ${settings.signatureImage ? `<div style="margin:8px 0"><img src="${esc(settings.signatureImage)}" alt="Sua assinatura" style="max-height:70px;background:#fff;padding:6px;border-radius:6px"></div>` : '<p class="small"><strong>Nenhuma assinatura cadastrada.</strong></p>'}
@@ -114,6 +117,12 @@ export function renderSettings(view, settings, onChange) {
       catch (err) { toast(err.message, 'error'); }
     });
   }
+  const saveVets = async (vets) => { const next = { ...settings, vets }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); };
+  view.querySelector('#vetf').addEventListener('submit', async (e) => {
+    e.preventDefault(); const n = view.querySelector('#vet-new').value.trim(); if (!n) return;
+    await saveVets([...new Set([...(settings.vets || []), n])].sort((a, c) => a.localeCompare(c, 'pt-BR'))); toast('Nome guardado.', 'success');
+  });
+  view.querySelectorAll('[data-vetrm]').forEach((b) => { b.onclick = () => saveVets((settings.vets || []).filter((_, i) => i !== Number(b.dataset.vetrm))); });
   const saveSig = async (img) => { const next = { ...settings, signatureImage: img }; await saveSettings(next); onChange(next); renderSettings(view, next, onChange); toast(img ? 'Assinatura salva.' : 'Assinatura removida.', 'success'); };
   view.querySelector('#s-sig').addEventListener('change', async (e) => {
     const f = e.target.files[0]; if (!f) return;

@@ -171,6 +171,21 @@ check('nova clínica cadastrada no Novo laudo aparece na lista', (await page.loc
 check('a clínica nova já vem escolhida', (await page.locator('#fc option:checked').textContent()) === 'Clínica Gama');
 await page.selectOption('#fp', { label: 'Ultrassonografia abdominal completa' });
 check('preço da clínica nova sugerido', (await page.inputValue('#fg')) === '175');
+// Clínica escolhida no início vai para o cabeçalho; veterinários guardados
+await page.goto(base + '#/configuracoes'.replace('configuracoes', 'config')); await page.waitForSelector('#vetf');
+await page.fill('#vet-new', 'Dra. Beatriz Nassif'); await page.click('#vetf button'); await page.waitForSelector('#vets li:has-text("Beatriz")');
+await page.fill('#vet-new', 'Dr. Matheus Leite'); await page.click('#vetf button'); await page.waitForSelector('#vets li:has-text("Matheus")');
+check('veterinários guardados nas Configurações', (await page.locator('#vets li').count()) === 2);
+await page.goto(base + '#/novo'); await page.waitForSelector('#nf button[type=submit]');
+await page.check('input[name=fmode][value=clinic]'); await page.selectOption('#fc', { label: 'Clínica Beta' }); await page.selectOption('#fp', { label: 'Ultrassonografia abdominal completa' });
+await page.click('button:has-text("Começar laudo")'); await page.waitForSelector('#f-patient\\.name');
+check('clínica escolhida no início já está no cabeçalho', (await page.inputValue('#f-clinic')) === 'Clínica Beta');
+await page.click('[data-act="pick-list"][data-kind="vet"]'); await page.click('#po-list .chip:has-text("Matheus")');
+check('veterinário escolhido na lista', (await page.inputValue('#f-requestingVet')) === 'Dr. Matheus Leite');
+await page.fill('#f-requestingVet', 'Dra. Nova Pessoa'); await page.waitForSelector('#vet-save:not([hidden])');
+await page.click('#vet-save'); await page.waitForTimeout(500);
+await page.reload(); await page.waitForSelector('#f-requestingVet');
+check('nome novo guardado na lista (aparece depois)', (await page.locator('#vets-list option').count()) === 3);
 check('sem erros de console', errors.length === 0, errors.join(' | '));
 await browser.close();
 const failed = results.filter(([, ok]) => !ok).length;
